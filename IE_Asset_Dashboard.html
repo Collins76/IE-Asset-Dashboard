@@ -125,21 +125,31 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 @keyframes icon-glow{0%,100%{box-shadow:0 0 8px rgba(var(--glow),0.3)}50%{box-shadow:0 0 20px rgba(var(--glow),0.6),0 0 40px rgba(var(--glow),0.2)}}
 /* RESPONSIVE */
 /* AI PANEL */
+.ai-panel{position:relative;overflow:hidden}
+.ai-panel::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:conic-gradient(from 0deg,transparent,rgba(16,185,129,.06),transparent,rgba(0,212,255,.06),transparent);animation:ai-rotate 8s linear infinite;z-index:0}
+@keyframes ai-rotate{to{transform:rotate(360deg)}}
+.ai-panel>*{position:relative;z-index:1}
+.ai-panel h4{animation:ai-title-glow 3s ease-in-out infinite}
+@keyframes ai-title-glow{0%,100%{text-shadow:0 0 4px rgba(16,185,129,.3)}50%{text-shadow:0 0 12px rgba(16,185,129,.8),0 0 24px rgba(0,212,255,.3)}}
 .ai-chat{flex:1;overflow-y:auto;margin:8px 0;display:flex;flex-direction:column;gap:8px;min-height:0;max-height:220px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
 .ai-chat::-webkit-scrollbar{width:5px}.ai-chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.ai-msg{padding:8px 10px;border-radius:8px;font-size:11.5px;line-height:1.5;animation:ai-fade .3s ease}
-.ai-msg.user{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);color:var(--accent);align-self:flex-end;max-width:85%}
-.ai-msg.bot{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.15);color:var(--text);align-self:flex-start;max-width:95%}
+.ai-msg{padding:8px 10px;border-radius:8px;font-size:11.5px;line-height:1.5;animation:ai-fade .4s ease}
+.ai-msg.user{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--accent);align-self:flex-end;max-width:85%}
+.ai-msg.bot{background:linear-gradient(135deg,rgba(16,185,129,.06),rgba(0,212,255,.04));border:1px solid rgba(16,185,129,.18);color:var(--text);align-self:flex-start;max-width:95%}
 .ai-msg.bot b{color:var(--green)}.ai-msg.bot .ai-val{color:var(--accent);font-weight:700;font-size:13px}
 .ai-msg.bot table{width:100%;border-collapse:collapse;margin:6px 0;font-size:10.5px}
 .ai-msg.bot th{background:rgba(16,185,129,.12);color:var(--green);padding:3px 6px;text-align:left;border-bottom:1px solid var(--border)}
 .ai-msg.bot td{padding:3px 6px;border-bottom:1px solid rgba(255,255,255,.04)}
-@keyframes ai-fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.ai-msg.bot tr:hover td{background:rgba(16,185,129,.06)}
+@keyframes ai-fade{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.ai-typing{display:flex;gap:4px;padding:10px}.ai-typing span{width:6px;height:6px;background:var(--green);border-radius:50%;animation:ai-bounce .6s ease-in-out infinite}
+.ai-typing span:nth-child(2){animation-delay:.15s}.ai-typing span:nth-child(3){animation-delay:.3s}
+@keyframes ai-bounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-6px);opacity:1}}
 .ai-input-wrap{display:flex;gap:4px}
-.ai-input-wrap input{flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);color:#fff;border-radius:6px;font-size:12px;outline:none}
-.ai-input-wrap input:focus{border-color:var(--green)}
-.ai-send{background:var(--green);border:none;color:#000;font-size:12px;padding:0 12px;border-radius:6px;cursor:pointer;font-weight:700}
-.ai-send:hover{background:#34d399}
+.ai-input-wrap input{flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);color:#fff;border-radius:6px;font-size:12px;outline:none;transition:.3s}
+.ai-input-wrap input:focus{border-color:var(--green);box-shadow:0 0 10px rgba(16,185,129,.2)}
+.ai-send{background:linear-gradient(135deg,#10b981,#0d9668);border:none;color:#000;font-size:12px;padding:0 14px;border-radius:6px;cursor:pointer;font-weight:700;transition:.2s;box-shadow:0 2px 8px rgba(16,185,129,.3)}
+.ai-send:hover{transform:scale(1.05);box-shadow:0 4px 16px rgba(16,185,129,.5)}
 .ai-hints{font-size:9.5px;color:var(--text2);margin-top:5px;line-height:1.4}
 @media(max-width:1200px){.g3{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.g2,.g3{grid-template-columns:1fr}.nav-tabs{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}.filter-row{gap:4px}}
@@ -794,47 +804,96 @@ function askAI(){
   const q=inp.value.trim();if(!q)return;
   chat.innerHTML+=`<div class="ai-msg user">${q}</div>`;
   inp.value='';
-  const data=filteredData.length?filteredData:ASSET_DATA;
-  const answer=analyzeQuery(q,data);
-  chat.innerHTML+=`<div class="ai-msg bot">${answer}</div>`;
+  chat.innerHTML+=`<div class="ai-typing" id="aiTyping"><span></span><span></span><span></span></div>`;
   chat.scrollTop=chat.scrollHeight;
+  setTimeout(()=>{
+    const typ=document.getElementById('aiTyping');if(typ)typ.remove();
+    const data=filteredData.length?filteredData:ASSET_DATA;
+    const answer=analyzeQuery(q,data);
+    chat.innerHTML+=`<div class="ai-msg bot">${answer}</div>`;
+    chat.scrollTop=chat.scrollHeight;
+  },400);
 }
 
 function analyzeQuery(q,data){
-  const ql=q.toLowerCase();
+  const ql=q.toLowerCase().replace(/[?.,!]/g,'');
   const t=data.length;
   const fmt=n=>Number(n).toLocaleString();
   const pct=(a,b)=>b?(a/b*100).toFixed(1)+'%':'0%';
+  const isFaulty=r=>r.mfs==='FAULTY'||r.mfs==='FAULTY METER'||r.mfs==='BURNT METER'||r.mfs==='NON-FUNCTIONAL';
+  const isMetered=r=>r.ms==='METERED'||r.ms==='METERED EST.';
 
-  // Helper: group and count
-  function grp(key,filterFn){
-    const m={};const subset=filterFn?data.filter(filterFn):data;
-    subset.forEach(r=>{const v=r[key]||'Unknown';m[v]=(m[v]||0)+1});
-    return Object.entries(m).sort((a,b)=>b[1]-a[1]);
-  }
-  // Helper: detect BU/UT/feeder in query
-  function findVal(field){
-    const vals=new Set(data.map(r=>String(r[field]||'').toUpperCase()).filter(Boolean));
-    for(const v of vals){if(ql.includes(v.toLowerCase()))return v}
-    return null;
-  }
-  const buMatch=findVal('bu'),utMatch=findVal('ut'),stMatch=findVal('st');
-  const subsetLabel=buMatch?` in <b>${buMatch}</b>`:utMatch?` in <b>${utMatch}</b>`:stMatch?` in <b>${stMatch}</b>`:'';
-  const subset=buMatch?data.filter(r=>(r.bu||'').toUpperCase()===buMatch):utMatch?data.filter(r=>(r.ut||'').toUpperCase()===utMatch):stMatch?data.filter(r=>(r.st||'').toUpperCase()===stMatch):data;
+  // Helpers
+  function grp(key,src){const m={};(src||data).forEach(r=>{const v=r[key]||'Unknown';m[v]=(m[v]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1])}
+  function findVal(field){const vals=[...new Set(data.map(r=>String(r[field]||'').toUpperCase()).filter(Boolean))].sort((a,b)=>b.length-a.length);for(const v of vals){if(ql.includes(v.toLowerCase()))return v}return null}
+  function feederRLMap(src){const m={};(src||data).forEach(r=>{const fn=r.fn,rl=r.rl||0,fv=String(r.fv||''),bu=r.bu||'';if(!fn||rl<=0)return;if(!m[fn]||rl>m[fn].rl)m[fn]={rl,fv,bu}});return m}
+
+  // Context detection: BU, UT, State, Substation, Feeder name
+  const buMatch=findVal('bu'),utMatch=findVal('ut'),stMatch=findVal('st'),subMatch=findVal('sub'),fnMatch=findVal('fn');
+  const filters=[];
+  if(buMatch)filters.push({k:'bu',v:buMatch,l:'BU'});
+  if(utMatch)filters.push({k:'ut',v:utMatch,l:'UT'});
+  if(stMatch)filters.push({k:'st',v:stMatch,l:'State'});
+  if(subMatch)filters.push({k:'sub',v:subMatch,l:'Substation'});
+  const subsetLabel=filters.map(f=>` in <b>${f.v}</b>`).join('')||'';
+  let subset=data;filters.forEach(f=>{subset=subset.filter(r=>(r[f.k]||'').toUpperCase()===f.v)});
   const st=subset.length;
 
-  // Top/Bottom N pattern
-  const topMatch=ql.match(/(?:top|highest|largest|best|most)\s*(\d+)?/);
-  const botMatch=ql.match(/(?:bottom|lowest|smallest|least|worst)\s*(\d+)?/);
-  const nLimit=topMatch?(parseInt(topMatch[1])||5):botMatch?(parseInt(botMatch[1])||5):null;
+  // Detect superlatives and top/bottom N
+  const isMax=ql.match(/\b(longest|highest|largest|biggest|most|maximum|max|greatest|best)\b/);
+  const isMin=ql.match(/\b(shortest|lowest|smallest|least|minimum|min|fewest|worst)\b/);
+  const topMatch=ql.match(/\btop\s*(\d+)?\b/);
+  const botMatch=ql.match(/\bbottom\s*(\d+)?\b/);
+  const nMatch=ql.match(/(\d+)\s*(feeder|substation|ut|bu|dt|transformer|capacity|kva)/);
+  const nLimit=topMatch?(parseInt(topMatch[1])||5):botMatch?(parseInt(botMatch[1])||5):nMatch?parseInt(nMatch[1]):null;
+  const wantDesc=isMax||topMatch;const wantAsc=isMin||botMatch;
 
-  // ---- QUERY PATTERNS ----
+  // ===== SUPERLATIVE: which/what has the longest/shortest/highest/lowest =====
+  if(isMax||isMin){
+    // Route length per feeder
+    if(ql.includes('route')||ql.includes('length')||ql.includes('feeder')){
+      const frl=feederRLMap(subset);
+      const sorted=Object.entries(frl).sort((a,b)=>isMax?b[1].rl-a[1].rl:a[1].rl-b[1].rl);
+      if(sorted.length){
+        const n=nLimit||5;
+        const rows=sorted.slice(0,n).map(([fn,d],i)=>`<tr><td>${i+1}</td><td>${fn}</td><td>${d.bu}</td><td>${d.fv}kV</td><td><b>${d.rl.toFixed(2)} km</b></td></tr>`).join('');
+        const word=isMax?'Longest':'Shortest';
+        return `<b>${word} Route Length Feeder${n>1?'s':''}${subsetLabel}:</b><table><tr><th>#</th><th>Feeder</th><th>BU</th><th>Voltage</th><th>Route (km)</th></tr>${rows}</table>`;
+      }
+    }
+    // Capacity
+    if(ql.includes('capacity')||ql.includes('kva')){
+      const sorted=[...subset].filter(r=>r.cap).sort((a,b)=>isMax?b.cap-a.cap:a.cap-b.cap);
+      const n=nLimit||5;
+      const rows=sorted.slice(0,n).map((r,i)=>`<tr><td>${i+1}</td><td>${r.dt}</td><td>${r.bu||''}</td><td>${r.fn||''}</td><td><b>${r.cap} kVA</b></td></tr>`).join('');
+      return `<b>${isMax?'Highest':'Lowest'} Capacity DTs${subsetLabel}:</b><table><tr><th>#</th><th>DT</th><th>BU</th><th>Feeder</th><th>Cap</th></tr>${rows}</table>`;
+    }
+    // DT count per BU/UT/Substation/Feeder
+    if(ql.includes('bu')){const g=grp('bu',subset);const r=isMax?g[0]:g[g.length-1];return `<b>${isMax?'Largest':'Smallest'} BU:</b> <span class="ai-val">${r[0]}</span> with <b>${fmt(r[1])}</b> DTs (${pct(r[1],st)})`}
+    if(ql.includes('substation')){const g=grp('sub',subset);const r=isMax?g[0]:g[g.length-1];return `<b>${isMax?'Largest':'Smallest'} Substation:</b> <span class="ai-val">${r[0]}</span> with <b>${fmt(r[1])}</b> DTs`}
+    if(ql.includes('ut')||ql.includes('undertaking')){const g=grp('ut',subset);const r=isMax?g[0]:g[g.length-1];return `<b>${isMax?'Largest':'Smallest'} UT:</b> <span class="ai-val">${r[0]}</span> with <b>${fmt(r[1])}</b> DTs`}
+    // Default: longest/shortest route
+    const frl=feederRLMap(subset);const sorted=Object.entries(frl).sort((a,b)=>isMax?b[1].rl-a[1].rl:a[1].rl-b[1].rl);
+    if(sorted.length){const[fn,d]=sorted[0];return `<b>${isMax?'Longest':'Shortest'} Route Feeder${subsetLabel}:</b> <span class="ai-val">${fn}</span><br>Route Length: <b>${d.rl.toFixed(2)} km</b> &middot; BU: <b>${d.bu}</b> &middot; Voltage: <b>${d.fv}kV</b>`}
+  }
 
-  // Count queries
-  if(ql.match(/how many|total\s*(number|count|transformers|dts?|assets)/)){
+  // ===== WHICH/WHAT questions =====
+  if(ql.match(/\b(which|what)\b/)){
+    if(ql.includes('feeder')&&(ql.includes('route')||ql.includes('length'))){
+      const frl=feederRLMap(subset);const sorted=Object.entries(frl).sort((a,b)=>b[1].rl-a[1].rl);
+      if(sorted.length){const n=nLimit||5;const rows=sorted.slice(0,n).map(([fn,d],i)=>`<tr><td>${i+1}</td><td>${fn}</td><td>${d.bu}</td><td>${d.fv}kV</td><td><b>${d.rl.toFixed(2)} km</b></td></tr>`).join('');
+      return `<b>Feeders by Route Length${subsetLabel}:</b><table><tr><th>#</th><th>Feeder</th><th>BU</th><th>Voltage</th><th>Route (km)</th></tr>${rows}</table>`}
+    }
+    if(ql.includes('bu')&&(ql.includes('most')||ql.includes('dt')||ql.includes('transformer'))){const g=grp('bu',subset);const rows=g.map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');return `<b>BU by DT Count:</b><table><tr><th>BU</th><th>DTs</th><th>Share</th></tr>${rows}</table>`}
+    if(ql.includes('bu')&&(ql.includes('faulty')||ql.includes('fault'))){const bg={};subset.forEach(r=>{if(!r.bu)return;if(!bg[r.bu])bg[r.bu]={t:0,f:0};bg[r.bu].t++;if(isFaulty(r))bg[r.bu].f++});const rows=Object.entries(bg).sort((a,b)=>b[1].f-a[1].f).map(([bu,v])=>`<tr><td>${bu}</td><td><b>${fmt(v.f)}</b></td><td>${pct(v.f,v.t)}</td><td>${fmt(v.t)}</td></tr>`).join('');return `<b>Faulty Meters by BU:</b><table><tr><th>BU</th><th>Faulty</th><th>Rate</th><th>Total</th></tr>${rows}</table>`}
+    if(ql.includes('bu')&&ql.includes('unmetered')){const bg={};subset.forEach(r=>{if(!r.bu)return;if(!bg[r.bu])bg[r.bu]={t:0,u:0};bg[r.bu].t++;if(r.ms==='UNMETERED')bg[r.bu].u++});const rows=Object.entries(bg).sort((a,b)=>b[1].u-a[1].u).map(([bu,v])=>`<tr><td>${bu}</td><td><b>${fmt(v.u)}</b></td><td>${pct(v.u,v.t)}</td><td>${fmt(v.t)}</td></tr>`).join('');return `<b>Unmetered DTs by BU:</b><table><tr><th>BU</th><th>Unmetered</th><th>Rate</th><th>Total</th></tr>${rows}</table>`}
+  }
+
+  // ===== COUNT queries =====
+  if(ql.match(/how many|total\s*(number|count|transformers?|dts?|assets?)|count of/)){
     if(ql.includes('unmetered')){const n=subset.filter(r=>r.ms==='UNMETERED').length;return `<b>Unmetered DTs${subsetLabel}:</b> <span class="ai-val">${fmt(n)}</span> (${pct(n,st)} of ${fmt(st)} total)`}
-    if(ql.includes('metered')){const n=subset.filter(r=>r.ms==='METERED'||r.ms==='METERED EST.').length;return `<b>Metered DTs${subsetLabel}:</b> <span class="ai-val">${fmt(n)}</span> (${pct(n,st)})`}
-    if(ql.includes('faulty')||ql.includes('fault')){const n=subset.filter(r=>r.mfs==='FAULTY'||r.mfs==='FAULTY METER'||r.mfs==='BURNT METER'||r.mfs==='NON-FUNCTIONAL').length;return `<b>Faulty Meters${subsetLabel}:</b> <span class="ai-val">${fmt(n)}</span> (${pct(n,st)})`}
+    if(ql.includes('metered')&&!ql.includes('unmetered')){const n=subset.filter(isMetered).length;return `<b>Metered DTs${subsetLabel}:</b> <span class="ai-val">${fmt(n)}</span> (${pct(n,st)})`}
+    if(ql.includes('faulty')||ql.includes('fault')){const n=subset.filter(isFaulty).length;return `<b>Faulty Meters${subsetLabel}:</b> <span class="ai-val">${fmt(n)}</span> (${pct(n,st)})`}
     if(ql.includes('disconnect')||ql.includes('not connected')){const n=subset.filter(r=>r.cs==='NOT CONNECTED').length;return `<b>Disconnected DTs${subsetLabel}:</b> <span class="ai-val">${fmt(n)}</span> (${pct(n,st)})`}
     if(ql.includes('connect')){const n=subset.filter(r=>r.cs==='CONNECTED').length;return `<b>Connected DTs${subsetLabel}:</b> <span class="ai-val">${fmt(n)}</span> (${pct(n,st)})`}
     if(ql.includes('commission')){const n=subset.filter(r=>r.cos==='COMMISSIONED').length;return `<b>Commissioned DTs${subsetLabel}:</b> <span class="ai-val">${fmt(n)}</span> (${pct(n,st)})`}
@@ -844,191 +903,84 @@ function analyzeQuery(q,data){
     if(ql.includes('ground')){const n=subset.filter(r=>(r.ip||'').toUpperCase().includes('GROUND')).length;return `<b>Ground Mounted${subsetLabel}:</b> <span class="ai-val">${fmt(n)}</span> (${pct(n,st)})`}
     if(ql.includes('feeder')){return `<b>Unique Feeders${subsetLabel}:</b> <span class="ai-val">${fmt(new Set(subset.map(r=>r.fn).filter(Boolean)).size)}</span>`}
     if(ql.includes('substation')){return `<b>Unique Substations${subsetLabel}:</b> <span class="ai-val">${fmt(new Set(subset.map(r=>r.sub).filter(Boolean)).size)}</span>`}
-    if(ql.includes('ut')||ql.includes('undertaking')){return `<b>Unique UTs${subsetLabel}:</b> <span class="ai-val">${fmt(new Set(subset.map(r=>r.ut).filter(Boolean)).size)}</span>`}
     return `<b>Total DTs${subsetLabel}:</b> <span class="ai-val">${fmt(st)}</span>`;
   }
 
-  // Top/Bottom feeders
-  if(nLimit&&(ql.includes('feeder'))){
-    const fg={};subset.forEach(r=>{if(r.fn)fg[r.fn]=(fg[r.fn]||0)+1});
-    let entries=Object.entries(fg).sort((a,b)=>b[1]-a[1]);
-    if(botMatch)entries=entries.reverse();
-    const rows=entries.slice(0,nLimit).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${k}</td><td><b>${fmt(v)}</b></td></tr>`).join('');
-    return `<b>${botMatch?'Bottom':'Top'} ${nLimit} Feeders by DT Count${subsetLabel}:</b><table><tr><th>#</th><th>Feeder</th><th>DTs</th></tr>${rows}</table>`;
+  // ===== TOP/BOTTOM N =====
+  if(nLimit){
+    const desc=!wantAsc;
+    if(ql.includes('feeder')&&(ql.includes('route')||ql.includes('length'))){
+      const frl=feederRLMap(subset);const sorted=Object.entries(frl).sort((a,b)=>desc?b[1].rl-a[1].rl:a[1].rl-b[1].rl);
+      const rows=sorted.slice(0,nLimit).map(([fn,d],i)=>`<tr><td>${i+1}</td><td>${fn}</td><td>${d.bu}</td><td><b>${d.rl.toFixed(2)} km</b></td></tr>`).join('');
+      return `<b>${desc?'Top':'Bottom'} ${nLimit} Feeders by Route Length${subsetLabel}:</b><table><tr><th>#</th><th>Feeder</th><th>BU</th><th>Route (km)</th></tr>${rows}</table>`;
+    }
+    if(ql.includes('feeder')){const fg={};subset.forEach(r=>{if(r.fn)fg[r.fn]=(fg[r.fn]||0)+1});let e=Object.entries(fg).sort((a,b)=>desc?b[1]-a[1]:a[1]-b[1]);const rows=e.slice(0,nLimit).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${k}</td><td><b>${fmt(v)}</b></td></tr>`).join('');return `<b>${desc?'Top':'Bottom'} ${nLimit} Feeders by DT Count${subsetLabel}:</b><table><tr><th>#</th><th>Feeder</th><th>DTs</th></tr>${rows}</table>`}
+    if(ql.includes('substation')){const sg={};subset.forEach(r=>{if(r.sub)sg[r.sub]=(sg[r.sub]||0)+1});let e=Object.entries(sg).sort((a,b)=>desc?b[1]-a[1]:a[1]-b[1]);const rows=e.slice(0,nLimit).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${k}</td><td><b>${fmt(v)}</b></td></tr>`).join('');return `<b>${desc?'Top':'Bottom'} ${nLimit} Substations${subsetLabel}:</b><table><tr><th>#</th><th>Substation</th><th>DTs</th></tr>${rows}</table>`}
+    if(ql.includes('ut')||ql.includes('undertaking')){const ug={};subset.forEach(r=>{if(r.ut)ug[r.ut]=(ug[r.ut]||0)+1});let e=Object.entries(ug).sort((a,b)=>desc?b[1]-a[1]:a[1]-b[1]);const rows=e.slice(0,nLimit).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${k}</td><td><b>${fmt(v)}</b></td></tr>`).join('');return `<b>${desc?'Top':'Bottom'} ${nLimit} UTs${subsetLabel}:</b><table><tr><th>#</th><th>UT</th><th>DTs</th></tr>${rows}</table>`}
+    if(ql.includes('capacity')||ql.includes('kva')){let e=[...subset].filter(r=>r.cap).sort((a,b)=>desc?b.cap-a.cap:a.cap-b.cap);const rows=e.slice(0,nLimit).map((r,i)=>`<tr><td>${i+1}</td><td>${r.dt}</td><td>${r.bu||''}</td><td>${r.fn||''}</td><td><b>${r.cap} kVA</b></td></tr>`).join('');return `<b>${desc?'Highest':'Lowest'} ${nLimit} Capacity DTs${subsetLabel}:</b><table><tr><th>#</th><th>DT</th><th>BU</th><th>Feeder</th><th>Cap</th></tr>${rows}</table>`}
   }
 
-  // Top/Bottom substations
-  if(nLimit&&(ql.includes('substation'))){
-    const sg={};subset.forEach(r=>{if(r.sub)sg[r.sub]=(sg[r.sub]||0)+1});
-    let entries=Object.entries(sg).sort((a,b)=>b[1]-a[1]);
-    if(botMatch)entries=entries.reverse();
-    const rows=entries.slice(0,nLimit).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${k}</td><td><b>${fmt(v)}</b></td></tr>`).join('');
-    return `<b>${botMatch?'Bottom':'Top'} ${nLimit} Substations${subsetLabel}:</b><table><tr><th>#</th><th>Substation</th><th>DTs</th></tr>${rows}</table>`;
-  }
-
-  // Top/Bottom UTs
-  if(nLimit&&(ql.includes('ut ')||ql.includes('undertaking'))){
-    const ug={};subset.forEach(r=>{if(r.ut)ug[r.ut]=(ug[r.ut]||0)+1});
-    let entries=Object.entries(ug).sort((a,b)=>b[1]-a[1]);
-    if(botMatch)entries=entries.reverse();
-    const rows=entries.slice(0,nLimit).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${k}</td><td><b>${fmt(v)}</b></td></tr>`).join('');
-    return `<b>${botMatch?'Bottom':'Top'} ${nLimit} UTs${subsetLabel}:</b><table><tr><th>#</th><th>UT</th><th>DTs</th></tr>${rows}</table>`;
-  }
-
-  // Top/Bottom capacity
-  if(nLimit&&(ql.includes('capacity')||ql.includes('kva'))){
-    let entries=[...subset].filter(r=>r.cap).sort((a,b)=>b.cap-a.cap);
-    if(botMatch)entries=entries.reverse();
-    const rows=entries.slice(0,nLimit).map((r,i)=>`<tr><td>${i+1}</td><td>${r.dt}</td><td>${r.fn||''}</td><td><b>${r.cap} kVA</b></td></tr>`).join('');
-    return `<b>${botMatch?'Lowest':'Highest'} ${nLimit} Capacity DTs${subsetLabel}:</b><table><tr><th>#</th><th>DT</th><th>Feeder</th><th>Cap</th></tr>${rows}</table>`;
-  }
-
-  // Average queries
+  // ===== AVERAGE =====
   if(ql.includes('average')||ql.includes('avg')||ql.includes('mean')){
-    if(ql.includes('capacity')||ql.includes('kva')){
-      const caps=subset.filter(r=>r.cap).map(r=>r.cap);
-      const avg=caps.length?(caps.reduce((a,b)=>a+b,0)/caps.length).toFixed(1):0;
-      if(buMatch||utMatch||stMatch){return `<b>Average Capacity${subsetLabel}:</b> <span class="ai-val">${avg} kVA</span> across ${fmt(caps.length)} DTs`}
-      // By BU breakdown
-      const buAvg={};data.forEach(r=>{if(!r.bu||!r.cap)return;if(!buAvg[r.bu])buAvg[r.bu]={s:0,c:0};buAvg[r.bu].s+=r.cap;buAvg[r.bu].c++});
-      const rows=Object.entries(buAvg).sort((a,b)=>(b[1].s/b[1].c)-(a[1].s/a[1].c)).map(([bu,v])=>`<tr><td>${bu}</td><td><b>${(v.s/v.c).toFixed(1)} kVA</b></td><td>${fmt(v.c)} DTs</td></tr>`).join('');
-      return `<b>Average Capacity by BU:</b> Overall <span class="ai-val">${avg} kVA</span><table><tr><th>BU</th><th>Avg Cap</th><th>Count</th></tr>${rows}</table>`;
-    }
-    if(ql.includes('route')||ql.includes('length')){
-      const rls=subset.filter(r=>r.rl&&r.rl>0).map(r=>r.rl);
-      const avg=rls.length?(rls.reduce((a,b)=>a+b,0)/rls.length).toFixed(2):0;
-      return `<b>Average Route Length${subsetLabel}:</b> <span class="ai-val">${avg} km</span> across ${fmt(rls.length)} records`}
+    if(ql.includes('capacity')||ql.includes('kva')){const caps=subset.filter(r=>r.cap).map(r=>r.cap);const avg=caps.length?(caps.reduce((a,b)=>a+b,0)/caps.length).toFixed(1):0;
+      if(filters.length)return `<b>Average Capacity${subsetLabel}:</b> <span class="ai-val">${avg} kVA</span> across ${fmt(caps.length)} DTs`;
+      const buAvg={};data.forEach(r=>{if(!r.bu||!r.cap)return;if(!buAvg[r.bu])buAvg[r.bu]={s:0,c:0};buAvg[r.bu].s+=r.cap;buAvg[r.bu].c++});const rows=Object.entries(buAvg).sort((a,b)=>(b[1].s/b[1].c)-(a[1].s/a[1].c)).map(([bu,v])=>`<tr><td>${bu}</td><td><b>${(v.s/v.c).toFixed(1)} kVA</b></td><td>${fmt(v.c)}</td></tr>`).join('');return `<b>Average Capacity by BU:</b> Overall <span class="ai-val">${avg} kVA</span><table><tr><th>BU</th><th>Avg Cap</th><th>Count</th></tr>${rows}</table>`}
+    if(ql.includes('route')||ql.includes('length')){const frl=feederRLMap(subset);const vals=Object.values(frl).map(f=>f.rl);const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):0;return `<b>Avg Route Length per Feeder${subsetLabel}:</b> <span class="ai-val">${avg} km</span> across ${vals.length} feeders`}
   }
 
-  // Breakdown / distribution queries
-  if(ql.includes('breakdown')||ql.includes('distribution')||ql.includes('by bu')||ql.includes('per bu')||ql.includes('each bu')){
-    if(ql.includes('meter')||ql.includes('unmetered')){
-      const buM={};subset.forEach(r=>{if(!r.bu)return;if(!buM[r.bu])buM[r.bu]={t:0,m:0,u:0};buM[r.bu].t++;if(r.ms==='METERED'||r.ms==='METERED EST.')buM[r.bu].m++;else if(r.ms==='UNMETERED')buM[r.bu].u++});
-      const rows=Object.entries(buM).sort((a,b)=>b[1].t-a[1].t).map(([bu,v])=>`<tr><td>${bu}</td><td>${fmt(v.m)}</td><td>${fmt(v.u)}</td><td>${pct(v.m,v.t)}</td></tr>`).join('');
-      return `<b>Metering Breakdown by BU:</b><table><tr><th>BU</th><th>Metered</th><th>Unmetered</th><th>Coverage</th></tr>${rows}</table>`;
-    }
-    if(ql.includes('connect')){
-      const buC={};subset.forEach(r=>{if(!r.bu)return;if(!buC[r.bu])buC[r.bu]={t:0,c:0,d:0};buC[r.bu].t++;if(r.cs==='CONNECTED')buC[r.bu].c++;else buC[r.bu].d++});
-      const rows=Object.entries(buC).sort((a,b)=>b[1].t-a[1].t).map(([bu,v])=>`<tr><td>${bu}</td><td>${fmt(v.c)}</td><td>${fmt(v.d)}</td><td>${pct(v.c,v.t)}</td></tr>`).join('');
-      return `<b>Connection Breakdown by BU:</b><table><tr><th>BU</th><th>Connected</th><th>Disconnected</th><th>Rate</th></tr>${rows}</table>`;
-    }
-    // General BU breakdown
-    const buG=grp('bu');
-    const rows=buG.map(([bu,n])=>`<tr><td>${bu}</td><td><b>${fmt(n)}</b></td><td>${pct(n,st)}</td></tr>`).join('');
-    return `<b>DT Distribution by BU:</b><table><tr><th>BU</th><th>Count</th><th>Share</th></tr>${rows}</table>`;
-  }
+  // ===== BREAKDOWN =====
+  if(ql.includes('breakdown')||ql.includes('distribution')||ql.match(/\bby bu\b|\bper bu\b|\beach bu\b/)){
+    if(ql.includes('meter')||ql.includes('unmetered')){const buM={};subset.forEach(r=>{if(!r.bu)return;if(!buM[r.bu])buM[r.bu]={t:0,m:0,u:0};buM[r.bu].t++;if(isMetered(r))buM[r.bu].m++;else if(r.ms==='UNMETERED')buM[r.bu].u++});const rows=Object.entries(buM).sort((a,b)=>b[1].t-a[1].t).map(([bu,v])=>`<tr><td>${bu}</td><td>${fmt(v.m)}</td><td>${fmt(v.u)}</td><td>${pct(v.m,v.t)}</td></tr>`).join('');return `<b>Metering Breakdown by BU:</b><table><tr><th>BU</th><th>Metered</th><th>Unmetered</th><th>Coverage</th></tr>${rows}</table>`}
+    if(ql.includes('connect')){const buC={};subset.forEach(r=>{if(!r.bu)return;if(!buC[r.bu])buC[r.bu]={t:0,c:0,d:0};buC[r.bu].t++;if(r.cs==='CONNECTED')buC[r.bu].c++;else buC[r.bu].d++});const rows=Object.entries(buC).sort((a,b)=>b[1].t-a[1].t).map(([bu,v])=>`<tr><td>${bu}</td><td>${fmt(v.c)}</td><td>${fmt(v.d)}</td><td>${pct(v.c,v.t)}</td></tr>`).join('');return `<b>Connection Breakdown by BU:</b><table><tr><th>BU</th><th>Connected</th><th>Disconnected</th><th>Rate</th></tr>${rows}</table>`}
+    if(ql.includes('route')||ql.includes('length')){const buRL={};subset.forEach(r=>{const fn=r.fn,rl=r.rl||0,bu=r.bu||'';if(!fn||rl<=0||!bu)return;if(!buRL[bu])buRL[bu]={};if(!buRL[bu][fn]||rl>buRL[bu][fn])buRL[bu][fn]=rl});const rows=Object.entries(buRL).map(([bu,fds])=>{const total=Object.values(fds).reduce((a,b)=>a+b,0);return[bu,Object.keys(fds).length,total]}).sort((a,b)=>b[2]-a[2]).map(([bu,fc,rl])=>`<tr><td>${bu}</td><td>${fc}</td><td><b>${Math.round(rl).toLocaleString()} km</b></td></tr>`).join('');return `<b>Route Length by BU${subsetLabel}:</b><table><tr><th>BU</th><th>Feeders</th><th>Route Length</th></tr>${rows}</table>`}
+    const buG=grp('bu',subset);const rows=buG.map(([bu,n])=>`<tr><td>${bu}</td><td><b>${fmt(n)}</b></td><td>${pct(n,st)}</td></tr>`).join('');return `<b>DT Distribution by BU:</b><table><tr><th>BU</th><th>Count</th><th>Share</th></tr>${rows}</table>`}
 
-  // Route length queries
-  if(ql.includes('route')||ql.includes('length')){
-    const feederRL={};subset.forEach(r=>{const fn=r.fn,rl=r.rl||0,fv=String(r.fv||'');if(!fn||rl<=0)return;if(!feederRL[fn]||rl>feederRL[fn].rl)feederRL[fn]={rl,fv}});
-    const totalRL=Object.values(feederRL).reduce((s,f)=>s+f.rl,0);
-    const rl11=Object.values(feederRL).filter(f=>f.fv==='11').reduce((s,f)=>s+f.rl,0);
-    const rl33=Object.values(feederRL).filter(f=>f.fv==='33').reduce((s,f)=>s+f.rl,0);
-    if(ql.includes('11kv')||ql.includes('11 kv'))return `<b>11kV Route Length${subsetLabel}:</b> <span class="ai-val">${Math.round(rl11).toLocaleString()} km</span> across ${Object.values(feederRL).filter(f=>f.fv==='11').length} feeders`;
-    if(ql.includes('33kv')||ql.includes('33 kv'))return `<b>33kV Route Length${subsetLabel}:</b> <span class="ai-val">${Math.round(rl33).toLocaleString()} km</span> across ${Object.values(feederRL).filter(f=>f.fv==='33').length} feeders`;
-    return `<b>Total Route Length${subsetLabel}:</b> <span class="ai-val">${Math.round(totalRL).toLocaleString()} km</span><br>11kV: <b>${Math.round(rl11).toLocaleString()} km</b> &middot; 33kV: <b>${Math.round(rl33).toLocaleString()} km</b><br>Unique feeders: <b>${Object.keys(feederRL).length}</b>`;
-  }
+  // ===== ROUTE LENGTH =====
+  if(ql.includes('route')||ql.match(/\blength\b/)){
+    const frl=feederRLMap(subset);const totalRL=Object.values(frl).reduce((s,f)=>s+f.rl,0);
+    const rl11=Object.values(frl).filter(f=>f.fv==='11').reduce((s,f)=>s+f.rl,0);
+    const rl33=Object.values(frl).filter(f=>f.fv==='33').reduce((s,f)=>s+f.rl,0);
+    if(ql.includes('11kv')||ql.includes('11 kv'))return `<b>11kV Route Length${subsetLabel}:</b> <span class="ai-val">${Math.round(rl11).toLocaleString()} km</span> (${Object.values(frl).filter(f=>f.fv==='11').length} feeders)`;
+    if(ql.includes('33kv')||ql.includes('33 kv'))return `<b>33kV Route Length${subsetLabel}:</b> <span class="ai-val">${Math.round(rl33).toLocaleString()} km</span> (${Object.values(frl).filter(f=>f.fv==='33').length} feeders)`;
+    return `<b>Total Route Length${subsetLabel}:</b> <span class="ai-val">${Math.round(totalRL).toLocaleString()} km</span><br>11kV: <b>${Math.round(rl11).toLocaleString()} km</b> &middot; 33kV: <b>${Math.round(rl33).toLocaleString()} km</b><br>Unique feeders: <b>${Object.keys(frl).length}</b>`}
 
-  // Capacity queries
-  if(ql.includes('capacity')||ql.includes('kva')||ql.includes('mva')){
-    const caps=subset.filter(r=>r.cap).map(r=>r.cap);
-    const total=caps.reduce((a,b)=>a+b,0);
-    const capDist={};caps.forEach(c=>{const k=c+'kVA';capDist[k]=(capDist[k]||0)+1});
-    const rows=Object.entries(capDist).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,caps.length)}</td></tr>`).join('');
-    return `<b>Capacity Overview${subsetLabel}:</b><br>Total: <span class="ai-val">${(total/1000).toFixed(1)} MVA</span> &middot; Avg: <b>${caps.length?(total/caps.length).toFixed(1):0} kVA</b><table><tr><th>Rating</th><th>Count</th><th>Share</th></tr>${rows}</table>`;
-  }
+  // ===== CAPACITY =====
+  if(ql.includes('capacity')||ql.includes('kva')||ql.includes('mva')){const caps=subset.filter(r=>r.cap).map(r=>r.cap);const total=caps.reduce((a,b)=>a+b,0);const capDist={};caps.forEach(c=>{const k=c+'kVA';capDist[k]=(capDist[k]||0)+1});const rows=Object.entries(capDist).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,caps.length)}</td></tr>`).join('');return `<b>Capacity Overview${subsetLabel}:</b><br>Total: <span class="ai-val">${(total/1000).toFixed(1)} MVA</span> &middot; Avg: <b>${caps.length?(total/caps.length).toFixed(1):0} kVA</b><table><tr><th>Rating</th><th>Count</th><th>Share</th></tr>${rows}</table>`}
 
-  // SRT band
-  if(ql.includes('srt')||ql.includes('band')){
-    const sg=grp('srt',r=>subset.includes(r));
-    const rows=sg.map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');
-    return `<b>SRT Band Distribution${subsetLabel}:</b><table><tr><th>Band</th><th>Count</th><th>Share</th></tr>${rows}</table>`;
-  }
+  // ===== COMPARE =====
+  if(ql.includes('compare')||ql.includes('comparison')){const buS={};subset.forEach(r=>{if(!r.bu)return;if(!buS[r.bu])buS[r.bu]={t:0,m:0,c:0,f:0,cap:0};const b=buS[r.bu];b.t++;if(isMetered(r))b.m++;if(r.cs==='CONNECTED')b.c++;if(isFaulty(r))b.f++;b.cap+=(r.cap||0)});const rows=Object.entries(buS).sort((a,b)=>b[1].t-a[1].t).map(([bu,v])=>`<tr><td>${bu}</td><td>${fmt(v.t)}</td><td>${pct(v.m,v.t)}</td><td>${pct(v.c,v.t)}</td><td>${fmt(v.f)}</td><td>${(v.cap/1000).toFixed(0)}MVA</td></tr>`).join('');return `<b>BU Comparison:</b><table><tr><th>BU</th><th>DTs</th><th>Metered</th><th>Connected</th><th>Faulty</th><th>Cap</th></tr>${rows}</table>`}
 
-  // Voltage
-  if(ql.includes('voltage')||ql.includes('11kv')||ql.includes('33kv')){
-    const vg={};subset.forEach(r=>{const v=r.fv?r.fv+'kV':'Unknown';vg[v]=(vg[v]||0)+1});
-    const rows=Object.entries(vg).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');
-    return `<b>Feeder Voltage Distribution${subsetLabel}:</b><table><tr><th>Voltage</th><th>Count</th><th>Share</th></tr>${rows}</table>`;
-  }
+  // ===== SUMMARY =====
+  if(ql.match(/summary|overview|insight|tell me|overall|report|status|health/)){
+    const m=subset.filter(isMetered).length,c=subset.filter(r=>r.cs==='CONNECTED').length,f=subset.filter(isFaulty).length,com=subset.filter(r=>r.cos==='COMMISSIONED').length,cap=subset.reduce((s,r)=>s+(r.cap||0),0);
+    const frl=feederRLMap(subset);const totalRL=Object.values(frl).reduce((s,f)=>s+f.rl,0);
+    return `<b>Dashboard Summary${subsetLabel}:</b><br>Total DTs: <span class="ai-val">${fmt(st)}</span><br>Metered: <b>${fmt(m)}</b> (${pct(m,st)}) &middot; Connected: <b>${fmt(c)}</b> (${pct(c,st)})<br>Commissioned: <b>${fmt(com)}</b> (${pct(com,st)}) &middot; Faulty: <b>${fmt(f)}</b> (${pct(f,st)})<br>Capacity: <b>${(cap/1000).toFixed(1)} MVA</b> &middot; Route: <b>${Math.round(totalRL).toLocaleString()} km</b><br>BUs: <b>${new Set(subset.map(r=>r.bu).filter(Boolean)).size}</b> &middot; Feeders: <b>${new Set(subset.map(r=>r.fn).filter(Boolean)).size}</b> &middot; Substations: <b>${new Set(subset.map(r=>r.sub).filter(Boolean)).size}</b>`}
 
-  // Meter type
-  if(ql.includes('meter type')||ql.includes('type of meter')){
-    const mg=grp('mt',r=>subset.includes(r));
-    const rows=mg.map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');
-    return `<b>Meter Type Distribution${subsetLabel}:</b><table><tr><th>Type</th><th>Count</th><th>Share</th></tr>${rows}</table>`;
-  }
-
-  // State
-  if(ql.includes('state')){
-    const sg=grp('st',r=>subset.includes(r));
-    const rows=sg.map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');
-    return `<b>State Distribution${subsetLabel}:</b><table><tr><th>State</th><th>Count</th><th>Share</th></tr>${rows}</table>`;
-  }
-
-  // Compare BUs
-  if(ql.includes('compare')||ql.includes('comparison')){
-    const buS={};subset.forEach(r=>{if(!r.bu)return;if(!buS[r.bu])buS[r.bu]={t:0,m:0,c:0,f:0,cap:0};const b=buS[r.bu];b.t++;if(r.ms==='METERED'||r.ms==='METERED EST.')b.m++;if(r.cs==='CONNECTED')b.c++;if(r.mfs==='FAULTY'||r.mfs==='FAULTY METER'||r.mfs==='BURNT METER'||r.mfs==='NON-FUNCTIONAL')b.f++;b.cap+=(r.cap||0)});
-    const rows=Object.entries(buS).sort((a,b)=>b[1].t-a[1].t).map(([bu,v])=>`<tr><td>${bu}</td><td>${fmt(v.t)}</td><td>${pct(v.m,v.t)}</td><td>${pct(v.c,v.t)}</td><td>${fmt(v.f)}</td><td>${(v.cap/1000).toFixed(0)}MVA</td></tr>`).join('');
-    return `<b>BU Comparison:</b><table><tr><th>BU</th><th>DTs</th><th>Metered</th><th>Connected</th><th>Faulty</th><th>Cap</th></tr>${rows}</table>`;
-  }
-
-  // Summary / overview
-  if(ql.includes('summary')||ql.includes('overview')||ql.includes('insight')||ql.includes('tell me about')||ql.includes('overall')){
-    const m=subset.filter(r=>r.ms==='METERED'||r.ms==='METERED EST.').length;
-    const c=subset.filter(r=>r.cs==='CONNECTED').length;
-    const f=subset.filter(r=>r.mfs==='FAULTY'||r.mfs==='FAULTY METER'||r.mfs==='BURNT METER'||r.mfs==='NON-FUNCTIONAL').length;
-    const com=subset.filter(r=>r.cos==='COMMISSIONED').length;
-    const cap=subset.reduce((s,r)=>s+(r.cap||0),0);
-    return `<b>Dashboard Summary${subsetLabel}:</b><br>
-      Total DTs: <span class="ai-val">${fmt(st)}</span><br>
-      Metered: <b>${fmt(m)}</b> (${pct(m,st)}) &middot; Connected: <b>${fmt(c)}</b> (${pct(c,st)})<br>
-      Commissioned: <b>${fmt(com)}</b> (${pct(com,st)}) &middot; Faulty: <b>${fmt(f)}</b> (${pct(f,st)})<br>
-      Total Capacity: <b>${(cap/1000).toFixed(1)} MVA</b> &middot; Avg: <b>${st?(cap/st).toFixed(1):0} kVA</b><br>
-      BUs: <b>${new Set(subset.map(r=>r.bu).filter(Boolean)).size}</b> &middot; Feeders: <b>${new Set(subset.map(r=>r.fn).filter(Boolean)).size}</b> &middot; Substations: <b>${new Set(subset.map(r=>r.sub).filter(Boolean)).size}</b>`;
-  }
-
-  // Percentage queries
-  if(ql.includes('percentage')||ql.includes('percent')||ql.includes('rate')||ql.includes('ratio')){
-    if(ql.includes('meter')){const m=subset.filter(r=>r.ms==='METERED'||r.ms==='METERED EST.').length;return `<b>Metering Rate${subsetLabel}:</b> <span class="ai-val">${pct(m,st)}</span> (${fmt(m)} of ${fmt(st)})`}
+  // ===== PERCENTAGE =====
+  if(ql.match(/percentage|percent|rate|ratio/)){
+    if(ql.includes('meter')){const m=subset.filter(isMetered).length;return `<b>Metering Rate${subsetLabel}:</b> <span class="ai-val">${pct(m,st)}</span> (${fmt(m)} of ${fmt(st)})`}
     if(ql.includes('connect')){const c=subset.filter(r=>r.cs==='CONNECTED').length;return `<b>Connection Rate${subsetLabel}:</b> <span class="ai-val">${pct(c,st)}</span> (${fmt(c)} of ${fmt(st)})`}
     if(ql.includes('commission')){const c=subset.filter(r=>r.cos==='COMMISSIONED').length;return `<b>Commissioning Rate${subsetLabel}:</b> <span class="ai-val">${pct(c,st)}</span> (${fmt(c)} of ${fmt(st)})`}
-    if(ql.includes('faulty')){const f=subset.filter(r=>r.mfs==='FAULTY'||r.mfs==='FAULTY METER'||r.mfs==='BURNT METER'||r.mfs==='NON-FUNCTIONAL').length;return `<b>Fault Rate${subsetLabel}:</b> <span class="ai-val">${pct(f,st)}</span> (${fmt(f)} of ${fmt(st)})`}
+    if(ql.includes('faulty')){const f=subset.filter(isFaulty).length;return `<b>Fault Rate${subsetLabel}:</b> <span class="ai-val">${pct(f,st)}</span> (${fmt(f)} of ${fmt(st)})`}
   }
 
-  // Specific DT lookup
-  if(ql.match(/dt\s*\d|find\s+\d|lookup\s+\d|search\s+\d/i)){
-    const dtNum=ql.match(/\d[\d\-\/]*/);
-    if(dtNum){
-      const found=data.filter(r=>String(r.dt).includes(dtNum[0]));
-      if(found.length===0)return `No DT found matching "<b>${dtNum[0]}</b>"`;
-      if(found.length>10)return `Found <span class="ai-val">${found.length}</span> DTs matching "${dtNum[0]}". Please be more specific.`;
-      const rows=found.map(r=>`<tr><td>${r.dt}</td><td>${r.bu||''}</td><td>${r.fn||''}</td><td>${r.cap||''}kVA</td><td>${r.ms||''}</td><td>${r.cs||''}</td></tr>`).join('');
-      return `<b>DT Lookup "${dtNum[0]}":</b><table><tr><th>DT</th><th>BU</th><th>Feeder</th><th>Cap</th><th>Meter</th><th>Conn</th></tr>${rows}</table>`;
-    }
-  }
+  // ===== SRT / VOLTAGE / METER TYPE / STATE =====
+  if(ql.includes('srt')||ql.includes('band')){const rows=grp('srt',subset).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');return `<b>SRT Band Distribution${subsetLabel}:</b><table><tr><th>Band</th><th>Count</th><th>Share</th></tr>${rows}</table>`}
+  if(ql.includes('voltage')){const vg={};subset.forEach(r=>{const v=r.fv?r.fv+'kV':'Unknown';vg[v]=(vg[v]||0)+1});const rows=Object.entries(vg).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');return `<b>Voltage Distribution${subsetLabel}:</b><table><tr><th>Voltage</th><th>Count</th><th>Share</th></tr>${rows}</table>`}
+  if(ql.includes('meter type')||ql.includes('type of meter')){const rows=grp('mt',subset).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');return `<b>Meter Type Distribution${subsetLabel}:</b><table><tr><th>Type</th><th>Count</th><th>Share</th></tr>${rows}</table>`}
+  if(ql.includes('state')){const rows=grp('st',subset).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');return `<b>State Distribution${subsetLabel}:</b><table><tr><th>State</th><th>Count</th><th>Share</th></tr>${rows}</table>`}
 
-  // Fallback: try keyword matching
-  const keywords={metered:'ms',unmetered:'ms',connected:'cs',disconnected:'cs',commissioned:'cos',faulty:'mfs',public:'own',private:'own'};
-  for(const[kw,key]of Object.entries(keywords)){
-    if(ql.includes(kw)){
-      const g=grp(key,r=>subset.includes(r));
-      const rows=g.map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');
-      return `<b>${key.toUpperCase()} Distribution${subsetLabel}:</b><table><tr><th>Status</th><th>Count</th><th>Share</th></tr>${rows}</table>`;
-    }
-  }
+  // ===== DT LOOKUP =====
+  if(ql.match(/\bdt\s*\d|find\s+\d|lookup|search\s+\d/i)){const dtNum=ql.match(/\d[\d\-\/]*/);if(dtNum){const found=data.filter(r=>String(r.dt).includes(dtNum[0]));if(!found.length)return `No DT matching "<b>${dtNum[0]}</b>"`;const rows=found.slice(0,10).map(r=>`<tr><td>${r.dt}</td><td>${r.bu||''}</td><td>${r.fn||''}</td><td>${r.cap||''}kVA</td><td>${r.ms||''}</td><td>${r.cs||''}</td></tr>`).join('');return `<b>DT Lookup "${dtNum[0]}":</b> ${found.length>10?`(showing 10 of ${found.length})`:''}<table><tr><th>DT</th><th>BU</th><th>Feeder</th><th>Cap</th><th>Meter</th><th>Conn</th></tr>${rows}</table>`}}
 
-  return `I can answer questions like:<br>
-    &bull; <b>"How many unmetered DTs in IKEJA?"</b><br>
-    &bull; <b>"Top 10 feeders by DT count"</b><br>
-    &bull; <b>"Average capacity by BU"</b><br>
-    &bull; <b>"Metering breakdown by BU"</b><br>
-    &bull; <b>"Compare all BUs"</b><br>
-    &bull; <b>"Route length for 33kV"</b><br>
-    &bull; <b>"Summary of SHOMOLU"</b><br>
-    &bull; <b>"Find DT 12345"</b><br>
-    &bull; <b>"Capacity distribution"</b><br>
-    Try rephrasing with keywords like: count, top, average, breakdown, compare, summary`;
+  // ===== FEEDER DETAILS =====
+  if(fnMatch){const fData=subset.filter(r=>(r.fn||'').toUpperCase()===fnMatch);const n=fData.length;if(n){const m=fData.filter(isMetered).length,c=fData.filter(r=>r.cs==='CONNECTED').length,f=fData.filter(isFaulty).length,cap=fData.reduce((s,r)=>s+(r.cap||0),0),rl=Math.max(...fData.map(r=>r.rl||0));return `<b>Feeder: ${fnMatch}</b><br>DTs: <span class="ai-val">${fmt(n)}</span> &middot; BU: <b>${fData[0].bu||''}</b><br>Metered: <b>${fmt(m)}</b> (${pct(m,n)}) &middot; Connected: <b>${fmt(c)}</b> (${pct(c,n)})<br>Faulty: <b>${fmt(f)}</b> &middot; Capacity: <b>${(cap/1000).toFixed(1)} MVA</b><br>Route Length: <b>${rl.toFixed(2)} km</b> &middot; Voltage: <b>${fData[0].fv||''}kV</b>`}}
+
+  // ===== KEYWORD FALLBACK =====
+  const kw={metered:'ms',unmetered:'ms',connected:'cs',disconnected:'cs',commissioned:'cos',faulty:'mfs',public:'own',private:'own',functional:'mfs'};
+  for(const[w,key]of Object.entries(kw)){if(ql.includes(w)){const rows=grp(key,subset).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');return `<b>${key.toUpperCase()} Distribution${subsetLabel}:</b><table><tr><th>Status</th><th>Count</th><th>Share</th></tr>${rows}</table>`}}
+
+  return `Try questions like:<br>&bull; <b>"Which feeder has the longest route length?"</b><br>&bull; <b>"How many unmetered DTs in IKEJA?"</b><br>&bull; <b>"Top 10 feeders by route length"</b><br>&bull; <b>"Average capacity by BU"</b><br>&bull; <b>"Metering breakdown by BU"</b><br>&bull; <b>"Compare all BUs"</b><br>&bull; <b>"Summary of IKORODU"</b><br>&bull; <b>"Which BU has the most faulty meters?"</b><br>&bull; <b>"Route length breakdown by BU"</b>`;
 }
 
 function exportCSV(){
