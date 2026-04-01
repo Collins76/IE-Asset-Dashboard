@@ -187,7 +187,6 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 <div class="main">
 <div class="page active" id="page-summary">
   <div class="kpi-grid" id="kpiGrid"></div>
-  <div class="metrics-bar" id="perfMetrics"></div>
 
   <div class="chart-grid g2">
     <div class="chart-box"><h4>Transformers by Business Unit</h4><div class="chart-container" id="ch_bu_bar"></div></div>
@@ -453,6 +452,11 @@ function renderKPIs(data){
   const totalCap=data.reduce((s,r)=>s+(r.cap||0),0);
   const capMVA=(totalCap/1000).toFixed(1);
 
+  const commissioned=data.filter(r=>r.cos==='COMMISSIONED').length;
+  const rl=data.filter(r=>r.rl&&r.rl>0).map(r=>r.rl);
+  const totalRL=rl.length?rl.reduce((a,b)=>a+b,0):0;
+  const totalRLfmt=totalRL>=1000?(totalRL/1000).toFixed(1)+' K':totalRL.toFixed(1);
+
   const kpis=[
     {icon:'&#9889;',bg:'linear-gradient(135deg,#0a2a3a,#0d3545)',clr:'var(--accent)',val:fmt(t),lbl:'Total Transformers',sub:`${fmt(pubDT)} Public &middot; ${fmt(pvtDT)} Private`},
     {icon:'&#9879;',bg:'linear-gradient(135deg,#0a2a40,#0a3350)',clr:'var(--blue)',val:fmt(capMVA),lbl:'Network Capacity',sub:'Total installed MVA',badge:null},
@@ -463,7 +467,11 @@ function renderKPIs(data){
     {icon:'&#9733;',bg:'linear-gradient(135deg,#0a3028,#0a3d30)',clr:'var(--green)',val:fmt(feeders),lbl:'Unique Feeders',sub:'Distinct feeder lines'},
     {icon:'&#9670;',bg:'linear-gradient(135deg,#0a3028,#103828)',clr:'var(--green)',val:fmt(activeSubs),lbl:'Active Substations',sub:`of ${fmt(totalSubs)} substations`,badge:pct(activeSubs,totalSubs),badgeClr:'var(--green)'},
     {icon:'&#9670;',bg:'linear-gradient(135deg,#301a1a,#3d2020)',clr:'var(--red)',val:fmt(inactiveSubs),lbl:'Inactive Substations',sub:`of ${fmt(totalSubs)} substations`,badge:pct(inactiveSubs,totalSubs),badgeClr:'var(--red)'},
-    {icon:'&#9830;',bg:'linear-gradient(135deg,#2a1a08,#352810)',clr:'var(--orange)',val:fmt(bus),lbl:'Business Units',sub:'Operating business units'}
+    {icon:'&#9830;',bg:'linear-gradient(135deg,#2a1a08,#352810)',clr:'var(--orange)',val:fmt(bus),lbl:'Business Units',sub:'Operating business units'},
+    {icon:'&#128200;',bg:'linear-gradient(135deg,#0a2535,#0d3040)',clr:'var(--accent)',val:pct(metered,t),lbl:'Meter Coverage',sub:`${fmt(metered)} of ${fmt(t)} metered`},
+    {icon:'&#128279;',bg:'linear-gradient(135deg,#0a3028,#0a3d30)',clr:'var(--green)',val:pct(connected,t),lbl:'Network Availability',sub:`${fmt(connected)} connected`},
+    {icon:'&#9989;',bg:'linear-gradient(135deg,#0a2a40,#0a3350)',clr:'var(--blue)',val:pct(commissioned,t),lbl:'Commissioning Rate',sub:`${fmt(commissioned)} commissioned`},
+    {icon:'&#128739;',bg:'linear-gradient(135deg,#0a3035,#0a3d40)',clr:'var(--teal)',val:totalRLfmt+' km',lbl:'Total Route Length',sub:'Combined feeder route length'}
   ];
 
   document.getElementById('kpiGrid').innerHTML=kpis.map(k=>`
@@ -519,7 +527,7 @@ function plotStackedBar(el,data,gk,sk,sv){
 
 // ============ PAGE 1: SUMMARY ============
 function renderSummary(data){
-  renderKPIs(data);renderPerfMetrics(data);
+  renderKPIs(data);
   const bc=sorted(countBy(data,'bu'));
   Plotly.newPlot('ch_bu_bar',[{x:bc.map(e=>e[0]),y:bc.map(e=>e[1]),type:'bar',marker:{color:buColors(bc.map(e=>e[0])),line:{color:'rgba(255,255,255,.1)',width:1}},text:bc.map(e=>fmt(e[1])),textposition:'inside',textfont:{color:'#fff',size:14,weight:700},insidetextanchor:'middle'}],{...PL,margin:{...PL.margin,t:30}},PC);
   plotDonut('ch_ownership',data,'own');
