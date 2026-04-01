@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ikeja Electric - Asset Monitoring Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0b1015;--bg2:#101820;--bg3:#161e28;--bg4:#1c2632;--accent:#00d4ff;--accent2:#0099cc;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;--orange:#f97316;--pink:#ec4899;--teal:#14b8a6;--text:#e2e8f0;--text2:#7a8a9e;--border:#1a2535;--card:#0f171f}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+/* NAV */
+.navbar{background:linear-gradient(90deg,#0a1018,#0e161f,#0a1018);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;height:56px;position:fixed;top:0;left:0;right:0;z-index:1000;box-shadow:0 2px 16px rgba(0,0,0,.6)}
+.logo{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;color:var(--accent);white-space:nowrap}
+.logo-icon{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0d2a3a,#0a3040);border:1.5px solid #1a4050;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:20px;height:20px;fill:var(--accent)}
+.logo-sub{font-size:10px;color:var(--text2);font-weight:400;margin-top:-2px}
+.nav-tabs{display:flex;gap:2px;margin-left:30px;flex:1;overflow-x:auto}
+.nav-tab{padding:8px 16px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12.5px;font-weight:500;border-radius:6px;transition:.2s;white-space:nowrap}
+.nav-tab:hover{background:var(--bg3);color:var(--text)}
+.nav-tab.active{background:var(--green);color:#000;font-weight:600}
+.nav-right{display:flex;gap:8px;align-items:center}
+.btn{padding:6px 12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:5px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px;transition:.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+/* INLINE FILTER BAR */
+.filter-bar{background:linear-gradient(180deg,#0c141c,#0e1820);border-top:2px solid var(--red);border-bottom:1px solid var(--border);padding:12px 24px 10px;display:flex;flex-direction:column;gap:8px}
+.filter-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px 12px;align-items:center}
+.filter-row-label{grid-column:1/-1;display:flex;align-items:center}
+.fb-label{color:var(--red);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.fb-item{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text2);white-space:nowrap}
+.ms-wrap{position:relative;width:100%}
+.ms-btn{background:var(--bg3);border:1px solid var(--border);color:#fff;font-size:12px;font-weight:600;cursor:pointer;padding:5px 24px 5px 8px;width:100%;border-radius:4px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;outline:none}
+.ms-btn::after{content:'\25BE';position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text2)}
+.ms-btn:hover,.ms-wrap.open .ms-btn{border-color:#10b981;box-shadow:0 0 8px rgba(16,185,129,.25)}
+.ms-panel{display:none;position:absolute;top:calc(100% + 2px);left:0;min-width:180px;max-height:250px;overflow-y:auto;background:#0e1820;border:1px solid #1a3540;border-radius:6px;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.7);padding:4px 0}
+.ms-wrap.open .ms-panel{display:block}
+.ms-panel label{display:flex;align-items:center;gap:6px;padding:4px 10px;cursor:pointer;font-size:11.5px;color:var(--text);transition:.15s;user-select:none}
+.ms-panel label:hover{background:var(--bg3)}
+.ms-panel label.all-opt{border-bottom:1px solid var(--border);margin-bottom:2px;padding-bottom:6px;font-weight:600;color:var(--green)}
+.ms-panel input[type="checkbox"]{accent-color:#10b981;width:13px;height:13px;cursor:pointer}
+.ms-panel::-webkit-scrollbar{width:6px}
+.ms-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.fb-count{display:flex;align-items:center;justify-content:flex-end;font-size:13px;color:var(--text2);grid-column:-2/-1}
+.fb-count .count-val{color:var(--green);font-weight:700;font-size:15px}
+/* MAIN */
+.main{padding:0 20px 20px}
+.page{display:none}
+.page.active{display:block}
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:18px}
+.kpi-card{background:linear-gradient(145deg,#0e1820,#121c28);border:1px solid var(--border);border-radius:12px;padding:16px 14px 14px;position:relative;overflow:hidden;transition:.25s}
+.kpi-card:hover{border-color:rgba(0,212,255,.3);transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.4)}
+.kpi-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:18px;position:relative}
+.kpi-icon::after{content:'';position:absolute;inset:0;border-radius:10px;animation:icon-pulse 3s ease-in-out infinite;opacity:0}
+@keyframes icon-pulse{0%,100%{opacity:0;transform:scale(1)}50%{opacity:.4;transform:scale(1.15)}}
+.kpi-badge{position:absolute;top:12px;right:12px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px}
+.kpi-value{font-size:26px;font-weight:800;line-height:1;margin-bottom:4px}
+.kpi-label{font-size:11px;color:var(--text);font-weight:600;margin-bottom:2px}
+.kpi-sub{font-size:10px;color:var(--text2)}
+/* CHART GRID */
+.chart-grid{display:grid;gap:14px;margin-bottom:14px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g1{grid-template-columns:1fr}
+.chart-box{background:linear-gradient(160deg,#0d151d,#101a24);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:0;overflow:hidden}
+.chart-box h4{font-size:12px;color:var(--green);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.chart-container{width:100%;height:270px}
+/* RISK CARDS */
+.risk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:14px}
+.risk-card{background:linear-gradient(145deg,#0d151d,#101a24);border-left:4px solid var(--red);border-radius:0 10px 10px 0;padding:16px}
+.risk-card.warn{border-left-color:var(--yellow)}
+.risk-card.info{border-left-color:var(--blue)}
+.risk-card h5{font-size:13px;color:var(--text);margin-bottom:4px}
+.risk-card .risk-val{font-size:24px;font-weight:700;color:var(--red);margin-bottom:4px}
+.risk-card.warn .risk-val{color:var(--yellow)}
+.risk-card.info .risk-val{color:var(--blue)}
+.risk-card p{font-size:11px;color:var(--text2)}
+/* MAP */
+#mapContainer{width:100%;height:calc(100vh - 160px);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+.map-legend{position:absolute;bottom:20px;left:20px;background:rgba(11,16,21,.92);border:1px solid var(--border);border-radius:10px;padding:12px 16px;z-index:800;font-size:12px;backdrop-filter:blur(8px)}
+.map-legend h5{color:var(--green);margin-bottom:6px;font-size:11px;text-transform:uppercase}
+.legend-item{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+/* TABLE */
+.table-controls{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.table-controls{position:relative}
+.table-controls input{flex:1;min-width:200px;padding:9px 14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px}
+.table-controls input:focus{outline:none;border-color:var(--accent)}
+.ac-dropdown{position:absolute;top:100%;left:0;right:0;max-width:600px;max-height:280px;overflow-y:auto;background:#0e1820;border:1px solid #1a3540;border-radius:0 0 8px 8px;z-index:1000;box-shadow:0 8px 32px rgba(0,0,0,.7);display:none}
+.ac-dropdown.show{display:block}
+.ac-item{padding:8px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.ac-item:hover,.ac-item.ac-active{background:var(--bg3);color:#fff}
+.ac-item .ac-type{font-size:10px;color:var(--text2);background:var(--bg4);padding:1px 6px;border-radius:4px;flex-shrink:0}
+.ac-item .ac-match{color:var(--green);font-weight:600}
+.ac-dropdown::-webkit-scrollbar{width:6px}
+.ac-dropdown::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:linear-gradient(135deg,#0e1820,#121c28);color:var(--green);padding:10px 12px;text-align:left;cursor:pointer;white-space:nowrap;position:sticky;top:0;user-select:none;border-bottom:2px solid var(--border)}
+thead th:hover{background:var(--bg4)}
+thead th .sort-arrow{margin-left:4px;opacity:.4}
+tbody tr{border-bottom:1px solid var(--border);transition:.15s}
+tbody tr:hover{background:var(--bg3)}
+tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.status-badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase}
+.badge-green{background:rgba(16,185,129,.15);color:var(--green)}
+.badge-red{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-yellow{background:rgba(245,158,11,.15);color:var(--yellow)}
+.badge-blue{background:rgba(59,130,246,.15);color:var(--blue)}
+.pagination{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;color:var(--text2)}
+.pagination .page-btns{display:flex;gap:4px}
+.pagination .page-btn{padding:5px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;font-size:12px}
+.pagination .page-btn.active{background:var(--green);color:#000;border-color:var(--green)}
+.pagination .page-btn:hover:not(.active){border-color:var(--accent)}
+/* PERF METRICS */
+.metrics-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.metric{background:linear-gradient(145deg,#0d151d,#101a24);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+.metric .m-val{font-size:24px;font-weight:700;color:var(--green)}
+.metric .m-label{font-size:11px;color:var(--text2);margin-top:4px;text-transform:uppercase}
+/* LOADING */
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin-right:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes icon-glow{0%,100%{box-shadow:0 0 8px rgba(var(--glow),0.3)}50%{box-shadow:0 0 20px rgba(var(--glow),0.6),0 0 40px rgba(var(--glow),0.2)}}
+/* RESPONSIVE */
+@media(max-width:1200px){.g3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.g2,.g3{grid-template-columns:1fr}.nav-tabs{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}.filter-row{gap:4px}}
+/* Leaflet dark theme */
+.leaflet-popup-content-wrapper{background:#0f171f!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important}
+.leaflet-popup-tip{background:#0f171f!important}
+.leaflet-popup-content{font-size:12px;line-height:1.6}
+.leaflet-popup-content b{color:var(--green)}
+.leaflet-control-layers{background:rgba(11,16,21,.94)!important;border:1px solid var(--border)!important;border-radius:8px!important;color:var(--text)!important;padding:8px 12px!important;box-shadow:0 4px 16px rgba(0,0,0,.5)!important;backdrop-filter:blur(8px)}
+.leaflet-control-layers label{color:var(--text)!important;font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="logo">
+    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h6v8l10-12h-6z"/></svg></div>
+    <div><div>IE Asset Dashboard</div><div class="logo-sub">Distribution Transformer Network &middot; Ikeja Electric</div></div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="summary">Executive Summary</button>
+    <button class="nav-tab" data-page="network">Network Infrastructure</button>
+    <button class="nav-tab" data-page="metering">Metering Analytics</button>
+    <button class="nav-tab" data-page="operations">Operational Status</button>
+    <button class="nav-tab" data-page="map">Geospatial Map</button>
+    <button class="nav-tab" data-page="table">Asset Data Table</button>
+  </div>
+  <div class="nav-right">
+    <button class="btn" onclick="exportCSV()" style="border-color:var(--green);color:var(--green)">&#128196; CSV</button>
+    <button class="btn" onclick="generatePDF()" style="border-color:var(--accent);color:var(--accent)">&#128196; PDF Report</button>
+    <button class="btn" onclick="refreshDashboard()" style="color:var(--red);border-color:var(--red)">&#8635; Reset</button>
+  </div>
+</nav>
+
+<!-- INLINE FILTER BAR -->
+<div class="filter-bar" id="filterBar" style="margin-top:56px">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span class="fb-label">FILTERS:</span><span style="font-size:10px;color:var(--text2)">Multi-select enabled</span></div>
+  <div class="filter-row">
+    <div class="fb-item"><span>BU:</span><div class="ms-wrap" id="fBU"><button class="ms-btn" onclick="toggleMS('fBU')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>SRT Band:</span><div class="ms-wrap" id="fBand"><button class="ms-btn" onclick="toggleMS('fBand')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>Maintenance:</span><div class="ms-wrap" id="fMaint"><button class="ms-btn" onclick="toggleMS('fMaint')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>Metering:</span><div class="ms-wrap" id="fMeter"><button class="ms-btn" onclick="toggleMS('fMeter')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>Voltage:</span><div class="ms-wrap" id="fVoltage"><button class="ms-btn" onclick="toggleMS('fVoltage')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>Ownership:</span><div class="ms-wrap" id="fOwn"><button class="ms-btn" onclick="toggleMS('fOwn')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>Install:</span><div class="ms-wrap" id="fInstall"><button class="ms-btn" onclick="toggleMS('fInstall')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>Commission:</span><div class="ms-wrap" id="fComm"><button class="ms-btn" onclick="toggleMS('fComm')">All</button><div class="ms-panel"></div></div></div>
+  </div>
+  <div class="filter-row">
+    <div class="fb-item"><span>State:</span><div class="ms-wrap" id="fState"><button class="ms-btn" onclick="toggleMS('fState')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>UT:</span><div class="ms-wrap" id="fUT"><button class="ms-btn" onclick="toggleMS('fUT')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>Feeder:</span><div class="ms-wrap" id="fFeeder"><button class="ms-btn" onclick="toggleMS('fFeeder')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>Year:</span><div class="ms-wrap" id="fYear"><button class="ms-btn" onclick="toggleMS('fYear')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>Substation:</span><div class="ms-wrap" id="fSub"><button class="ms-btn" onclick="toggleMS('fSub')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>Connection:</span><div class="ms-wrap" id="fConn"><button class="ms-btn" onclick="toggleMS('fConn')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-item"><span>DT Nom:</span><div class="ms-wrap" id="fNom"><button class="ms-btn" onclick="toggleMS('fNom')">All</button><div class="ms-panel"></div></div></div>
+    <div class="fb-count">Showing: <span class="count-val" id="showCount">20,641</span> / <span id="totalCount">20,641</span></div>
+  </div>
+</div>
+
+<!-- PAGE: EXECUTIVE SUMMARY -->
+<div class="main">
+<div class="page active" id="page-summary">
+  <div class="kpi-grid" id="kpiGrid"></div>
+  <div class="metrics-bar" id="perfMetrics"></div>
+  <div class="risk-grid" id="riskCards"></div>
+  <div class="chart-grid g2">
+    <div class="chart-box"><h4>Transformers by Business Unit</h4><div class="chart-container" id="ch_bu_bar"></div></div>
+    <div class="chart-box"><h4>Asset Ownership Distribution</h4><div class="chart-container" id="ch_ownership"></div></div>
+  </div>
+  <div class="chart-grid g3">
+    <div class="chart-box"><h4>Metering Status Overview</h4><div class="chart-container" id="ch_meter_ov"></div></div>
+    <div class="chart-box"><h4>Connection Status Overview</h4><div class="chart-container" id="ch_conn_ov"></div></div>
+    <div class="chart-box"><h4>SRT Band Distribution</h4><div class="chart-container" id="ch_srt_ov"></div></div>
+  </div>
+</div>
+
+<!-- PAGE: NETWORK INFRASTRUCTURE -->
+<div class="page" id="page-network">
+  <div class="chart-grid g2">
+    <div class="chart-box"><h4>Transformers by Business Unit</h4><div class="chart-container" id="ch_net_bu"></div></div>
+    <div class="chart-box"><h4>Feeder Voltage Distribution</h4><div class="chart-container" id="ch_net_voltage"></div></div>
+  </div>
+  <div class="chart-grid g2">
+    <div class="chart-box"><h4>Feeder Status</h4><div class="chart-container" id="ch_net_fstatus"></div></div>
+    <div class="chart-box"><h4>Feeder Position</h4><div class="chart-container" id="ch_net_fpos"></div></div>
+  </div>
+  <div class="chart-grid g2">
+    <div class="chart-box"><h4>Transformer Capacity Distribution</h4><div class="chart-container" id="ch_net_cap"></div></div>
+    <div class="chart-box"><h4>Capacity by Business Unit</h4><div class="chart-container" id="ch_net_capbu"></div></div>
+  </div>
+</div>
+
+<!-- PAGE: METERING ANALYTICS -->
+<div class="page" id="page-metering">
+  <div class="chart-grid g3">
+    <div class="chart-box"><h4>Metering Status</h4><div class="chart-container" id="ch_met_status"></div></div>
+    <div class="chart-box"><h4>Meter Functionality Status</h4><div class="chart-container" id="ch_met_func"></div></div>
+    <div class="chart-box"><h4>Prepaid vs Postpaid</h4><div class="chart-container" id="ch_met_actype"></div></div>
+  </div>
+  <div class="chart-grid g2">
+    <div class="chart-box"><h4>Meter Type Distribution</h4><div class="chart-container" id="ch_met_type"></div></div>
+    <div class="chart-box"><h4>Account Platform</h4><div class="chart-container" id="ch_met_platform"></div></div>
+  </div>
+  <div class="chart-grid g2">
+    <div class="chart-box"><h4>Unmetered Transformers by Business Unit</h4><div class="chart-container" id="ch_met_unmetered_bu"></div></div>
+    <div class="chart-box"><h4>Meter Coverage by Business Unit</h4><div class="chart-container" id="ch_met_coverage"></div></div>
+  </div>
+</div>
+
+<!-- PAGE: OPERATIONAL STATUS -->
+<div class="page" id="page-operations">
+  <div class="chart-grid g2">
+    <div class="chart-box"><h4>Connection Status by Business Unit</h4><div class="chart-container" id="ch_ops_conn_bu"></div></div>
+    <div class="chart-box"><h4>Commissioning Status</h4><div class="chart-container" id="ch_ops_comm"></div></div>
+  </div>
+  <div class="chart-grid g2">
+    <div class="chart-box"><h4>Disconnection Status Distribution</h4><div class="chart-container" id="ch_ops_disc"></div></div>
+    <div class="chart-box"><h4>Feeder Status by Business Unit</h4><div class="chart-container" id="ch_ops_feeder"></div></div>
+  </div>
+  <div class="chart-grid g3">
+    <div class="chart-box"><h4>SRT Band by Business Unit</h4><div class="chart-container" id="ch_ops_srt"></div></div>
+    <div class="chart-box"><h4>Asset Creation Trend Over Time</h4><div class="chart-container" id="ch_ops_trend"></div></div>
+    <div class="chart-box"><h4>Installation Position by BU</h4><div class="chart-container" id="ch_ops_install"></div></div>
+  </div>
+</div>
+
+<!-- PAGE: GEOSPATIAL MAP -->
+<div class="page" id="page-map">
+  <div id="mapContainer"></div>
+</div>
+
+<!-- PAGE: DATA TABLE -->
+<div class="page" id="page-table">
+  <div class="table-controls">
+    <input type="text" id="tableSearch" placeholder="Search assets by DT Number, Address, Feeder, Nomenclature, Customer..." oninput="filterTable();showAC()" onkeydown="acNav(event)" autocomplete="off">
+    <div class="ac-dropdown" id="acDropdown"></div>
+    <select id="tablePageSize" onchange="filterTable()" style="width:auto;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px">
+      <option value="50">50 rows</option><option value="100" selected>100 rows</option><option value="250">250 rows</option><option value="500">500 rows</option>
+    </select>
+  </div>
+  <div class="table-wrap" style="max-height:calc(100vh - 240px);overflow-y:auto">
+    <table id="assetTable"><thead><tr id="tableHead"></tr></thead><tbody id="tableBody"></tbody></table>
+  </div>
+  <div class="pagination" id="tablePagination"></div>
+</div>
+</div>
+
+<!-- DATA -->
+<script src="dashboard_data.js"></script>
+<script>
+// ============ GLOBALS ============
+let filteredData=[];
+let currentPage='summary';
+let tablePage=0;
+let tableSortCol=null;
+let tableSortAsc=true;
+let mapInstance=null;
+let mapMarkers=[];
+let mapInitialized=false;
+
+const PL={paper_bgcolor:'transparent',plot_bgcolor:'transparent',font:{color:'#7a8a9e',size:11},margin:{t:10,b:40,l:50,r:20},legend:{font:{size:10},bgcolor:'transparent'},xaxis:{gridcolor:'#141e28',zerolinecolor:'#141e28'},yaxis:{gridcolor:'#141e28',zerolinecolor:'#141e28'}};
+const PC={responsive:true,displayModeBar:false};
+const COLORS=['#e74c6f','#f59e0b','#a855f7','#ef4444','#ec4899','#f97316','#d946ef','#fb923c','#e11d48','#c084fc','#facc15','#f472b6'];
+const BU_CLR={'IKEJA':'#00d4ff','IKORODU':'#10b981','AKOWONJO':'#f59e0b','SHOMOLU':'#ef4444','OSHODI':'#8b5cf6','ABULE EGBA':'#f97316'};
+function buColors(labels){return labels.map(l=>BU_CLR[l]||'#94a3b8')}
+
+// ============ UTILS ============
+function countBy(arr,key){const m={};arr.forEach(r=>{const v=r[key]||'N/A';m[v]=(m[v]||0)+1});return m}
+function countByNorm(arr,key,nm){const m={};arr.forEach(r=>{let v=(r[key]||'N/A').toString().toUpperCase().trim();if(nm&&nm[v])v=nm[v];m[v]=(m[v]||0)+1});return m}
+function sorted(obj,lim){let e=Object.entries(obj).sort((a,b)=>b[1]-a[1]);if(lim)e=e.slice(0,lim);return e}
+function pct(n,t){return t?((n/t)*100).toFixed(1)+'%':'0%'}
+function fmt(n){return n!=null?n.toLocaleString():'0'}
+
+// ============ NAV ============
+document.querySelectorAll('.nav-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    currentPage=tab.dataset.page;
+    document.getElementById('page-'+currentPage).classList.add('active');
+    if(currentPage==='map'){if(!mapInitialized)initMap();else if(mapInstance){setTimeout(()=>{mapInstance.invalidateSize();renderMap(filteredData)},200)}}
+    if(currentPage==='table')filterTable();
+  });
+});
+
+// ============ MULTI-SELECT DROPDOWN LOGIC ============
+function toggleMS(id){
+  const wrap=document.getElementById(id);
+  const wasOpen=wrap.classList.contains('open');
+  document.querySelectorAll('.ms-wrap.open').forEach(w=>w.classList.remove('open'));
+  if(!wasOpen)wrap.classList.add('open');
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.ms-wrap'))document.querySelectorAll('.ms-wrap.open').forEach(w=>w.classList.remove('open'))});
+
+function normIP(v){
+  if(!v)return '';
+  const u=String(v).toUpperCase().trim();
+  if(u.includes('POLE'))return 'POLE MOUNTED';
+  if(u.includes('GROUND'))return 'GROUND MOUNTED';
+  return u;
+}
+
+// Filter definitions: id, data key, value extractor
+const FDEFS=[
+  {id:'fBU',key:'bu',v:r=>r.bu||''},
+  {id:'fUT',key:'ut',v:r=>r.ut||''},
+  {id:'fSub',key:'sub',v:r=>r.sub||''},
+  {id:'fFeeder',key:'fn',v:r=>r.fn||''},
+  {id:'fVoltage',key:'fv',v:r=>String(r.fv||'')},
+  {id:'fMeter',key:'ms',v:r=>r.ms||''},
+  {id:'fConn',key:'cs',v:r=>r.cs||''},
+  {id:'fComm',key:'cos',v:r=>r.cos||''},
+  {id:'fBand',key:'srt',v:r=>r.srt||''},
+  {id:'fOwn',key:'own',v:r=>r.own||''},
+  {id:'fInstall',key:'ip',v:r=>normIP(r.ip)},
+  {id:'fState',key:'st',v:r=>r.st||''},
+  {id:'fMaint',key:'mfs',v:r=>r.mfs||''},
+  {id:'fYear',key:'cd',v:r=>r.cd?r.cd.substring(0,4):''},
+  {id:'fNom',key:'nom',v:r=>r.nom||''}
+];
+
+function getSelVals(id){
+  const wrap=document.getElementById(id);if(!wrap)return [];
+  const checks=[...wrap.querySelectorAll('.ms-panel input[type="checkbox"]')];
+  const allCb=checks.find(c=>c.value==='');
+  if(!allCb||allCb.checked)return [];
+  return checks.filter(c=>c.value!==''&&c.checked).map(c=>c.value);
+}
+
+function updateBtnText(id){
+  const wrap=document.getElementById(id);if(!wrap)return;
+  const allCb=wrap.querySelector('.ms-panel input[value=""]');
+  const valueCbs=[...wrap.querySelectorAll('.ms-panel input[type="checkbox"]')].filter(c=>c.value!=='');
+  const btn=wrap.querySelector('.ms-btn');
+  if(allCb&&allCb.checked){btn.textContent='All';}
+  else{const sel=valueCbs.filter(c=>c.checked);btn.textContent=sel.length===0?'All':sel.length<=2?sel.map(c=>c.value).join(', '):sel.length+' selected';}
+}
+
+function msCheck(cb,id){
+  const wrap=document.getElementById(id);
+  const panel=wrap.querySelector('.ms-panel');
+  const allCb=panel.querySelector('input[value=""]');
+  const valueCbs=[...panel.querySelectorAll('input[type="checkbox"]')].filter(c=>c.value!=='');
+  if(cb.value===''){
+    valueCbs.forEach(c=>c.checked=false);allCb.checked=true;
+  } else {
+    allCb.checked=false;
+    if(!valueCbs.some(c=>c.checked))allCb.checked=true;
+  }
+  updateBtnText(id);
+  applyLive();
+}
+
+// ============ FILTERS ============
+function populateFilters(){
+  FDEFS.forEach(f=>{
+    const wrap=document.getElementById(f.id);if(!wrap)return;
+    const panel=wrap.querySelector('.ms-panel');if(!panel)return;
+    const vals=new Set();
+    ASSET_DATA.forEach(r=>{const val=f.v(r);if(val)vals.add(val)});
+    const s=[...vals].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}));
+    panel.innerHTML='<label class="all-opt"><input type="checkbox" value="" checked onchange="msCheck(this,\''+f.id+'\')"> All</label>'
+      +s.map(v=>'<label><input type="checkbox" value="'+v+'" onchange="msCheck(this,\''+f.id+'\')"> '+v+'</label>').join('');
+  });
+  document.getElementById('totalCount').textContent=fmt(ASSET_DATA.length);
+}
+
+function getFilteredData(){
+  const sels={};FDEFS.forEach(f=>{sels[f.id]=getSelVals(f.id)});
+  return ASSET_DATA.filter(r=>FDEFS.every(f=>{const s=sels[f.id];return !s.length||s.includes(f.v(r))}));
+}
+
+// Cascading: update each filter's options based on all OTHER filters
+function updateFilterOptions(){
+  const sels={};FDEFS.forEach(f=>{sels[f.id]=getSelVals(f.id)});
+  FDEFS.forEach(f=>{
+    // Filter data by everything EXCEPT this filter
+    const subset=ASSET_DATA.filter(r=>FDEFS.every(of=>of.id===f.id||!sels[of.id].length||sels[of.id].includes(of.v(r))));
+    const available=new Set();subset.forEach(r=>{const val=f.v(r);if(val)available.add(val)});
+    const wrap=document.getElementById(f.id);if(!wrap)return;
+    let anyUncheckedHidden=false;
+    wrap.querySelectorAll('.ms-panel label:not(.all-opt)').forEach(label=>{
+      const cb=label.querySelector('input[type="checkbox"]');if(!cb)return;
+      const inData=available.has(cb.value);
+      // Show if value exists in subset OR is currently checked (so user can uncheck it)
+      label.style.display=(inData||cb.checked)?'':'none';
+      label.style.opacity=(cb.checked&&!inData)?'0.5':'1';
+      if(!inData&&!cb.checked)anyUncheckedHidden=true;
+    });
+  });
+}
+
+function applyLive(){
+  filteredData=getFilteredData();
+  document.getElementById('showCount').textContent=fmt(filteredData.length);
+  updateFilterOptions();
+  renderAll();
+}
+
+function refreshDashboard(){
+  document.querySelectorAll('.ms-panel input[type="checkbox"]').forEach(cb=>{cb.checked=cb.value===''});
+  document.querySelectorAll('.ms-btn').forEach(btn=>{btn.textContent='All'});
+  // Show all options again
+  document.querySelectorAll('.ms-panel label').forEach(l=>{l.style.display='';l.style.opacity='1'});
+  filteredData=[...ASSET_DATA];
+  document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
+  renderAll();
+}
+
+// ============ KPI CARDS ============
+function renderKPIs(data){
+  const t=data.length;
+  const feeders=new Set(data.map(r=>r.fn).filter(Boolean)).size;
+  const uts=new Set(data.map(r=>r.ut).filter(Boolean)).size;
+  const bus=new Set(data.map(r=>r.bu).filter(Boolean)).size;
+  const metered=data.filter(r=>r.ms==='METERED'||r.ms==='METERED EST.').length;
+  const unmetered=data.filter(r=>r.ms==='UNMETERED').length;
+  const connected=data.filter(r=>r.cs==='CONNECTED').length;
+  const notConn=data.filter(r=>r.cs==='NOT CONNECTED').length;
+  const faulty=data.filter(r=>r.mfs==='FAULTY'||r.mfs==='FAULTY METER'||r.mfs==='BURNT METER'||r.mfs==='NON-FUNCTIONAL').length;
+  const pubDT=data.filter(r=>r.own==='PUBLIC').length;const pvtDT=t-pubDT;
+  // Substations
+  const subMap={};data.forEach(r=>{if(!r.sub)return;if(!subMap[r.sub])subMap[r.sub]=false;if((r.fs||'').trim().toUpperCase()==='ACTIVE')subMap[r.sub]=true});
+  const totalSubs=Object.keys(subMap).length;const activeSubs=Object.values(subMap).filter(Boolean).length;const inactiveSubs=totalSubs-activeSubs;
+  // Total capacity
+  const totalCap=data.reduce((s,r)=>s+(r.cap||0),0);
+  const capMVA=(totalCap/1000).toFixed(1);
+
+  const kpis=[
+    {icon:'&#9889;',bg:'linear-gradient(135deg,#0a2a3a,#0d3545)',clr:'var(--accent)',val:fmt(t),lbl:'Total Transformers',sub:`${fmt(pubDT)} Public &middot; ${fmt(pvtDT)} Private`},
+    {icon:'&#9879;',bg:'linear-gradient(135deg,#0a2a40,#0a3350)',clr:'var(--blue)',val:fmt(capMVA),lbl:'Network Capacity',sub:'Total installed MVA',badge:null},
+    {icon:'&#9878;',bg:'linear-gradient(135deg,#0a3028,#0a3d30)',clr:'var(--green)',val:fmt(metered),lbl:'Metered DTs',sub:`${fmt(unmetered)} unmetered`,badge:pct(metered,t),badgeClr:'var(--green)'},
+    {icon:'&#9829;',bg:'linear-gradient(135deg,#0a3035,#0a3d40)',clr:'var(--teal)',val:fmt(connected),lbl:'Grid Health',sub:`${fmt(faulty)} faulty &middot; ${fmt(notConn-faulty>0?notConn-faulty:0)} out`,badge:pct(connected,t),badgeClr:'var(--teal)'},
+    {icon:'&#9888;',bg:'linear-gradient(135deg,#301a1a,#3d1a1a)',clr:'var(--red)',val:fmt(faulty),lbl:'Faulty Transformers',sub:'Require immediate attention'},
+    {icon:'&#9632;',bg:'linear-gradient(135deg,#1a1a35,#22204a)',clr:'var(--purple)',val:fmt(uts),lbl:'Unique UT',sub:'Distinct utility territories'},
+    {icon:'&#9733;',bg:'linear-gradient(135deg,#0a3028,#0a3d30)',clr:'var(--green)',val:fmt(feeders),lbl:'Unique Feeders',sub:'Distinct feeder lines'},
+    {icon:'&#9670;',bg:'linear-gradient(135deg,#0a3028,#103828)',clr:'var(--green)',val:fmt(activeSubs),lbl:'Active Substations',sub:`of ${fmt(totalSubs)} substations`,badge:pct(activeSubs,totalSubs),badgeClr:'var(--green)'},
+    {icon:'&#9670;',bg:'linear-gradient(135deg,#301a1a,#3d2020)',clr:'var(--red)',val:fmt(inactiveSubs),lbl:'Inactive Substations',sub:`of ${fmt(totalSubs)} substations`,badge:pct(inactiveSubs,totalSubs),badgeClr:'var(--red)'},
+    {icon:'&#9830;',bg:'linear-gradient(135deg,#2a1a08,#352810)',clr:'var(--orange)',val:fmt(bus),lbl:'Business Units',sub:'Operating business units'}
+  ];
+
+  document.getElementById('kpiGrid').innerHTML=kpis.map(k=>`
+    <div class="kpi-card">
+      ${k.badge?`<div class="kpi-badge" style="background:rgba(0,0,0,.3);color:${k.badgeClr}">${k.badge}</div>`:''}
+      <div class="kpi-icon" style="background:${k.bg};animation:icon-glow 3s ease-in-out infinite;--glow:${k.clr==='var(--accent)'?'0,212,255':k.clr==='var(--green)'?'16,185,129':k.clr==='var(--red)'?'239,68,68':k.clr==='var(--blue)'?'59,130,246':k.clr==='var(--purple)'?'139,92,246':k.clr==='var(--teal)'?'20,184,166':'249,115,22'}">${k.icon}</div>
+      <div class="kpi-value" style="color:${k.clr}">${k.val}</div>
+      <div class="kpi-label">${k.lbl}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>
+  `).join('');
+}
+
+// ============ PERF METRICS ============
+function renderPerfMetrics(data){
+  const t=data.length;
+  const metered=data.filter(r=>r.ms==='METERED'||r.ms==='METERED EST.').length;
+  const connected=data.filter(r=>r.cs==='CONNECTED').length;
+  const commissioned=data.filter(r=>r.cos==='COMMISSIONED').length;
+  const rl=data.filter(r=>r.rl&&r.rl>0).map(r=>r.rl);
+  const totalRL=rl.length?rl.reduce((a,b)=>a+b,0):0;
+  const totalRLfmt=totalRL>=1000?(totalRL/1000).toFixed(1)+' K':totalRL.toFixed(1);
+  const ms=[{val:pct(metered,t),label:'Meter Coverage'},{val:pct(connected,t),label:'Network Availability'},{val:pct(commissioned,t),label:'Commissioning Rate'},{val:totalRLfmt+' km',label:'Total Route Length'}];
+  document.getElementById('perfMetrics').innerHTML=ms.map(m=>`<div class="metric"><div class="m-val">${m.val}</div><div class="m-label">${m.label}</div></div>`).join('');
+}
+
+// ============ RISK CARDS ============
+function renderRiskCards(data){
+  const unmetered=data.filter(r=>r.ms==='UNMETERED').length;
+  const faulty=data.filter(r=>r.mfs==='FAULTY'||r.mfs==='FAULTY METER'||r.mfs==='BURNT METER'||r.mfs==='NON-FUNCTIONAL').length;
+  const discComm=data.filter(r=>r.cs==='NOT CONNECTED'&&r.cos==='COMMISSIONED').length;
+  const highNoMeter=data.filter(r=>r.ms==='UNMETERED'&&r.cap>=300).length;
+  const cards=[
+    {cls:'',title:'Unmetered Transformers',val:fmt(unmetered),desc:'Without metering device'},
+    {cls:'warn',title:'Faulty Meters',val:fmt(faulty),desc:'Faulty, burnt, or non-functional'},
+    {cls:'',title:'Disconnected but Commissioned',val:fmt(discComm),desc:'Operational anomalies'},
+    {cls:'warn',title:'High Cap. Unmetered (300kVA+)',val:fmt(highNoMeter),desc:'Critical: large DTs without meters'}
+  ];
+  document.getElementById('riskCards').innerHTML=cards.map(c=>`<div class="risk-card ${c.cls}"><h5>${c.title}</h5><div class="risk-val">${c.val}</div><p>${c.desc}</p></div>`).join('');
+}
+
+// ============ CHART HELPERS ============
+function plotDonut(el,data,key,nm){
+  const counts=nm?countByNorm(data,key,nm):countBy(data,key);const entries=sorted(counts);
+  Plotly.newPlot(el,[{values:entries.map(e=>e[1]),labels:entries.map(e=>e[0]),type:'pie',hole:.5,marker:{colors:COLORS},textinfo:'label+percent',textfont:{size:11,color:'#e2e8f0'},insidetextorientation:'auto'}],
+  {...PL,margin:{t:10,b:10,l:10,r:10},showlegend:true,legend:{font:{size:10,color:'#7a8a9e'},orientation:'h',y:-.15}},PC);
+}
+function plotStackedBar(el,data,gk,sk,sv){
+  const groups=[...new Set(data.map(r=>r[gk]||'N/A'))].sort();
+  const traces=sv.map((s,i)=>({x:groups,y:groups.map(g=>data.filter(r=>(r[gk]||'N/A')===g&&(r[sk]||'N/A')===s).length),name:s,type:'bar',marker:{color:COLORS[i%COLORS.length]}}));
+  Plotly.newPlot(el,traces,{...PL,barmode:'stack',legend:{font:{size:10},orientation:'h',y:1.1}},PC);
+}
+
+// ============ PAGE 1: SUMMARY ============
+function renderSummary(data){
+  renderKPIs(data);renderPerfMetrics(data);renderRiskCards(data);
+  const bc=sorted(countBy(data,'bu'));
+  Plotly.newPlot('ch_bu_bar',[{x:bc.map(e=>e[0]),y:bc.map(e=>e[1]),type:'bar',marker:{color:buColors(bc.map(e=>e[0])),line:{color:'rgba(255,255,255,.1)',width:1}},text:bc.map(e=>fmt(e[1])),textposition:'inside',textfont:{color:'#fff',size:14,weight:700},insidetextanchor:'middle'}],{...PL,margin:{...PL.margin,t:30}},PC);
+  plotDonut('ch_ownership',data,'own');
+  plotDonut('ch_meter_ov',data,'ms');
+  plotDonut('ch_conn_ov',data,'cs');
+  plotDonut('ch_srt_ov',data,'srt');
+}
+
+// ============ PAGE 2: NETWORK ============
+function renderNetwork(data){
+  const bc=sorted(countBy(data,'bu'));
+  Plotly.newPlot('ch_net_bu',[{x:bc.map(e=>e[0]),y:bc.map(e=>e[1]),type:'bar',marker:{color:buColors(bc.map(e=>e[0])),line:{color:'rgba(255,255,255,.1)',width:1}},text:bc.map(e=>fmt(e[1])),textposition:'inside',textfont:{color:'#fff',size:14,weight:700},insidetextanchor:'middle'}],{...PL,margin:{...PL.margin,t:30}},PC);
+  plotDonut('ch_net_voltage',data,'fv');plotDonut('ch_net_fstatus',data,'fs');plotDonut('ch_net_fpos',data,'fp');
+  const cc=countBy(data,'cap');const mainC=[25,50,100,200,300,315,500,750,1000,1500,2000,2500,5000,7500];
+  const cl=[],cv=[];mainC.forEach(c=>{if(cc[c]){cl.push(c+'kVA');cv.push(cc[c])}});
+  const oc=data.length-cv.reduce((a,b)=>a+b,0);if(oc>0){cl.push('Other');cv.push(oc)}
+  Plotly.newPlot('ch_net_cap',[{x:cl,y:cv,type:'bar',marker:{color:COLORS[5]},text:cv.map(v=>fmt(v)),textposition:'outside',textfont:{color:'#7a8a9e',size:10}}],{...PL,margin:{...PL.margin,t:25}},PC);
+  const bus=[...new Set(data.map(r=>r.bu))].sort();
+  Plotly.newPlot('ch_net_capbu',[50,100,200,300,500].map((c,i)=>({x:bus,y:bus.map(b=>data.filter(r=>r.bu===b&&r.cap===c).length),name:c+'kVA',type:'bar',marker:{color:COLORS[i]}})),{...PL,barmode:'stack',legend:{font:{size:10},orientation:'h',y:1.12}},PC);
+}
+
+// ============ PAGE 3: METERING ============
+function renderMetering(data){
+  plotDonut('ch_met_status',data,'ms');
+  plotDonut('ch_met_func',data,'mfs',{'FAULTY METER':'FAULTY','BURNT METER':'FAULTY','NON-FUNCTIONAL':'FAULTY'});
+  plotDonut('ch_met_actype',data,'at',{'POSTPAID':'POST-PAID','PREPAID':'PRE-PAID','#N/A':'N/A'});
+  const mc=sorted(countBy(data,'mt'),12);
+  Plotly.newPlot('ch_met_type',[{x:mc.map(e=>e[0]),y:mc.map(e=>e[1]),type:'bar',marker:{color:COLORS[2]},text:mc.map(e=>fmt(e[1])),textposition:'outside',textfont:{color:'#7a8a9e',size:10}}],{...PL,margin:{...PL.margin,t:25}},PC);
+  plotDonut('ch_met_platform',data,'ap');
+  const ud=data.filter(r=>r.ms==='UNMETERED');const bu=sorted(countBy(ud,'bu'));
+  Plotly.newPlot('ch_met_unmetered_bu',[{x:bu.map(e=>e[0]),y:bu.map(e=>e[1]),type:'bar',marker:{color:COLORS[3]},text:bu.map(e=>fmt(e[1])),textposition:'outside',textfont:{color:'#7a8a9e'}}],{...PL,margin:{...PL.margin,t:25}},PC);
+  const bus=[...new Set(data.map(r=>r.bu))].sort();
+  const cov=bus.map(b=>{const br=data.filter(r=>r.bu===b);const m=br.filter(r=>r.ms==='METERED'||r.ms==='METERED EST.').length;return{bu:b,rate:br.length?(m/br.length*100):0}});
+  Plotly.newPlot('ch_met_coverage',[{x:cov.map(d=>d.bu),y:cov.map(d=>d.rate),type:'bar',marker:{color:cov.map(d=>d.rate>80?'#10b981':d.rate>60?'#f59e0b':'#ef4444')},text:cov.map(d=>d.rate.toFixed(1)+'%'),textposition:'outside',textfont:{color:'#7a8a9e'}}],{...PL,margin:{...PL.margin,t:25},yaxis:{...PL.yaxis,title:{text:'%',font:{size:11,color:'#7a8a9e'}},range:[0,100]}},PC);
+}
+
+// ============ PAGE 4: OPERATIONS ============
+function renderOperations(data){
+  plotStackedBar('ch_ops_conn_bu',data,'bu','cs',['CONNECTED','NOT CONNECTED']);
+  plotDonut('ch_ops_comm',data,'cos');
+  const dn={'Inactive':'INACTIVE','Healthy':'HEALTHY'};const dc=countByNorm(data,'ds',dn);const de=sorted(dc);
+  Plotly.newPlot('ch_ops_disc',[{x:de.map(e=>e[0]),y:de.map(e=>e[1]),type:'bar',marker:{color:de.map((_,i)=>COLORS[i%COLORS.length])},text:de.map(e=>fmt(e[1])),textposition:'outside',textfont:{color:'#7a8a9e',size:10}}],{...PL,margin:{...PL.margin,t:25}},PC);
+  plotStackedBar('ch_ops_feeder',data,'bu','fs',['ACTIVE','INACTIVE','N/A']);
+  plotStackedBar('ch_ops_srt',data,'bu','srt',[...new Set(data.map(r=>r.srt||'N/A'))].sort());
+  const bm={};data.forEach(r=>{if(r.cd){const m=r.cd.substring(0,7);bm[m]=(bm[m]||0)+1}});const mo=Object.keys(bm).sort();
+  Plotly.newPlot('ch_ops_trend',[{x:mo,y:mo.map(m=>bm[m]),type:'scatter',mode:'lines+markers',line:{color:COLORS[0],width:2},marker:{size:4},fill:'tozeroy',fillcolor:'rgba(0,212,255,0.08)'}],{...PL,xaxis:{...PL.xaxis,title:{text:'Month',font:{size:11,color:'#7a8a9e'}}},yaxis:{...PL.yaxis,title:{text:'Assets',font:{size:11,color:'#7a8a9e'}}}},PC);
+  const bus=[...new Set(data.map(r=>r.bu))].sort();
+  Plotly.newPlot('ch_ops_install',['GROUND MOUNTED','POLE MOUNTED'].map((v,i)=>({x:bus,y:bus.map(b=>data.filter(r=>r.bu===b&&normIP(r.ip)===v).length),name:v,type:'bar',marker:{color:COLORS[i]},text:bus.map(b=>data.filter(r=>r.bu===b&&normIP(r.ip)===v).length),textposition:'outside',textfont:{size:10,color:'#e2e8f0'}})),{...PL,barmode:'group',legend:{font:{size:10},orientation:'h',y:1.08}},PC);
+}
+
+// ============ PAGE 5: MAP (Canvas CircleMarker) ============
+let mapLayerGroup=null;
+
+function initMap(){
+  if(mapInitialized)return;
+  mapInitialized=true;
+
+  const osmTile=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OSM',maxZoom:19});
+  const esriDark=L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{attribution:'&copy; Esri',maxZoom:16});
+  const esriSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'&copy; Esri',maxZoom:19});
+  const osmHot=L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',{attribution:'&copy; OSM HOT',maxZoom:19});
+
+  mapInstance=L.map('mapContainer',{
+    zoomControl:true,
+    layers:[osmTile],
+    preferCanvas:true
+  }).setView([6.55,3.38],12);
+
+  mapLayerGroup=L.featureGroup().addTo(mapInstance);
+
+  L.control.layers({
+    'OpenStreetMap':osmTile,
+    'Dark Gray (Esri)':esriDark,
+    'Satellite (Esri)':esriSat,
+    'Humanitarian (OSM)':osmHot
+  },null,{position:'topright',collapsed:false}).addTo(mapInstance);
+
+  // Give the container time to fully render, then size + draw markers
+  setTimeout(()=>{
+    mapInstance.invalidateSize();
+    renderMap(filteredData);
+  },500);
+  setTimeout(()=>{mapInstance.invalidateSize()},1500);
+}
+
+function renderMap(data){
+  if(!mapInstance||!mapLayerGroup)return;
+  mapLayerGroup.clearLayers();
+  let count=0;
+
+  for(let i=0;i<data.length;i++){
+    const r=data[i];
+    const lat=parseFloat(r.lat);const lng=parseFloat(r.lng);
+    if(isNaN(lat)||isNaN(lng)||lat<1||lat>15||lng<0||lng>10)continue;
+    const color=BU_CLR[r.bu]||'#94a3b8';
+    L.circleMarker([lat,lng],{
+      radius:5,
+      fillColor:color,
+      fillOpacity:0.85,
+      color:'#fff',
+      weight:0.8,
+      opacity:0.5
+    }).bindPopup(`<div style="min-width:220px">
+      <div style="font-size:14px;font-weight:700;color:${color};border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">DT ${r.dt}</div>
+      <table style="width:100%;font-size:11px;line-height:1.7">
+        <tr><td style="color:#7a8a9e;width:95px"><b>BU</b></td><td style="color:${color};font-weight:600">${r.bu}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>UT</b></td><td>${r.ut||'-'}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>Substation</b></td><td>${r.sub||'-'}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>Feeder</b></td><td>${r.fn||'-'}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>Capacity</b></td><td><b>${r.cap} kVA</b></td></tr>
+        <tr><td style="color:#7a8a9e"><b>Meter Status</b></td><td>${r.ms==='METERED'?'<span style="color:#10b981">METERED</span>':r.ms==='UNMETERED'?'<span style="color:#ef4444">UNMETERED</span>':r.ms}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>Meter Type</b></td><td>${r.mt||'-'}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>Connection</b></td><td>${r.cs==='CONNECTED'?'<span style="color:#10b981">CONNECTED</span>':'<span style="color:#ef4444">'+r.cs+'</span>'}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>SRT Band</b></td><td>${r.srt||'-'}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>Customer</b></td><td>${r.cust||'-'}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>Address</b></td><td style="word-break:break-all">${r.addr||'-'}</td></tr>
+      </table></div>`,{maxWidth:280}).addTo(mapLayerGroup);
+    count++;
+  }
+
+  console.log('Map: '+count+' markers added from '+data.length+' records');
+
+  if(count>0){
+    try{mapInstance.fitBounds(mapLayerGroup.getBounds(),{padding:[40,40],maxZoom:14})}catch(e){console.warn('fitBounds:',e)}
+  }
+
+  // Legend
+  let leg=document.getElementById('mapLegend');
+  const buItems=Object.entries(BU_CLR).map(([bu,c])=>{
+    const n=data.filter(r=>r.bu===bu).length;
+    return `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${bu} (${fmt(n)})</div>`;
+  }).join('');
+  const html=`<h5>Business Unit</h5>${buItems}<div style="margin-top:6px;font-size:11px;color:#7a8a9e;border-top:1px solid #1a2535;padding-top:5px">Total: ${fmt(count)} DTs on map</div>`;
+  if(!leg){
+    const lc=L.control({position:'bottomleft'});
+    lc.onAdd=function(){const d=L.DomUtil.create('div','map-legend');d.id='mapLegend';d.innerHTML=html;return d};
+    lc.addTo(mapInstance);
+  } else {leg.innerHTML=html}
+}
+
+// ============ PAGE 6: TABLE ============
+const TCOLS=[
+  {key:'dt',label:'DT Number',w:120},{key:'nom',label:'DT Nomenclature',w:200},{key:'bu',label:'BU',w:90},{key:'ut',label:'UT',w:90},
+  {key:'sub',label:'Substation',w:160},{key:'fn',label:'Feeder',w:170},{key:'cap',label:'Cap (kVA)',w:80},
+  {key:'ms',label:'Meter',w:100},{key:'mfs',label:'Func.',w:100},{key:'mt',label:'Type',w:90},
+  {key:'cs',label:'Connection',w:110},{key:'cos',label:'Commission',w:110},{key:'ds',label:'Status',w:100},
+  {key:'srt',label:'SRT',w:80},{key:'own',label:'Owner',w:80},{key:'addr',label:'Address',w:200},{key:'cd',label:'Created',w:90}
+];
+function renderTableHeader(){document.getElementById('tableHead').innerHTML=TCOLS.map(c=>`<th onclick="sortTable('${c.key}')" style="min-width:${c.w}px">${c.label}<span class="sort-arrow">&udarr;</span></th>`).join('')}
+function filterTable(){
+  const s=(document.getElementById('tableSearch').value||'').toLowerCase();
+  let rows=filteredData;
+  if(s)rows=rows.filter(r=>String(r.dt).includes(s)||(r.addr||'').toLowerCase().includes(s)||(r.fn||'').toLowerCase().includes(s)||(r.cust||'').toLowerCase().includes(s)||(r.bu||'').toLowerCase().includes(s)||(r.sub||'').toLowerCase().includes(s)||(r.ut||'').toLowerCase().includes(s)||(r.nom||'').toLowerCase().includes(s));
+  if(tableSortCol)rows=[...rows].sort((a,b)=>{let va=a[tableSortCol]||'',vb=b[tableSortCol]||'';if(typeof va==='number'&&typeof vb==='number')return tableSortAsc?va-vb:vb-va;return tableSortAsc?String(va).localeCompare(String(vb)):String(vb).localeCompare(String(va))});
+  const ps=parseInt(document.getElementById('tablePageSize').value),tp=Math.ceil(rows.length/ps);
+  if(tablePage>=tp)tablePage=0;
+  const st=tablePage*ps,pr=rows.slice(st,st+ps);
+  function bdg(v,k){
+    if(k==='cs')return v==='CONNECTED'?`<span class="status-badge badge-green">${v}</span>`:`<span class="status-badge badge-red">${v}</span>`;
+    if(k==='ms')return v==='METERED'?`<span class="status-badge badge-green">${v}</span>`:v==='UNMETERED'?`<span class="status-badge badge-red">${v}</span>`:`<span class="status-badge badge-yellow">${v}</span>`;
+    if(k==='mfs')return v==='FUNCTIONAL'?`<span class="status-badge badge-green">${v}</span>`:(v==='FAULTY'||v==='FAULTY METER'||v==='BURNT METER'||v==='NON-FUNCTIONAL')?`<span class="status-badge badge-red">${v}</span>`:v;
+    if(k==='cos')return v==='COMMISSIONED'?`<span class="status-badge badge-blue">${v}</span>`:`<span class="status-badge badge-yellow">${v}</span>`;
+    return v;
+  }
+  document.getElementById('tableBody').innerHTML=pr.map(r=>'<tr>'+TCOLS.map(c=>`<td title="${r[c.key]||''}">${bdg(r[c.key]||'',c.key)}</td>`).join('')+'</tr>').join('');
+  const pg=document.getElementById('tablePagination');let btns='';
+  let sb=Math.max(0,tablePage-3),eb=Math.min(tp,sb+7);if(eb-sb<7)sb=Math.max(0,eb-7);
+  if(sb>0)btns+=`<button class="page-btn" onclick="goPage(0)">1</button><span style="color:var(--text2)">...</span>`;
+  for(let i=sb;i<eb;i++)btns+=`<button class="page-btn ${i===tablePage?'active':''}" onclick="goPage(${i})">${i+1}</button>`;
+  if(eb<tp)btns+=`<span style="color:var(--text2)">...</span><button class="page-btn" onclick="goPage(${tp-1})">${tp}</button>`;
+  pg.innerHTML=`<span>Showing ${st+1}-${Math.min(st+ps,rows.length)} of ${fmt(rows.length)}</span><div class="page-btns">${btns}</div>`;
+}
+function sortTable(c){if(tableSortCol===c)tableSortAsc=!tableSortAsc;else{tableSortCol=c;tableSortAsc=true}filterTable()}
+function goPage(p){tablePage=p;filterTable()}
+
+// Intellisense / Autocomplete
+let acIdx=-1;
+const AC_FIELDS=[
+  {key:'dt',label:'DT Number'},{key:'nom',label:'Nomenclature'},{key:'fn',label:'Feeder'},
+  {key:'sub',label:'Substation'},{key:'addr',label:'Address'},{key:'cust',label:'Customer'},
+  {key:'bu',label:'BU'},{key:'ut',label:'UT'}
+];
+function showAC(){
+  const inp=document.getElementById('tableSearch'),dd=document.getElementById('acDropdown');
+  const q=(inp.value||'').toLowerCase().trim();
+  if(q.length<2){dd.classList.remove('show');dd.innerHTML='';acIdx=-1;return}
+  const seen=new Set(),items=[];
+  for(let i=0;i<filteredData.length&&items.length<12;i++){
+    const r=filteredData[i];
+    for(const f of AC_FIELDS){
+      if(items.length>=12)break;
+      const v=String(r[f.key]||'');
+      if(!v||seen.has(f.key+'|'+v))continue;
+      const lv=v.toLowerCase();
+      const idx=lv.indexOf(q);
+      if(idx===-1)continue;
+      seen.add(f.key+'|'+v);
+      const hl=v.substring(0,idx)+'<span class="ac-match">'+v.substring(idx,idx+q.length)+'</span>'+v.substring(idx+q.length);
+      items.push({text:v,html:hl,type:f.label});
+    }
+  }
+  if(!items.length){dd.classList.remove('show');dd.innerHTML='';acIdx=-1;return}
+  dd.innerHTML=items.map((it,i)=>`<div class="ac-item${i===acIdx?' ac-active':''}" onmousedown="pickAC('${it.text.replace(/'/g,"\\'")}')">${it.html}<span class="ac-type">${it.type}</span></div>`).join('');
+  dd.classList.add('show');
+}
+function pickAC(val){
+  const inp=document.getElementById('tableSearch');inp.value=val;
+  document.getElementById('acDropdown').classList.remove('show');acIdx=-1;
+  filterTable();
+}
+function acNav(e){
+  const dd=document.getElementById('acDropdown'),items=dd.querySelectorAll('.ac-item');
+  if(!items.length||!dd.classList.contains('show'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();acIdx=Math.min(acIdx+1,items.length-1);acHL(items)}
+  else if(e.key==='ArrowUp'){e.preventDefault();acIdx=Math.max(acIdx-1,0);acHL(items)}
+  else if(e.key==='Enter'&&acIdx>=0){e.preventDefault();items[acIdx].dispatchEvent(new Event('mousedown'))}
+  else if(e.key==='Escape'){dd.classList.remove('show');acIdx=-1}
+}
+function acHL(items){items.forEach((el,i)=>{el.classList.toggle('ac-active',i===acIdx)})}
+document.addEventListener('click',e=>{if(!e.target.closest('.table-controls'))document.getElementById('acDropdown')&&document.getElementById('acDropdown').classList.remove('show')});
+
+function exportCSV(){
+  const h=TCOLS.map(c=>c.label),rw=filteredData.map(r=>TCOLS.map(c=>{let v=r[c.key]||'';if(typeof v==='string'&&(v.includes(',')||v.includes('"')))v='"'+v.replace(/"/g,'""')+'"';return v}));
+  const csv=[h.join(','),...rw.map(r=>r.join(','))].join('\n');
+  const b=new Blob([csv],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download='IE_Asset_Export.csv';a.click();URL.revokeObjectURL(u);
+}
+
+// ============ PDF REPORT ============
+function generatePDF(){
+  const d=filteredData;const t=d.length;
+  const metered=d.filter(r=>r.ms==='METERED'||r.ms==='METERED EST.').length;
+  const unmetered=d.filter(r=>r.ms==='UNMETERED').length;
+  const connected=d.filter(r=>r.cs==='CONNECTED').length;
+  const commissioned=d.filter(r=>r.cos==='COMMISSIONED').length;
+  const faulty=d.filter(r=>r.mfs==='FAULTY'||r.mfs==='FAULTY METER'||r.mfs==='BURNT METER'||r.mfs==='NON-FUNCTIONAL').length;
+  const feeders=new Set(d.map(r=>r.fn).filter(Boolean)).size;
+  const subs=new Set(d.map(r=>r.sub).filter(Boolean)).size;
+  const uts=new Set(d.map(r=>r.ut).filter(Boolean)).size;
+  const busCnt=new Set(d.map(r=>r.bu).filter(Boolean)).size;
+  const totalCap=(d.reduce((s,r)=>s+(r.cap||0),0)/1000).toFixed(1);
+  const rl=d.filter(r=>r.rl&&r.rl>0).map(r=>r.rl);
+  const totalRL=rl.length?rl.reduce((a,b)=>a+b,0).toFixed(1):'0';
+  const pubDT=d.filter(r=>r.own==='PUBLIC').length;const pvtDT=t-pubDT;
+  const pole=d.filter(r=>normIP(r.ip)==='POLE MOUNTED').length;
+  const ground=d.filter(r=>normIP(r.ip)==='GROUND MOUNTED').length;
+  const discComm=d.filter(r=>r.cs==='NOT CONNECTED'&&r.cos==='COMMISSIONED').length;
+  const hiCapUnmet=d.filter(r=>r.ms==='UNMETERED'&&r.cap>=300).length;
+  const buData=sorted(countBy(d,'bu'));
+  const meterData=sorted(countBy(d,'ms'));
+  const connData=sorted(countBy(d,'cs'));
+  const commData=sorted(countBy(d,'cos'));
+  const capData=sorted(countBy(d,'cap'),12);
+  const subData=sorted(countBy(d,'sub'),15);
+  const srtData=sorted(countBy(d,'srt'));
+  const mfsData=sorted(countBy(d,'mfs'));
+  const feederData=sorted(countBy(d,'fn'),10);
+  const now=new Date();
+  const dateStr=now.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+
+  const fNames={fBU:'Business Unit',fUT:'UT',fSub:'Substation',fFeeder:'Feeder',fVoltage:'Voltage',fMeter:'Metering',fConn:'Connection',fComm:'Commissioning',fBand:'SRT Band',fOwn:'Ownership',fInstall:'Installation',fState:'State',fMaint:'Maintenance',fYear:'Year'};
+  const af=[];Object.keys(fNames).forEach(id=>{const v=getSelVals(id);if(v.length)af.push('<b>'+fNames[id]+':</b> '+v.join(', '))});
+  const filterHTML=af.length?af.join(' &nbsp;&bull;&nbsp; '):'No filters applied — showing all data';
+
+  // Helpers using inline styles only (no CSS classes - reliable for print)
+  const S={
+    th:'background:#0f172a;color:#fff;padding:6px 10px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;border:1px solid #1e293b',
+    thR:'background:#0f172a;color:#fff;padding:6px 10px;text-align:right;font-size:9px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;border:1px solid #1e293b',
+    td:'padding:5px 10px;border:1px solid #e2e8f0;color:#334155;font-size:10px',
+    tdR:'padding:5px 10px;border:1px solid #e2e8f0;color:#334155;font-size:10px;text-align:right',
+    tdA:'padding:5px 10px;border:1px solid #e2e8f0;color:#334155;font-size:10px;background:#f8fafc',
+    tdAR:'padding:5px 10px;border:1px solid #e2e8f0;color:#334155;font-size:10px;background:#f8fafc;text-align:right'
+  };
+
+  const tbl=(headers,rows)=>{
+    let h='<table style="width:100%;border-collapse:collapse;margin:6px 0 14px"><tr>';
+    headers.forEach((hdr,j)=>{h+='<th style="'+(j>0?S.thR:S.th)+'">'+hdr+'</th>'});
+    h+='</tr>';
+    rows.forEach((row,i)=>{
+      h+='<tr>';
+      const alt=i%2===1;
+      row.forEach((c,j)=>{h+='<td style="'+(alt?(j>0?S.tdAR:S.tdA):(j>0?S.tdR:S.td))+'">'+c+'</td>'});
+      h+='</tr>';
+    });
+    return h+'</table>';
+  };
+
+  const bar=(data,color)=>{
+    const mx=Math.max(...data.map(d=>d[1]),1);
+    return data.map(([label,val])=>{
+      const w=Math.max((val/mx)*100,2);
+      return '<div style="display:flex;align-items:center;margin:3px 0"><span style="width:120px;font-size:9px;color:#475569;text-align:right;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex-shrink:0;padding-right:8px">'+label+'</span><div style="flex:1;background:#e2e8f0;border-radius:3px;height:16px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:'+color+';border-radius:3px"></div></div><span style="width:50px;font-size:9px;color:#0f172a;font-weight:700;text-align:right;flex-shrink:0;padding-left:6px">'+fmt(val)+'</span></div>';
+    }).join('');
+  };
+
+  const donut=(data,colors,sz)=>{
+    let cum=0;const tot=data.reduce((s,d)=>s+d[1],0);
+    const stops=data.map(([l,v],i)=>{const st=cum;cum+=(v/tot)*100;return colors[i%colors.length]+' '+st.toFixed(1)+'% '+cum.toFixed(1)+'%'});
+    const leg=data.map(([l,v],i)=>'<div style="display:flex;align-items:center;gap:6px;margin:2px 0;font-size:10px;color:#334155"><span style="width:9px;height:9px;border-radius:50%;background:'+colors[i%colors.length]+';flex-shrink:0"></span>'+l+' <b>'+fmt(v)+'</b> <span style="color:#94a3b8">('+pct(v,tot)+')</span></div>').join('');
+    return '<div style="display:flex;align-items:center;gap:20px;padding:6px 0"><div style="width:'+sz+'px;height:'+sz+'px;background:conic-gradient('+stops.join(',')+');border-radius:50%;position:relative;flex-shrink:0"><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:55%;height:55%;background:#fff;border-radius:50%"></div></div><div>'+leg+'</div></div>';
+  };
+
+  const kpi=(val,label,color)=>'<td style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 6px;text-align:center;width:25%"><div style="font-size:17px;font-weight:800;color:'+color+';line-height:1.1">'+val+'</div><div style="font-size:7.5px;color:#64748b;text-transform:uppercase;letter-spacing:.3px;margin-top:3px">'+label+'</div></td>';
+
+  const risk=(val,title,desc,isRed)=>'<td style="background:'+(isRed?'#fef2f2':'#fffbeb')+';border-left:4px solid '+(isRed?'#dc2626':'#d97706')+';border-radius:0 6px 6px 0;padding:10px 14px;vertical-align:top;width:50%"><div style="font-size:20px;font-weight:800;color:#0f172a">'+val+'</div><div style="font-size:10px;font-weight:600;color:#334155;margin-top:2px">'+title+'</div><div style="font-size:8.5px;color:#64748b;margin-top:2px">'+desc+'</div></td>';
+
+  const section=(num,title,borderColor)=>'<div style="font-size:13px;font-weight:700;color:#0f172a;border-bottom:3px solid '+(borderColor||'#059669')+';padding-bottom:4px;margin:22px 0 10px;text-transform:uppercase;letter-spacing:.5px">'+num+'. '+title+'</div>';
+
+  const twoCol=(left,right)=>'<table style="width:100%;border-collapse:collapse;margin-bottom:10px"><tr><td style="width:50%;vertical-align:top;padding-right:12px">'+left+'</td><td style="width:50%;vertical-align:top;padding-left:12px">'+right+'</td></tr></table>';
+
+  const CLR=['#059669','#dc2626','#d97706','#6366f1','#0891b2','#ec4899','#8b5cf6','#f97316'];
+
+  const reportHTML=`
+<div style="max-width:720px;margin:0 auto">
+  <!-- HEADER -->
+  <div style="border-radius:6px;overflow:hidden;margin-bottom:18px;border:1px solid #e2e8f0">
+    <div style="height:5px;background:linear-gradient(90deg,#059669,#0891b2,#7c3aed,#dc2626)"></div>
+    <table style="width:100%;background:#0f172a;color:#fff;border-collapse:collapse"><tr>
+      <td style="padding:16px 20px">
+        <div style="font-size:19px;font-weight:800;letter-spacing:1px">IKEJA ELECTRIC PLC</div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:3px">Asset Monitoring Report — Distribution Transformer Network</div>
+      </td>
+      <td style="padding:16px 20px;text-align:right">
+        <div style="font-size:13px;font-weight:600">${dateStr}</div>
+        <div style="font-size:10px;color:#94a3b8">${timeStr}</div>
+      </td>
+    </tr></table>
+    <div style="background:#f8fafc;padding:7px 20px;font-size:10px;color:#475569;border-top:1px solid #e2e8f0">Data Scope: <b>${fmt(t)}</b> of ${fmt(ASSET_DATA.length)} records &nbsp;|&nbsp; Filters: ${filterHTML}</div>
+  </div>
+
+  ${section(1,'Executive Summary')}
+  <table style="width:100%;border-collapse:separate;border-spacing:5px;margin-bottom:4px"><tr>${kpi(fmt(t),'Total DTs','#0891b2')}${kpi(totalCap,'Capacity (MVA)','#7c3aed')}${kpi(fmt(metered),'Metered ('+pct(metered,t)+')','#059669')}${kpi(fmt(unmetered),'Unmetered ('+pct(unmetered,t)+')','#dc2626')}</tr></table>
+  <table style="width:100%;border-collapse:separate;border-spacing:5px;margin-bottom:4px"><tr>${kpi(fmt(connected),'Connected ('+pct(connected,t)+')','#059669')}${kpi(fmt(feeders),'Feeders','#d97706')}${kpi(fmt(subs),'Substations','#6366f1')}${kpi(fmt(uts),'Unique UTs','#ea580c')}</tr></table>
+  <table style="width:100%;border-collapse:separate;border-spacing:5px;margin-bottom:10px"><tr>${kpi(totalRL+' km','Total Route Length','#0891b2')}${kpi(fmt(commissioned),'Commissioned ('+pct(commissioned,t)+')','#059669')}${kpi(fmt(pubDT)+' / '+fmt(pvtDT),'Public / Private','#7c3aed')}${kpi(fmt(faulty),'Faulty Meters','#dc2626')}</tr></table>
+
+  ${section(2,'Risk & Anomaly Alerts','#dc2626')}
+  <table style="width:100%;border-collapse:separate;border-spacing:6px;margin-bottom:6px"><tr>${risk(fmt(unmetered),'Unmetered Transformers','Revenue at risk from unbilled consumption',true)}${risk(fmt(faulty),'Faulty / Non-Functional Meters','Require immediate field maintenance',true)}</tr></table>
+  <table style="width:100%;border-collapse:separate;border-spacing:6px;margin-bottom:10px"><tr>${risk(fmt(discComm),'Disconnected but Commissioned','Potential reconnection or data cleanup needed',false)}${risk(fmt(hiCapUnmet),'High Capacity Unmetered (300+ kVA)','High-value assets without metering',false)}</tr></table>
+
+  ${section(3,'Distribution by Business Unit')}
+  ${twoCol(tbl(['Business Unit','DT Count','Share','Cap (MVA)'],buData.map(([k,v])=>[k,fmt(v),pct(v,t),(d.filter(r=>r.bu===k).reduce((s,r)=>s+(r.cap||0),0)/1000).toFixed(1)])),bar(buData,'#0891b2'))}
+
+  ${section(4,'Metering Status Analysis')}
+  ${twoCol(tbl(['Status','Count','Share'],meterData.map(([k,v])=>[k,fmt(v),pct(v,t)])),donut(meterData,CLR,120))}
+
+  ${section(5,'Connection Status')}
+  ${twoCol(tbl(['Status','Count','Share'],connData.map(([k,v])=>[k,fmt(v),pct(v,t)])),donut(connData,['#059669','#dc2626','#d97706','#6366f1'],120))}
+
+  ${section(6,'Commissioning Status')}
+  ${tbl(['Status','Count','Share'],commData.map(([k,v])=>[k,fmt(v),pct(v,t)]))}
+
+  ${section(7,'Meter Functionality Breakdown')}
+  ${twoCol(tbl(['Status','Count','Share'],mfsData.map(([k,v])=>[k,fmt(v),pct(v,t)])),bar(mfsData,'#7c3aed'))}
+
+  ${section(8,'SRT Band Distribution')}
+  ${twoCol(tbl(['Band','Count','Share'],srtData.map(([k,v])=>[k,fmt(v),pct(v,t)])),bar(srtData,'#d97706'))}
+
+  ${section(9,'Top Capacity Categories (kVA)')}
+  ${twoCol(tbl(['Capacity','Count','Share'],capData.map(([k,v])=>[k+' kVA',fmt(v),pct(v,t)])),bar(capData,'#059669'))}
+
+  ${section(10,'Top 15 Substations by Asset Count')}
+  ${tbl(['#','Substation','DT Count','Share'],subData.map(([k,v],i)=>[i+1,k,fmt(v),pct(v,t)]))}
+
+  ${section(11,'Top 10 Feeders by Asset Count')}
+  ${tbl(['#','Feeder','DT Count','Share'],feederData.map(([k,v],i)=>[i+1,k,fmt(v),pct(v,t)]))}
+
+  ${section(12,'Business Unit Detailed Breakdown')}
+  ${buData.map(([buName,buCount])=>{
+    const bd=d.filter(r=>r.bu===buName);
+    const bM=bd.filter(r=>r.ms==='METERED'||r.ms==='METERED EST.').length;
+    const bC=bd.filter(r=>r.cs==='CONNECTED').length;
+    const bF=bd.filter(r=>r.mfs==='FAULTY'||r.mfs==='FAULTY METER'||r.mfs==='BURNT METER'||r.mfs==='NON-FUNCTIONAL').length;
+    const bCap=(bd.reduce((s,r)=>s+(r.cap||0),0)/1000).toFixed(1);
+    const bS=new Set(bd.map(r=>r.sub).filter(Boolean)).size;
+    const bFd=new Set(bd.map(r=>r.fn).filter(Boolean)).size;
+    return '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 16px;margin:5px 0;page-break-inside:avoid"><table style="width:100%;border-collapse:collapse"><tr><td style="font-size:13px;font-weight:700;color:#0f172a;width:130px;vertical-align:middle">'+buName+'</td><td style="font-size:10px;color:#475569"><b>'+fmt(buCount)+'</b> DTs &nbsp;&bull;&nbsp; <b>'+bCap+'</b> MVA &nbsp;&bull;&nbsp; Metered: <b>'+pct(bM,buCount)+'</b> &nbsp;&bull;&nbsp; Connected: <b>'+pct(bC,buCount)+'</b> &nbsp;&bull;&nbsp; Faulty: <b>'+fmt(bF)+'</b> &nbsp;&bull;&nbsp; Subs: <b>'+bS+'</b> &nbsp;&bull;&nbsp; Feeders: <b>'+bFd+'</b></td></tr></table></div>';
+  }).join('')}
+
+  <!-- FOOTER -->
+  <div style="margin-top:24px">
+    <div style="height:3px;background:linear-gradient(90deg,#059669,#0891b2,#7c3aed,#dc2626);border-radius:2px"></div>
+    <table style="width:100%;margin-top:8px;font-size:8.5px;color:#94a3b8"><tr>
+      <td>Report generated from <b>IE Asset Monitoring Dashboard</b></td>
+      <td style="text-align:center"><b>Ikeja Electric Plc</b> — ${dateStr} ${timeStr}</td>
+      <td style="text-align:right">Confidential — For internal use only</td>
+    </tr></table>
+  </div>
+</div>`;
+
+  // Open styled report in new window and auto-trigger print-to-PDF
+  const win=window.open('','_blank');
+  if(!win){alert('Please allow popups to generate the PDF report.');return;}
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>IE Asset Report - ${dateStr}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;color:#1a202c;line-height:1.5;background:#fff;padding:0}
+  #reportContent{padding:24px 32px;max-width:800px;margin:0 auto}
+  .action-bar{position:fixed;top:0;left:0;right:0;background:#0f172a;color:#fff;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+  .action-bar span{font-size:14px;font-weight:600}
+  .action-bar button{padding:8px 22px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px}
+  .btn-save{background:#059669;color:#fff}.btn-save:hover{background:#047857}
+  .btn-print{background:#0891b2;color:#fff}.btn-print:hover{background:#0e7490}
+  @media print{
+    .action-bar{display:none!important}
+    body{padding:0!important}
+    #reportContent{padding:12px 18px!important;max-width:100%!important}
+  }
+  @page{margin:12mm 10mm;size:A4}
+</style></head><body>
+<div class="action-bar">
+  <span>Ikeja Electric — Asset Report Preview</span>
+  <div>
+    <button class="btn-save" onclick="window.print()">Save as PDF</button>
+    <button class="btn-print" onclick="window.print()">Print</button>
+  </div>
+</div>
+<div id="reportContent" style="margin-top:50px">${reportHTML}</div>
+</body></html>`);
+  win.document.close();
+  // Auto-trigger print dialog (user selects "Save as PDF" as destination)
+  setTimeout(()=>{try{win.focus();win.print()}catch(e){}},800);
+}
+
+// ============ RENDER ALL ============
+function renderAll(){
+  renderSummary(filteredData);renderNetwork(filteredData);renderMetering(filteredData);renderOperations(filteredData);
+  if(mapInitialized&&mapInstance)renderMap(filteredData);
+  filterTable();
+}
+
+// ============ INIT ============
+function init(){
+  filteredData=[...ASSET_DATA];
+  populateFilters();renderTableHeader();
+  document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
+  renderAll();
+}
+if(typeof ASSET_DATA!=='undefined')init();
+else document.querySelector('.main').innerHTML='<div style="display:flex;justify-content:center;align-items:center;height:200px;color:var(--text2)"><div class="spinner"></div>Failed to load data. Ensure dashboard_data.js is in the same folder.</div>';
+</script>
+</body>
+</html>
