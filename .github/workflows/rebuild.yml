@@ -14,7 +14,7 @@ jobs:
       - name: Download Excel from Supabase Storage
         run: |
           curl -L -o "IE Asset Data 2026.xlsx" \
-            "https://zgypltdsqjhftnxadunu.supabase.co/storage/v1/object/public/asset-data/IE%20Asset%20Data%202026.xlsx"
+            "https://zgypltdsqjhftnxadunu.supabase.co/storage/v1/object/public/dashboard-assets/IE%20Asset%20Data%202026.xlsx"
 
       - uses: actions/setup-python@v5
         with:
