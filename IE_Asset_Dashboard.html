@@ -127,9 +127,9 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 @media(max-width:1200px){.g3{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.g2,.g3{grid-template-columns:1fr}.nav-tabs{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}.filter-row{gap:4px}}
 .powered-bar{overflow:hidden;padding:6px 0;background:linear-gradient(90deg,transparent,rgba(245,158,11,.04),transparent)}
-.powered-bar span{display:inline-block;font-size:14px;font-weight:600;letter-spacing:1.5px;color:#ffffff;white-space:nowrap;animation:marquee-glow 12s linear infinite,spark-beam .8s ease-in-out infinite alternate;background:linear-gradient(90deg,#fff 0%,#f59e0b 25%,#fff 50%,#f59e0b 75%,#fff 100%);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 6px rgba(245,158,11,.5))}
-@keyframes marquee-glow{0%{transform:translateX(100vw);opacity:0;filter:drop-shadow(0 0 2px rgba(245,158,11,.2))}15%{opacity:1;filter:drop-shadow(0 0 10px rgba(245,158,11,.8)) drop-shadow(0 0 20px rgba(245,158,11,.4))}50%{opacity:1;filter:drop-shadow(0 0 14px rgba(245,158,11,.9)) drop-shadow(0 0 30px rgba(245,158,11,.5))}85%{opacity:0;filter:drop-shadow(0 0 2px rgba(245,158,11,.1))}100%{transform:translateX(-100%);opacity:0}}
-@keyframes spark-beam{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.powered-bar span{display:inline-block;font-size:15px;font-weight:700;letter-spacing:2px;color:#fff;white-space:nowrap;animation:marquee-scroll 12s linear infinite,spark-flash 1.5s ease-in-out infinite}
+@keyframes marquee-scroll{0%{transform:translateX(100vw)}100%{transform:translateX(-100%)}}
+@keyframes spark-flash{0%,100%{color:#fff;text-shadow:0 0 6px rgba(245,158,11,.4),0 0 12px rgba(245,158,11,.2)}25%{color:#fcd34d;text-shadow:0 0 16px rgba(245,158,11,1),0 0 32px rgba(245,158,11,.6),0 0 48px rgba(245,158,11,.3)}50%{color:#fff;text-shadow:0 0 8px rgba(245,158,11,.5),0 0 16px rgba(245,158,11,.2)}75%{color:#fbbf24;text-shadow:0 0 20px rgba(245,158,11,1),0 0 40px rgba(245,158,11,.7),0 0 60px rgba(245,158,11,.3)}}
 /* Leaflet dark theme */
 .leaflet-popup-content-wrapper{background:#0f171f!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important}
 .leaflet-popup-tip{background:#0f171f!important}
