@@ -847,6 +847,7 @@ function analyzeQuery(q,data){
   const nMatch=ql.match(/(\d+)\s*(feeder|substation|ut|bu|dt|transformer|capacity|kva)/);
   const nLimit=topMatch?(parseInt(topMatch[1])||5):botMatch?(parseInt(botMatch[1])||5):nMatch?parseInt(nMatch[1]):null;
   const wantDesc=isMax||topMatch;const wantAsc=isMin||botMatch;
+  const isSingular=!nLimit&&!ql.match(/\b(all|each|every|list|breakdown)\b/);
 
   // ===== SUPERLATIVE: which/what has the longest/shortest/highest/lowest =====
   if(isMax||isMin){
@@ -855,6 +856,7 @@ function analyzeQuery(q,data){
       const frl=feederRLMap(subset);
       const sorted=Object.entries(frl).sort((a,b)=>isMax?b[1].rl-a[1].rl:a[1].rl-b[1].rl);
       if(sorted.length){
+        if(isSingular){const[fn,d]=sorted[0];return `<span class="ai-val">${fn}</span> — ${d.rl.toFixed(2)} km (${d.bu}, ${d.fv}kV)`}
         const n=nLimit||5;
         const rows=sorted.slice(0,n).map(([fn,d],i)=>`<tr><td>${i+1}</td><td>${fn}</td><td>${d.bu}</td><td>${d.fv}kV</td><td><b>${d.rl.toFixed(2)} km</b></td></tr>`).join('');
         const word=isMax?'Longest':'Shortest';
@@ -864,29 +866,37 @@ function analyzeQuery(q,data){
     // Capacity
     if(ql.includes('capacity')||ql.includes('kva')){
       const sorted=[...subset].filter(r=>r.cap).sort((a,b)=>isMax?b.cap-a.cap:a.cap-b.cap);
+      if(isSingular&&sorted.length){const r=sorted[0];return `<span class="ai-val">${r.dt}</span> — ${r.cap} kVA (${r.bu||''}, ${r.fn||''})`}
       const n=nLimit||5;
       const rows=sorted.slice(0,n).map((r,i)=>`<tr><td>${i+1}</td><td>${r.dt}</td><td>${r.bu||''}</td><td>${r.fn||''}</td><td><b>${r.cap} kVA</b></td></tr>`).join('');
       return `<b>${isMax?'Highest':'Lowest'} Capacity DTs${subsetLabel}:</b><table><tr><th>#</th><th>DT</th><th>BU</th><th>Feeder</th><th>Cap</th></tr>${rows}</table>`;
     }
-    // DT count per BU/UT/Substation/Feeder
-    if(ql.includes('bu')){const g=grp('bu',subset);const r=isMax?g[0]:g[g.length-1];return `<b>${isMax?'Largest':'Smallest'} BU:</b> <span class="ai-val">${r[0]}</span> with <b>${fmt(r[1])}</b> DTs (${pct(r[1],st)})`}
-    if(ql.includes('substation')){const g=grp('sub',subset);const r=isMax?g[0]:g[g.length-1];return `<b>${isMax?'Largest':'Smallest'} Substation:</b> <span class="ai-val">${r[0]}</span> with <b>${fmt(r[1])}</b> DTs`}
-    if(ql.includes('ut')||ql.includes('undertaking')){const g=grp('ut',subset);const r=isMax?g[0]:g[g.length-1];return `<b>${isMax?'Largest':'Smallest'} UT:</b> <span class="ai-val">${r[0]}</span> with <b>${fmt(r[1])}</b> DTs`}
+    // BU with attribute-aware sorting
+    if(ql.includes('bu')){
+      if(ql.includes('faulty')||ql.includes('fault')){const bg={};subset.forEach(r=>{if(!r.bu)return;if(!bg[r.bu])bg[r.bu]=0;if(isFaulty(r))bg[r.bu]++});const s=Object.entries(bg).sort((a,b)=>isMax?b[1]-a[1]:a[1]-b[1]);return `<span class="ai-val">${s[0][0]}</span> — ${fmt(s[0][1])} faulty meters`}
+      if(ql.includes('unmetered')){const bg={};subset.forEach(r=>{if(!r.bu)return;if(!bg[r.bu])bg[r.bu]=0;if(r.ms==='UNMETERED')bg[r.bu]++});const s=Object.entries(bg).sort((a,b)=>isMax?b[1]-a[1]:a[1]-b[1]);return `<span class="ai-val">${s[0][0]}</span> — ${fmt(s[0][1])} unmetered DTs`}
+      if(ql.includes('disconnect')||ql.includes('not connected')){const bg={};subset.forEach(r=>{if(!r.bu)return;if(!bg[r.bu])bg[r.bu]=0;if(r.cs==='NOT CONNECTED')bg[r.bu]++});const s=Object.entries(bg).sort((a,b)=>isMax?b[1]-a[1]:a[1]-b[1]);return `<span class="ai-val">${s[0][0]}</span> — ${fmt(s[0][1])} disconnected DTs`}
+      if(ql.includes('capacity')||ql.includes('kva')){const bg={};subset.forEach(r=>{if(!r.bu)return;if(!bg[r.bu])bg[r.bu]=0;bg[r.bu]+=(r.cap||0)});const s=Object.entries(bg).sort((a,b)=>isMax?b[1]-a[1]:a[1]-b[1]);return `<span class="ai-val">${s[0][0]}</span> — ${(s[0][1]/1000).toFixed(1)} MVA total capacity`}
+      const g=grp('bu',subset);const r=isMax?g[0]:g[g.length-1];return `<span class="ai-val">${r[0]}</span> — ${fmt(r[1])} DTs (${pct(r[1],st)})`}
+    if(ql.includes('substation')){const g=grp('sub',subset);const r=isMax?g[0]:g[g.length-1];return `<span class="ai-val">${r[0]}</span> — ${fmt(r[1])} DTs`}
+    if(ql.includes('ut')||ql.includes('undertaking')){const g=grp('ut',subset);const r=isMax?g[0]:g[g.length-1];return `<span class="ai-val">${r[0]}</span> — ${fmt(r[1])} DTs`}
     // Default: longest/shortest route
     const frl=feederRLMap(subset);const sorted=Object.entries(frl).sort((a,b)=>isMax?b[1].rl-a[1].rl:a[1].rl-b[1].rl);
-    if(sorted.length){const[fn,d]=sorted[0];return `<b>${isMax?'Longest':'Shortest'} Route Feeder${subsetLabel}:</b> <span class="ai-val">${fn}</span><br>Route Length: <b>${d.rl.toFixed(2)} km</b> &middot; BU: <b>${d.bu}</b> &middot; Voltage: <b>${d.fv}kV</b>`}
+    if(sorted.length){const[fn,d]=sorted[0];return `<span class="ai-val">${fn}</span> — ${d.rl.toFixed(2)} km (${d.bu}, ${d.fv}kV)`}
   }
 
   // ===== WHICH/WHAT questions =====
   if(ql.match(/\b(which|what)\b/)){
     if(ql.includes('feeder')&&(ql.includes('route')||ql.includes('length'))){
       const frl=feederRLMap(subset);const sorted=Object.entries(frl).sort((a,b)=>b[1].rl-a[1].rl);
-      if(sorted.length){const n=nLimit||5;const rows=sorted.slice(0,n).map(([fn,d],i)=>`<tr><td>${i+1}</td><td>${fn}</td><td>${d.bu}</td><td>${d.fv}kV</td><td><b>${d.rl.toFixed(2)} km</b></td></tr>`).join('');
+      if(sorted.length){
+        if(isSingular){const[fn,d]=sorted[0];return `<span class="ai-val">${fn}</span> — ${d.rl.toFixed(2)} km (${d.bu}, ${d.fv}kV)`}
+        const n=nLimit||5;const rows=sorted.slice(0,n).map(([fn,d],i)=>`<tr><td>${i+1}</td><td>${fn}</td><td>${d.bu}</td><td>${d.fv}kV</td><td><b>${d.rl.toFixed(2)} km</b></td></tr>`).join('');
       return `<b>Feeders by Route Length${subsetLabel}:</b><table><tr><th>#</th><th>Feeder</th><th>BU</th><th>Voltage</th><th>Route (km)</th></tr>${rows}</table>`}
     }
-    if(ql.includes('bu')&&(ql.includes('most')||ql.includes('dt')||ql.includes('transformer'))){const g=grp('bu',subset);const rows=g.map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');return `<b>BU by DT Count:</b><table><tr><th>BU</th><th>DTs</th><th>Share</th></tr>${rows}</table>`}
-    if(ql.includes('bu')&&(ql.includes('faulty')||ql.includes('fault'))){const bg={};subset.forEach(r=>{if(!r.bu)return;if(!bg[r.bu])bg[r.bu]={t:0,f:0};bg[r.bu].t++;if(isFaulty(r))bg[r.bu].f++});const rows=Object.entries(bg).sort((a,b)=>b[1].f-a[1].f).map(([bu,v])=>`<tr><td>${bu}</td><td><b>${fmt(v.f)}</b></td><td>${pct(v.f,v.t)}</td><td>${fmt(v.t)}</td></tr>`).join('');return `<b>Faulty Meters by BU:</b><table><tr><th>BU</th><th>Faulty</th><th>Rate</th><th>Total</th></tr>${rows}</table>`}
-    if(ql.includes('bu')&&ql.includes('unmetered')){const bg={};subset.forEach(r=>{if(!r.bu)return;if(!bg[r.bu])bg[r.bu]={t:0,u:0};bg[r.bu].t++;if(r.ms==='UNMETERED')bg[r.bu].u++});const rows=Object.entries(bg).sort((a,b)=>b[1].u-a[1].u).map(([bu,v])=>`<tr><td>${bu}</td><td><b>${fmt(v.u)}</b></td><td>${pct(v.u,v.t)}</td><td>${fmt(v.t)}</td></tr>`).join('');return `<b>Unmetered DTs by BU:</b><table><tr><th>BU</th><th>Unmetered</th><th>Rate</th><th>Total</th></tr>${rows}</table>`}
+    if(ql.includes('bu')&&(ql.includes('most')||ql.includes('dt')||ql.includes('transformer'))){const g=grp('bu',subset);return `<span class="ai-val">${g[0][0]}</span> — ${fmt(g[0][1])} DTs (${pct(g[0][1],st)})`}
+    if(ql.includes('bu')&&(ql.includes('faulty')||ql.includes('fault'))){const bg={};subset.forEach(r=>{if(!r.bu)return;if(!bg[r.bu])bg[r.bu]={t:0,f:0};bg[r.bu].t++;if(isFaulty(r))bg[r.bu].f++});const sorted=Object.entries(bg).sort((a,b)=>b[1].f-a[1].f);return `<span class="ai-val">${sorted[0][0]}</span> — ${fmt(sorted[0][1].f)} faulty meters (${pct(sorted[0][1].f,sorted[0][1].t)})`}
+    if(ql.includes('bu')&&ql.includes('unmetered')){const bg={};subset.forEach(r=>{if(!r.bu)return;if(!bg[r.bu])bg[r.bu]={t:0,u:0};bg[r.bu].t++;if(r.ms==='UNMETERED')bg[r.bu].u++});const sorted=Object.entries(bg).sort((a,b)=>b[1].u-a[1].u);return `<span class="ai-val">${sorted[0][0]}</span> — ${fmt(sorted[0][1].u)} unmetered DTs (${pct(sorted[0][1].u,sorted[0][1].t)})`}
   }
 
   // ===== COUNT queries =====
@@ -945,7 +955,10 @@ function analyzeQuery(q,data){
     return `<b>Total Route Length${subsetLabel}:</b> <span class="ai-val">${Math.round(totalRL).toLocaleString()} km</span><br>11kV: <b>${Math.round(rl11).toLocaleString()} km</b> &middot; 33kV: <b>${Math.round(rl33).toLocaleString()} km</b><br>Unique feeders: <b>${Object.keys(frl).length}</b>`}
 
   // ===== CAPACITY =====
-  if(ql.includes('capacity')||ql.includes('kva')||ql.includes('mva')){const caps=subset.filter(r=>r.cap).map(r=>r.cap);const total=caps.reduce((a,b)=>a+b,0);const capDist={};caps.forEach(c=>{const k=c+'kVA';capDist[k]=(capDist[k]||0)+1});const rows=Object.entries(capDist).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,caps.length)}</td></tr>`).join('');return `<b>Capacity Overview${subsetLabel}:</b><br>Total: <span class="ai-val">${(total/1000).toFixed(1)} MVA</span> &middot; Avg: <b>${caps.length?(total/caps.length).toFixed(1):0} kVA</b><table><tr><th>Rating</th><th>Count</th><th>Share</th></tr>${rows}</table>`}
+  if(ql.includes('capacity')||ql.includes('kva')||ql.includes('mva')){const caps=subset.filter(r=>r.cap).map(r=>r.cap);const total=caps.reduce((a,b)=>a+b,0);
+    if(ql.includes('total'))return `<b>Total Capacity${subsetLabel}:</b> <span class="ai-val">${(total/1000).toFixed(1)} MVA</span>`;
+    if(ql.includes('breakdown')||ql.includes('distribution')){const capDist={};caps.forEach(c=>{const k=c+'kVA';capDist[k]=(capDist[k]||0)+1});const rows=Object.entries(capDist).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,caps.length)}</td></tr>`).join('');return `<b>Capacity Distribution${subsetLabel}:</b><table><tr><th>Rating</th><th>Count</th><th>Share</th></tr>${rows}</table>`}
+    return `<b>Capacity${subsetLabel}:</b> Total: <span class="ai-val">${(total/1000).toFixed(1)} MVA</span>, Avg: <b>${caps.length?(total/caps.length).toFixed(1):0} kVA</b>`}
 
   // ===== COMPARE =====
   if(ql.includes('compare')||ql.includes('comparison')){const buS={};subset.forEach(r=>{if(!r.bu)return;if(!buS[r.bu])buS[r.bu]={t:0,m:0,c:0,f:0,cap:0};const b=buS[r.bu];b.t++;if(isMetered(r))b.m++;if(r.cs==='CONNECTED')b.c++;if(isFaulty(r))b.f++;b.cap+=(r.cap||0)});const rows=Object.entries(buS).sort((a,b)=>b[1].t-a[1].t).map(([bu,v])=>`<tr><td>${bu}</td><td>${fmt(v.t)}</td><td>${pct(v.m,v.t)}</td><td>${pct(v.c,v.t)}</td><td>${fmt(v.f)}</td><td>${(v.cap/1000).toFixed(0)}MVA</td></tr>`).join('');return `<b>BU Comparison:</b><table><tr><th>BU</th><th>DTs</th><th>Metered</th><th>Connected</th><th>Faulty</th><th>Cap</th></tr>${rows}</table>`}
@@ -974,13 +987,20 @@ function analyzeQuery(q,data){
   if(ql.match(/\bdt\s*\d|find\s+\d|lookup|search\s+\d/i)){const dtNum=ql.match(/\d[\d\-\/]*/);if(dtNum){const found=data.filter(r=>String(r.dt).includes(dtNum[0]));if(!found.length)return `No DT matching "<b>${dtNum[0]}</b>"`;const rows=found.slice(0,10).map(r=>`<tr><td>${r.dt}</td><td>${r.bu||''}</td><td>${r.fn||''}</td><td>${r.cap||''}kVA</td><td>${r.ms||''}</td><td>${r.cs||''}</td></tr>`).join('');return `<b>DT Lookup "${dtNum[0]}":</b> ${found.length>10?`(showing 10 of ${found.length})`:''}<table><tr><th>DT</th><th>BU</th><th>Feeder</th><th>Cap</th><th>Meter</th><th>Conn</th></tr>${rows}</table>`}}
 
   // ===== FEEDER DETAILS =====
-  if(fnMatch){const fData=subset.filter(r=>(r.fn||'').toUpperCase()===fnMatch);const n=fData.length;if(n){const m=fData.filter(isMetered).length,c=fData.filter(r=>r.cs==='CONNECTED').length,f=fData.filter(isFaulty).length,cap=fData.reduce((s,r)=>s+(r.cap||0),0),rl=Math.max(...fData.map(r=>r.rl||0));return `<b>Feeder: ${fnMatch}</b><br>DTs: <span class="ai-val">${fmt(n)}</span> &middot; BU: <b>${fData[0].bu||''}</b><br>Metered: <b>${fmt(m)}</b> (${pct(m,n)}) &middot; Connected: <b>${fmt(c)}</b> (${pct(c,n)})<br>Faulty: <b>${fmt(f)}</b> &middot; Capacity: <b>${(cap/1000).toFixed(1)} MVA</b><br>Route Length: <b>${rl.toFixed(2)} km</b> &middot; Voltage: <b>${fData[0].fv||''}kV</b>`}}
+  if(fnMatch){const fData=subset.filter(r=>(r.fn||'').toUpperCase()===fnMatch);const n=fData.length;if(n){
+    const rl=Math.max(...fData.map(r=>r.rl||0));
+    if(ql.includes('route')||ql.includes('length'))return `<b>${fnMatch}</b> — <span class="ai-val">${rl.toFixed(2)} km</span> (${fData[0].bu||''}, ${fData[0].fv||''}kV)`;
+    if(ql.includes('capacity')||ql.includes('kva')){const cap=fData.reduce((s,r)=>s+(r.cap||0),0);return `<b>${fnMatch}</b> — <span class="ai-val">${(cap/1000).toFixed(1)} MVA</span> total capacity (${fmt(n)} DTs)`}
+    if(ql.includes('how many')||ql.includes('count'))return `<b>${fnMatch}</b> — <span class="ai-val">${fmt(n)}</span> DTs`;
+    if(ql.includes('metered')||ql.includes('meter')){const m=fData.filter(isMetered).length;return `<b>${fnMatch}</b> — ${fmt(m)} metered of ${fmt(n)} DTs (${pct(m,n)})`}
+    const m=fData.filter(isMetered).length,c=fData.filter(r=>r.cs==='CONNECTED').length;
+    return `<b>${fnMatch}</b> (${fData[0].bu||''}) — ${fmt(n)} DTs, ${pct(m,n)} metered, ${pct(c,n)} connected, ${rl.toFixed(2)} km`}}
 
   // ===== KEYWORD FALLBACK =====
   const kw={metered:'ms',unmetered:'ms',connected:'cs',disconnected:'cs',commissioned:'cos',faulty:'mfs',public:'own',private:'own',functional:'mfs'};
   for(const[w,key]of Object.entries(kw)){if(ql.includes(w)){const rows=grp(key,subset).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmt(v)}</b></td><td>${pct(v,st)}</td></tr>`).join('');return `<b>${key.toUpperCase()} Distribution${subsetLabel}:</b><table><tr><th>Status</th><th>Count</th><th>Share</th></tr>${rows}</table>`}}
 
-  return `Try questions like:<br>&bull; <b>"Which feeder has the longest route length?"</b><br>&bull; <b>"How many unmetered DTs in IKEJA?"</b><br>&bull; <b>"Top 10 feeders by route length"</b><br>&bull; <b>"Average capacity by BU"</b><br>&bull; <b>"Metering breakdown by BU"</b><br>&bull; <b>"Compare all BUs"</b><br>&bull; <b>"Summary of IKORODU"</b><br>&bull; <b>"Which BU has the most faulty meters?"</b><br>&bull; <b>"Route length breakdown by BU"</b>`;
+  return `I didn't understand that. Try:<br>&bull; "Which feeder has the longest route length?"<br>&bull; "How many unmetered DTs in IKEJA?"<br>&bull; "Top 5 feeders by DT count"<br>&bull; "Average capacity by BU"<br>&bull; "Which BU has the most faulty meters?"<br>&bull; "Compare all BUs"`;
 }
 
 function exportCSV(){
