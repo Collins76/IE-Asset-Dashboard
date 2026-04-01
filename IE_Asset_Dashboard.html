@@ -126,6 +126,8 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 /* RESPONSIVE */
 @media(max-width:1200px){.g3{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.g2,.g3{grid-template-columns:1fr}.nav-tabs{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}.filter-row{gap:4px}}
+.powered-bar{text-align:center;padding:6px 0;font-size:11.5px;letter-spacing:1.5px;color:#10b981;animation:glow-pulse 3s ease-in-out infinite;background:linear-gradient(90deg,transparent,rgba(16,185,129,.06),transparent)}
+@keyframes glow-pulse{0%,100%{opacity:.4;text-shadow:0 0 4px rgba(16,185,129,.2)}50%{opacity:1;text-shadow:0 0 12px rgba(16,185,129,.6),0 0 24px rgba(16,185,129,.3)}}
 /* Leaflet dark theme */
 .leaflet-popup-content-wrapper{background:#0f171f!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important}
 .leaflet-popup-tip{background:#0f171f!important}
@@ -158,8 +160,10 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
   </div>
 </nav>
 
+<div class="powered-bar" style="margin-top:56px">Powered by the GIS Team, Ikeja Electric</div>
+
 <!-- INLINE FILTER BAR -->
-<div class="filter-bar" id="filterBar" style="margin-top:56px">
+<div class="filter-bar" id="filterBar">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span class="fb-label">FILTERS:</span><span style="font-size:10px;color:var(--text2)">Multi-select enabled</span></div>
   <div class="filter-row">
     <div class="fb-item"><span>BU:</span><div class="ms-wrap" id="fBU"><button class="ms-btn" onclick="toggleMS('fBU')">All</button><div class="ms-panel"></div></div></div>
