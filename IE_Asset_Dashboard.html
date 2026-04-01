@@ -188,7 +188,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 <div class="page active" id="page-summary">
   <div class="kpi-grid" id="kpiGrid"></div>
   <div class="metrics-bar" id="perfMetrics"></div>
-  <div class="risk-grid" id="riskCards"></div>
+
   <div class="chart-grid g2">
     <div class="chart-box"><h4>Transformers by Business Unit</h4><div class="chart-container" id="ch_bu_bar"></div></div>
     <div class="chart-box"><h4>Asset Ownership Distribution</h4><div class="chart-container" id="ch_ownership"></div></div>
@@ -519,7 +519,7 @@ function plotStackedBar(el,data,gk,sk,sv){
 
 // ============ PAGE 1: SUMMARY ============
 function renderSummary(data){
-  renderKPIs(data);renderPerfMetrics(data);renderRiskCards(data);
+  renderKPIs(data);renderPerfMetrics(data);
   const bc=sorted(countBy(data,'bu'));
   Plotly.newPlot('ch_bu_bar',[{x:bc.map(e=>e[0]),y:bc.map(e=>e[1]),type:'bar',marker:{color:buColors(bc.map(e=>e[0])),line:{color:'rgba(255,255,255,.1)',width:1}},text:bc.map(e=>fmt(e[1])),textposition:'inside',textfont:{color:'#fff',size:14,weight:700},insidetextanchor:'middle'}],{...PL,margin:{...PL.margin,t:30}},PC);
   plotDonut('ch_ownership',data,'own');
