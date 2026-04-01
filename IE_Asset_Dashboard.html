@@ -471,7 +471,9 @@ function renderKPIs(data){
     {icon:'&#128200;',bg:'linear-gradient(135deg,#0a2535,#0d3040)',clr:'var(--accent)',val:pct(metered,t),lbl:'Meter Coverage',sub:`${fmt(metered)} of ${fmt(t)} metered`},
     {icon:'&#128279;',bg:'linear-gradient(135deg,#0a3028,#0a3d30)',clr:'var(--green)',val:pct(connected,t),lbl:'Network Availability',sub:`${fmt(connected)} connected`},
     {icon:'&#9989;',bg:'linear-gradient(135deg,#0a2a40,#0a3350)',clr:'var(--blue)',val:pct(commissioned,t),lbl:'Commissioning Rate',sub:`${fmt(commissioned)} commissioned`},
-    {icon:'&#128739;',bg:'linear-gradient(135deg,#0a3035,#0a3d40)',clr:'var(--teal)',val:totalRLfmt+' km',lbl:'Total Route Length',sub:'Combined feeder route length'}
+    {icon:'&#128739;',bg:'linear-gradient(135deg,#0a3035,#0a3d40)',clr:'var(--teal)',val:totalRLfmt+' km',lbl:'Total Route Length',sub:'Combined feeder route length'},
+    {icon:'&#9940;',bg:'linear-gradient(135deg,#301a1a,#3d2020)',clr:'var(--red)',val:fmt(unmetered),lbl:'Unmetered DTs',sub:'Revenue at risk &middot; no meter installed',badge:pct(unmetered,t),badgeClr:'var(--red)'},
+    {icon:'&#9211;',bg:'linear-gradient(135deg,#2a1a08,#352810)',clr:'var(--orange)',val:fmt(notConn),lbl:'Disconnected DTs',sub:'Currently off-grid',badge:pct(notConn,t),badgeClr:'var(--orange)'}
   ];
 
   document.getElementById('kpiGrid').innerHTML=kpis.map(k=>`
