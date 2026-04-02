@@ -103,6 +103,22 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .risk-card p{font-size:11px;color:var(--text2)}
 /* MAP */
 #mapContainer{width:100%;height:calc(100vh - 160px);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+#ovMapContainer{width:100%;height:calc(100vh - 120px);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+#ovToggleBtn{position:absolute;top:12px;right:12px;z-index:1000;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:all .2s}
+#ovToggleBtn:hover{background:rgba(16,185,129,.15);border-color:#10b981}
+#ovFilterPanel{display:none;position:absolute;top:52px;right:12px;z-index:1000;width:240px;max-height:calc(100vh - 220px);overflow-y:auto;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.3);border-radius:12px;padding:12px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.7)}
+#ovFilterPanel.show{display:block}
+#ovFilterPanel::-webkit-scrollbar{width:5px}
+#ovFilterPanel::-webkit-scrollbar-thumb{background:#1a3540;border-radius:3px}
+.ov-group{margin-bottom:12px}
+.ov-group-title{font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(16,185,129,.2)}
+.ov-item{display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:#cbd5e1;transition:opacity .15s}
+.ov-item:hover{color:#e2e8f0}
+.ov-item input[type="checkbox"]{accent-color:#10b981;width:14px;height:14px;cursor:pointer}
+.ov-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;box-shadow:0 0 4px rgba(0,0,0,.3)}
+.ov-count{margin-left:auto;font-size:10px;color:#475569;font-weight:600}
+.ov-select-all{font-size:11px;color:#10b981;cursor:pointer;margin-left:auto;font-weight:600}
+.ov-select-all:hover{text-decoration:underline}
 .map-legend{position:absolute;bottom:20px;left:20px;background:rgba(11,16,21,.92);border:1px solid var(--border);border-radius:10px;padding:12px 16px;z-index:800;font-size:12px;backdrop-filter:blur(8px)}
 .map-legend h5{color:var(--green);margin-bottom:6px;font-size:11px;text-transform:uppercase}
 .legend-item{display:flex;align-items:center;gap:8px;margin-bottom:3px}
@@ -204,6 +220,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <button class="nav-tab" data-page="metering">Metering Analytics</button>
     <button class="nav-tab" data-page="operations">Operational Status</button>
     <button class="nav-tab" data-page="map">Geospatial Map</button>
+    <button class="nav-tab" data-page="overview">IE Network Overview</button>
     <button class="nav-tab" data-page="table">Asset Data Table</button>
   </div>
   <div class="nav-right">
@@ -323,6 +340,13 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
   <div id="mapContainer"></div>
 </div>
 
+<!-- PAGE: IE NETWORK OVERVIEW MAP -->
+<div class="page" id="page-overview" style="position:relative">
+  <div id="ovMapContainer"></div>
+  <div id="ovToggleBtn" onclick="toggleOvFilter()">&#9776; Filters</div>
+  <div id="ovFilterPanel"></div>
+</div>
+
 <!-- PAGE: DATA TABLE -->
 <div class="page" id="page-table">
   <div class="table-controls">
@@ -374,6 +398,7 @@ document.querySelectorAll('.nav-tab').forEach(tab=>{
     currentPage=tab.dataset.page;
     document.getElementById('page-'+currentPage).classList.add('active');
     if(currentPage==='map'){if(!mapInitialized)initMap();else if(mapInstance){setTimeout(()=>{mapInstance.invalidateSize();renderMap(filteredData)},200)}}
+    if(currentPage==='overview'){if(!ovMapInitialized)initOverviewMap();else if(ovMapInstance){setTimeout(()=>{ovMapInstance.invalidateSize();renderOverviewMap(filteredData)},200)}}
     if(currentPage==='table')filterTable();
   });
 });
@@ -845,7 +870,110 @@ function highlightMapSug(){
   if(items[mapSugIdx])items[mapSugIdx].scrollIntoView({block:'nearest'});
 }
 
-// ============ PAGE 6: TABLE ============
+// ============ PAGE 6: IE NETWORK OVERVIEW MAP ============
+let ovMapInstance=null,ovMapInitialized=false,ovLayerGroup=null,ovMarkers=[];
+const OV_POLYGON_DOPEMU=[[6.607825864119573,3.310411061210244],[6.60600986743017,3.313259789587996],[6.605362707159212,3.314746541684698],[6.605170989618749,3.3155983160597],[6.60553375844205,3.316757186448548],[6.606222380201352,3.317829912456295],[6.60775264669697,3.320205247657619],[6.608020451196004,3.320853980543721],[6.608301129375302,3.32170385723086],[6.6082947197359,3.32236206732427],[6.608249392818651,3.325652763559834],[6.608201880441936,3.326428100544078],[6.608073449699442,3.326984641790654],[6.60745852673941,3.328073673022732],[6.60697607322162,3.328654752530017],[6.607075138639877,3.328940577380858],[6.607215546481648,3.329345686871173],[6.607427616928399,3.329980335748781],[6.607706281341548,3.33081076130892],[6.60864157108002,3.330521259431141],[6.614958227943344,3.327809047421812],[6.622827938259224,3.32482515755721],[6.622804293780018,3.324382330371496],[6.623071541585438,3.32195541498691],[6.623496318331819,3.320189226897909],[6.623541675466693,3.320004300377516],[6.623643493235638,3.319290172660565],[6.623854471419929,3.318733800454983],[6.624928197517483,3.31642706882745],[6.624938386014539,3.315460064835876],[6.625274576651606,3.31370227250726],[6.625380210594313,3.313191219972386],[6.625658215629947,3.312607358945538],[6.626300048205736,3.311975852830325],[6.626464742717501,3.311964467072665],[6.626610757902183,3.310396072347495],[6.626463219793512,3.308657709871165],[6.625583208126471,3.30765063735696],[6.625495749594668,3.307193604910212],[6.623715436414481,3.306560597308013],[6.624166142546213,3.305354506664985],[6.623764770540888,3.304176615790129],[6.622661698386239,3.303152279788475],[6.622578307308543,3.303074841666527],[6.623009432216455,3.302567664814984],[6.621975859459806,3.301935130906089],[6.621280956970034,3.30167903998608],[6.621142378409272,3.301658892378257],[6.621064114194941,3.301621928557268],[6.62077961907786,3.302081885454152],[6.620129009821382,3.30204244506217],[6.619422911636621,3.301121689577568],[6.619023433198008,3.301740183736352],[6.618590591607741,3.302120497989955],[6.618201431353661,3.302497246702521],[6.616618641071513,3.303709815573595],[6.612927221818923,3.304956985801223],[6.611605824752228,3.305329566428262],[6.610499500253427,3.30624800028871],[6.609522090467434,3.307697870390773],[6.608602198884137,3.309018520982563],[6.607825864119573,3.310411061210244]];
+
+function toggleOvFilter(){document.getElementById('ovFilterPanel').classList.toggle('show')}
+
+function initOverviewMap(){
+  if(ovMapInitialized)return;
+  ovMapInitialized=true;
+  const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OSM'});
+  const dark=L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:'Esri'});
+  const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Esri'});
+  const hot=L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',{maxZoom:19,attribution:'OSM HOT'});
+  ovMapInstance=L.map('ovMapContainer',{zoomControl:true,layers:[osm],preferCanvas:true}).setView([6.55,3.38],11);
+  ovLayerGroup=L.featureGroup().addTo(ovMapInstance);
+  L.control.layers({'OpenStreetMap':osm,'Dark Gray (Esri)':dark,'Satellite (Esri)':sat,'Humanitarian (OSM)':hot},null,{position:'bottomright',collapsed:true}).addTo(ovMapInstance);
+  // Add DOPEMU polygon overlay
+  L.polygon(OV_POLYGON_DOPEMU,{color:BU_CLR['AKOWONJO']||'#f59e0b',weight:2,fillColor:BU_CLR['AKOWONJO']||'#f59e0b',fillOpacity:0.08,dashArray:'6 4'}).addTo(ovMapInstance).bindPopup('<b style="color:#f59e0b">DOPEMU</b><br>BU: AKOWONJO<br>UT: DOPEMU');
+  // Build filter panel
+  buildOvFilters();
+  setTimeout(()=>{ovMapInstance.invalidateSize();renderOverviewMap(filteredData)},400);
+}
+
+function buildOvFilters(){
+  const panel=document.getElementById('ovFilterPanel');
+  const bus=Object.keys(BU_CLR);
+  let html='<div class="ov-group"><div style="display:flex;align-items:center"><div class="ov-group-title" style="flex:1;margin:0">Business Unit</div><span class="ov-select-all" onclick="ovToggleAll(\'bu\',true)">All</span></div>';
+  bus.forEach(bu=>{
+    const c=BU_CLR[bu];
+    const cnt=filteredData.filter(r=>r.bu===bu).length;
+    html+='<label class="ov-item"><input type="checkbox" checked data-filter="bu" value="'+bu+'" onchange="filterOverviewMarkers()"><span class="ov-dot" style="background:'+c+'"></span>'+bu+'<span class="ov-count">'+fmt(cnt)+'</span></label>';
+  });
+  html+='</div>';
+  // Metering
+  html+='<div class="ov-group"><div class="ov-group-title">Metering Status</div>';
+  ['METERED','UNMETERED'].forEach(v=>{
+    const clr=v==='METERED'?'#10b981':'#ef4444';
+    const cnt=filteredData.filter(r=>r.ms===v).length;
+    html+='<label class="ov-item"><input type="checkbox" checked data-filter="ms" value="'+v+'" onchange="filterOverviewMarkers()"><span class="ov-dot" style="background:'+clr+'"></span>'+v+'<span class="ov-count">'+fmt(cnt)+'</span></label>';
+  });
+  html+='</div>';
+  // Connection
+  html+='<div class="ov-group"><div class="ov-group-title">Connection Status</div>';
+  ['CONNECTED','NOT CONNECTED'].forEach(v=>{
+    const clr=v==='CONNECTED'?'#10b981':'#ef4444';
+    const cnt=filteredData.filter(r=>r.cs===v).length;
+    html+='<label class="ov-item"><input type="checkbox" checked data-filter="cs" value="'+v+'" onchange="filterOverviewMarkers()"><span class="ov-dot" style="background:'+clr+'"></span>'+v+'<span class="ov-count">'+fmt(cnt)+'</span></label>';
+  });
+  html+='</div>';
+  // Ownership
+  html+='<div class="ov-group"><div class="ov-group-title">Ownership</div>';
+  ['PUBLIC','PRIVATE'].forEach(v=>{
+    const clr=v==='PUBLIC'?'#06b6d4':'#8b5cf6';
+    const cnt=filteredData.filter(r=>r.own===v).length;
+    html+='<label class="ov-item"><input type="checkbox" checked data-filter="own" value="'+v+'" onchange="filterOverviewMarkers()"><span class="ov-dot" style="background:'+clr+'"></span>'+v+'<span class="ov-count">'+fmt(cnt)+'</span></label>';
+  });
+  html+='</div>';
+  panel.innerHTML=html;
+}
+
+function ovToggleAll(filter,state){
+  document.querySelectorAll('#ovFilterPanel input[data-filter="'+filter+'"]').forEach(cb=>{cb.checked=state});
+  filterOverviewMarkers();
+}
+
+function renderOverviewMap(data){
+  if(!ovMapInstance||!ovLayerGroup)return;
+  ovLayerGroup.clearLayers();
+  ovMarkers=[];
+  let count=0;
+  for(let i=0;i<data.length;i++){
+    const r=data[i];
+    const lat=parseFloat(r.lat),lng=parseFloat(r.lng);
+    if(isNaN(lat)||isNaN(lng)||lat<1||lat>15||lng<0||lng>10)continue;
+    const color=BU_CLR[r.bu]||'#94a3b8';
+    const mk=L.circleMarker([lat,lng],{radius:6,fillColor:color,fillOpacity:0.8,color:'rgba(255,255,255,.6)',weight:1,opacity:0.7,bubblingMouseEvents:false});
+    mk.on('mouseover',function(){this.setStyle({radius:10,weight:2,fillOpacity:1})});
+    mk.on('mouseout',function(){this.setStyle({radius:6,weight:1,fillOpacity:0.8})});
+    mk.bindPopup('<div style="min-width:220px"><div style="font-size:14px;font-weight:700;color:'+color+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(r.nom||'DT '+r.dt)+'</div><table style="width:100%;font-size:11px;line-height:1.7"><tr><td style="color:#7a8a9e;width:95px"><b>BU</b></td><td style="color:'+color+';font-weight:600">'+r.bu+'</td></tr><tr><td style="color:#7a8a9e"><b>UT</b></td><td>'+(r.ut||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Feeder</b></td><td>'+(r.fn||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Capacity</b></td><td><b>'+r.cap+' kVA</b></td></tr><tr><td style="color:#7a8a9e"><b>Meter</b></td><td>'+(r.ms==='METERED'?'<span style="color:#10b981">METERED</span>':'<span style="color:#ef4444">'+r.ms+'</span>')+'</td></tr><tr><td style="color:#7a8a9e"><b>Connection</b></td><td>'+(r.cs==='CONNECTED'?'<span style="color:#10b981">CONNECTED</span>':'<span style="color:#ef4444">'+r.cs+'</span>')+'</td></tr><tr><td style="color:#7a8a9e"><b>Owner</b></td><td>'+(r.own||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Lat, Long</b></td><td>'+lat.toFixed(6)+', '+lng.toFixed(6)+'</td></tr></table></div>',{maxWidth:280});
+    mk.addTo(ovLayerGroup);
+    ovMarkers.push({marker:mk,r,lat,lng});
+    count++;
+  }
+  if(count>0){try{ovMapInstance.fitBounds(ovLayerGroup.getBounds(),{padding:[40,40],maxZoom:13})}catch(e){}}
+  buildOvFilters();
+}
+
+function filterOverviewMarkers(){
+  const activeBU=new Set([...document.querySelectorAll('#ovFilterPanel input[data-filter="bu"]:checked')].map(c=>c.value));
+  const activeMS=new Set([...document.querySelectorAll('#ovFilterPanel input[data-filter="ms"]:checked')].map(c=>c.value));
+  const activeCS=new Set([...document.querySelectorAll('#ovFilterPanel input[data-filter="cs"]:checked')].map(c=>c.value));
+  const activeOWN=new Set([...document.querySelectorAll('#ovFilterPanel input[data-filter="own"]:checked')].map(c=>c.value));
+  ovMarkers.forEach(m=>{
+    const r=m.r;
+    const show=activeBU.has(r.bu)&&activeMS.has(r.ms)&&activeCS.has(r.cs)&&activeOWN.has(r.own);
+    if(show){
+      if(!ovLayerGroup.hasLayer(m.marker))ovLayerGroup.addLayer(m.marker);
+    } else {
+      if(ovLayerGroup.hasLayer(m.marker))ovLayerGroup.removeLayer(m.marker);
+    }
+  });
+}
+
+// ============ PAGE 7: TABLE ============
 const TCOLS=[
   {key:'dt',label:'DT Number',w:120},{key:'nom',label:'DT Nomenclature',w:200},{key:'bu',label:'BU',w:90},{key:'ut',label:'UT',w:90},
   {key:'sub',label:'Substation',w:160},{key:'fn',label:'Feeder',w:170},{key:'rl',label:'Route (km)',w:90},{key:'cap',label:'Cap (kVA)',w:80},
@@ -1338,6 +1466,7 @@ function generatePDF(){
 function renderAll(){
   renderSummary(filteredData);renderNetwork(filteredData);renderMetering(filteredData);renderOperations(filteredData);
   if(mapInitialized&&mapInstance)renderMap(filteredData);
+  if(ovMapInitialized&&ovMapInstance)renderOverviewMap(filteredData);
   filterTable();
 }
 
