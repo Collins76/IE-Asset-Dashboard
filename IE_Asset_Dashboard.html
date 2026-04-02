@@ -880,12 +880,19 @@ const OV_LAYER_DEFS=[
   {id:'iss',name:'Injection Substations',color:'#f59e0b',icon:'&#9733;'},
   {id:'pipeline',name:'Pipeline',color:'#8b5cf6',icon:'&#9472;'},
   {id:'33kv',name:'33kV Network',color:'#06b6d4',icon:'&#9670;'},
+  {id:'33kv_lines',name:'33kV Feeder Routes',color:'#06b6d4',icon:'&#8212;'},
   {id:'11kv_shomolu',name:'11kV Shomolu',color:'#ef4444',icon:'&#9679;'},
+  {id:'11kv_shomolu_lines',name:'11kV Shomolu Routes',color:'#ef4444',icon:'&#8212;'},
   {id:'11kv_oshodi',name:'11kV Oshodi',color:'#8b5cf6',icon:'&#9679;'},
+  {id:'11kv_oshodi_lines',name:'11kV Oshodi Routes',color:'#8b5cf6',icon:'&#8212;'},
   {id:'11kv_ikorodu',name:'11kV Ikorodu',color:'#10b981',icon:'&#9679;'},
+  {id:'11kv_ikorodu_lines',name:'11kV Ikorodu Routes',color:'#10b981',icon:'&#8212;'},
   {id:'11kv_ikeja',name:'11kV Ikeja',color:'#00d4ff',icon:'&#9679;'},
+  {id:'11kv_ikeja_lines',name:'11kV Ikeja Routes',color:'#00d4ff',icon:'&#8212;'},
   {id:'11kv_akowonjo',name:'11kV Akowonjo',color:'#f59e0b',icon:'&#9679;'},
-  {id:'11kv_abuleegba',name:'11kV Abule Egba',color:'#f97316',icon:'&#9679;'}
+  {id:'11kv_akowonjo_lines',name:'11kV Akowonjo Routes',color:'#f59e0b',icon:'&#8212;'},
+  {id:'11kv_abuleegba',name:'11kV Abule Egba',color:'#f97316',icon:'&#9679;'},
+  {id:'11kv_abuleegba_lines',name:'11kV Abule Egba Routes',color:'#f97316',icon:'&#8212;'}
 ];
 
 function toggleOvFilter(){document.getElementById('ovFilterPanel').classList.toggle('show')}
@@ -916,7 +923,8 @@ function initOverviewMap(){
         style:function(feature){
           const c=feature.properties._color||def.color;
           const gt=feature.geometry.type;
-          if(gt==='LineString')return {color:c,weight:3,opacity:0.8};
+          const isRoute=feature.properties._type==='feeder_route';
+          if(gt==='LineString')return {color:c,weight:isRoute?3:2,opacity:isRoute?0.9:0.7};
           if(gt==='Polygon'||gt==='MultiPolygon'){const isLagos=feature.properties._layer==='lagos';return {color:c,weight:isLagos?4:2,fillColor:c,fillOpacity:isLagos?0.12:0.06,dashArray:isLagos?'':'6 4'}}
           return {color:c,weight:2};
         },
