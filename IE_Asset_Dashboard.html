@@ -1220,7 +1220,7 @@ function init(){
   const fnMap={};
   ASSET_DATA.forEach(r=>{
     if(!r.fn)return;
-    const key=r.fn.toUpperCase().replace(/[\s\-]+/g,'-');
+    const key=r.fn.toUpperCase().replace(/[\s\-]+/g,'');
     if(!fnMap[key])fnMap[key]=r.fn;
     r.fn=fnMap[key];
   });
