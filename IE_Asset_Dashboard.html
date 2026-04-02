@@ -22,8 +22,16 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .nav-tab:hover{background:var(--bg3);color:var(--text)}
 .nav-tab.active{background:var(--green);color:#000;font-weight:600}
 .nav-right{display:flex;gap:8px;align-items:center}
-.btn{padding:6px 12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:5px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px;transition:.2s}
-.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn{padding:6px 12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:5px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px;transition:all .2s ease;position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;top:50%;left:50%;width:0;height:0;background:rgba(255,255,255,.08);border-radius:50%;transform:translate(-50%,-50%);transition:width .4s ease,height .4s ease}
+.btn:hover{transform:translateY(-2px);box-shadow:0 4px 15px rgba(0,0,0,.3)}
+.btn:hover::after{width:200px;height:200px}
+.btn:active{transform:translateY(0) scale(.95);transition:all .05s ease}
+.btn-csv:hover{border-color:var(--green)!important;color:var(--green)!important;box-shadow:0 4px 15px rgba(16,185,129,.2)}
+.btn-pdf:hover{border-color:var(--accent)!important;color:var(--accent)!important;box-shadow:0 4px 15px rgba(6,182,212,.2)}
+.btn-reset:hover{border-color:var(--red)!important;color:var(--red)!important;box-shadow:0 4px 15px rgba(239,68,68,.2)}
+@keyframes btn-pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.15)}70%{box-shadow:0 0 0 8px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+@keyframes spin-reset{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 /* INLINE FILTER BAR */
 .filter-bar{background:linear-gradient(180deg,#0c141c,#0e1820);border-top:2px solid var(--red);border-bottom:1px solid var(--border);padding:12px 24px 10px;display:flex;flex-direction:column;gap:8px}
 .filter-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px 12px;align-items:center}
@@ -199,9 +207,9 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <button class="nav-tab" data-page="table">Asset Data Table</button>
   </div>
   <div class="nav-right">
-    <button class="btn" onclick="exportCSV()" style="border-color:var(--green);color:var(--green)">&#128196; CSV</button>
-    <button class="btn" onclick="generatePDF()" style="border-color:var(--accent);color:var(--accent)">&#128196; PDF Report</button>
-    <button class="btn" onclick="refreshDashboard()" style="color:var(--red);border-color:var(--red)">&#8635; Reset</button>
+    <button class="btn btn-csv" onclick="exportCSV()" style="border-color:var(--green);color:var(--green)">&#128196; CSV</button>
+    <button class="btn btn-pdf" onclick="generatePDF()" style="border-color:var(--accent);color:var(--accent)">&#128196; PDF Report</button>
+    <button class="btn btn-reset" onclick="resetDashboardFast(this)" style="color:var(--red);border-color:var(--red)"><span class="reset-icon">&#8635;</span> Reset</button>
   </div>
 </nav>
 
@@ -499,15 +507,23 @@ function applyLive(){
   _applyTimer=setTimeout(()=>{renderAll()},150);
 }
 
-function refreshDashboard(){
+function resetDashboardFast(btnEl){
+  // Instant visual feedback: spin the icon
+  const icon=btnEl.querySelector('.reset-icon');
+  if(icon){icon.style.display='inline-block';icon.style.animation='spin-reset .5s ease'}
+  btnEl.style.animation='btn-pulse .4s ease';
+  // Reset filters immediately
   document.querySelectorAll('.ms-panel input[type="checkbox"]').forEach(cb=>{cb.checked=cb.value===''});
   document.querySelectorAll('.ms-btn').forEach(btn=>{btn.textContent='All'});
-  // Show all options again
   document.querySelectorAll('.ms-panel label').forEach(l=>{l.style.display='';l.style.opacity='1'});
+  // Clear search inputs
+  document.querySelectorAll('.ms-search').forEach(s=>{s.value=''});
   filteredData=[...ASSET_DATA];
   document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
-  renderAll();
+  // Debounce heavy rendering
+  setTimeout(()=>{renderAll();if(icon)icon.style.animation='';btnEl.style.animation=''},200);
 }
+function refreshDashboard(){resetDashboardFast(document.querySelector('.btn-reset'))}
 
 // ============ KPI CARDS ============
 function renderKPIs(data){
