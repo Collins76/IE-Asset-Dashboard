@@ -1216,6 +1216,14 @@ function renderAll(){
 
 // ============ INIT ============
 function init(){
+  // Normalize feeder names: merge case/hyphen duplicates into one canonical form
+  const fnMap={};
+  ASSET_DATA.forEach(r=>{
+    if(!r.fn)return;
+    const key=r.fn.toUpperCase().replace(/[\s\-]+/g,'-');
+    if(!fnMap[key])fnMap[key]=r.fn;
+    r.fn=fnMap[key];
+  });
   filteredData=[...ASSET_DATA];
   populateFilters();renderTableHeader();
   document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
