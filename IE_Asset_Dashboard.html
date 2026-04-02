@@ -875,7 +875,7 @@ function highlightMapSug(){
 let ovMapInstance=null,ovMapInitialized=false;
 const OV_LAYERS={};
 const OV_LAYER_DEFS=[
-  {id:'lagos',name:'Lagos Boundary',color:'#94a3b8',icon:'&#127758;'},
+  {id:'lagos',name:'Lagos Boundary',color:'#f43f5e',icon:'&#127758;'},
   {id:'tcn',name:'TCN Stations',color:'#ef4444',icon:'&#9889;'},
   {id:'iss',name:'Injection Substations',color:'#f59e0b',icon:'&#9733;'},
   {id:'pipeline',name:'Pipeline',color:'#8b5cf6',icon:'&#9472;'},
@@ -917,7 +917,7 @@ function initOverviewMap(){
           const c=feature.properties._color||def.color;
           const gt=feature.geometry.type;
           if(gt==='LineString')return {color:c,weight:3,opacity:0.8};
-          if(gt==='Polygon'||gt==='MultiPolygon')return {color:c,weight:2,fillColor:c,fillOpacity:0.06,dashArray:'6 4'};
+          if(gt==='Polygon'||gt==='MultiPolygon'){const isLagos=feature.properties._layer==='lagos';return {color:c,weight:isLagos?4:2,fillColor:c,fillOpacity:isLagos?0.12:0.06,dashArray:isLagos?'':'6 4'}}
           return {color:c,weight:2};
         },
         onEachFeature:function(feature,layer){
