@@ -1221,7 +1221,11 @@ function init(){
   ASSET_DATA.forEach(r=>{
     if(!r.fn)return;
     const key=r.fn.toUpperCase().replace(/[\s\-]+/g,'');
-    if(!fnMap[key])fnMap[key]=r.fn;
+    if(!fnMap[key]||r.fn.length>fnMap[key].length)fnMap[key]=r.fn;
+  });
+  ASSET_DATA.forEach(r=>{
+    if(!r.fn)return;
+    const key=r.fn.toUpperCase().replace(/[\s\-]+/g,'');
     r.fn=fnMap[key];
   });
   filteredData=[...ASSET_DATA];
