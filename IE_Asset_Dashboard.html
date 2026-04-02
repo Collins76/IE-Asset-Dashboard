@@ -672,14 +672,18 @@ function renderMap(data){
     const lat=parseFloat(r.lat);const lng=parseFloat(r.lng);
     if(isNaN(lat)||isNaN(lng)||lat<1||lat>15||lng<0||lng>10)continue;
     const color=BU_CLR[r.bu]||'#94a3b8';
-    L.circleMarker([lat,lng],{
-      radius:5,
+    const marker=L.circleMarker([lat,lng],{
+      radius:7,
       fillColor:color,
       fillOpacity:0.85,
       color:'#fff',
       weight:0.8,
-      opacity:0.5
-    }).bindPopup(`<div style="min-width:220px">
+      opacity:0.5,
+      bubblingMouseEvents:false
+    });
+    marker.on('mouseover',function(){this.setStyle({radius:11,weight:2,fillOpacity:1})});
+    marker.on('mouseout',function(){this.setStyle({radius:7,weight:0.8,fillOpacity:0.85})});
+    marker.bindPopup(`<div style="min-width:220px">
       <div style="font-size:14px;font-weight:700;color:${color};border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">${r.nom||'DT '+r.dt}</div>
       <table style="width:100%;font-size:11px;line-height:1.7">
         <tr><td style="color:#7a8a9e;width:95px"><b>BU</b></td><td style="color:${color};font-weight:600">${r.bu}</td></tr>
@@ -694,7 +698,8 @@ function renderMap(data){
         <tr><td style="color:#7a8a9e"><b>Customer</b></td><td>${r.cust||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>Address</b></td><td style="word-break:break-all">${r.addr||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>Lat, Long</b></td><td>${lat.toFixed(6)}, ${lng.toFixed(6)}</td></tr>
-      </table></div>`,{maxWidth:280}).addTo(mapLayerGroup);
+      </table></div>`,{maxWidth:280});
+    marker.addTo(mapLayerGroup);
     count++;
   }
 
