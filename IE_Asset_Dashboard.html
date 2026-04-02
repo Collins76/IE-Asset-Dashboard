@@ -680,7 +680,7 @@ function renderMap(data){
       weight:0.8,
       opacity:0.5
     }).bindPopup(`<div style="min-width:220px">
-      <div style="font-size:14px;font-weight:700;color:${color};border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">DT ${r.dt}</div>
+      <div style="font-size:14px;font-weight:700;color:${color};border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">${r.nom||'DT '+r.dt}</div>
       <table style="width:100%;font-size:11px;line-height:1.7">
         <tr><td style="color:#7a8a9e;width:95px"><b>BU</b></td><td style="color:${color};font-weight:600">${r.bu}</td></tr>
         <tr><td style="color:#7a8a9e"><b>UT</b></td><td>${r.ut||'-'}</td></tr>
@@ -693,6 +693,7 @@ function renderMap(data){
         <tr><td style="color:#7a8a9e"><b>SRT Band</b></td><td>${r.srt||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>Customer</b></td><td>${r.cust||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>Address</b></td><td style="word-break:break-all">${r.addr||'-'}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>Lat, Long</b></td><td>${lat.toFixed(6)}, ${lng.toFixed(6)}</td></tr>
       </table></div>`,{maxWidth:280}).addTo(mapLayerGroup);
     count++;
   }
