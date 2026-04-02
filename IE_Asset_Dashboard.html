@@ -46,15 +46,16 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ms-search:focus{border-color:#10b981;box-shadow:0 0 6px rgba(16,185,129,.25)}
 .ms-search::placeholder{color:#475569}
 #mapSearchWrap{position:absolute;top:12px;left:55px;z-index:1000;display:flex;flex-direction:column;gap:0}
-#mapSearch{width:320px;padding:8px 12px;background:rgba(14,24,32,.95);border:1px solid #1a3540;border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(0,0,0,.5)}
-#mapSearch:focus{border-color:#10b981;box-shadow:0 0 8px rgba(16,185,129,.3)}
-#mapSearch::placeholder{color:#475569}
-#mapSuggestions{display:none;width:320px;max-height:220px;overflow-y:auto;background:rgba(14,24,32,.97);border:1px solid #1a3540;border-top:none;border-radius:0 0 8px 8px;backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.6)}
+#mapSearch{width:350px;padding:10px 14px 10px 36px;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.4);border-radius:10px;color:#e2e8f0;font-size:13px;font-weight:500;outline:none;backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(0,0,0,.6);transition:border-color .15s,box-shadow .15s}
+#mapSearch:focus{border-color:#10b981;box-shadow:0 0 12px rgba(16,185,129,.4)}
+#mapSearch::placeholder{color:#64748b;font-weight:400}
+#mapSearchIcon{position:absolute;top:13px;left:67px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
+#mapSuggestions{display:none;width:350px;max-height:240px;overflow-y:auto;background:rgba(11,18,26,.97);border:2px solid rgba(16,185,129,.3);border-top:1px solid rgba(16,185,129,.15);border-radius:0 0 10px 10px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.7)}
 #mapSuggestions.show{display:block}
-#mapSuggestions .sug-item{padding:7px 12px;font-size:11.5px;color:#cbd5e1;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);display:flex;flex-direction:column;gap:1px}
-#mapSuggestions .sug-item:hover,#mapSuggestions .sug-item.active{background:rgba(16,185,129,.12);color:#e2e8f0}
-#mapSuggestions .sug-item .sug-name{font-weight:600;color:#10b981;font-size:12px}
-#mapSuggestions .sug-item .sug-detail{font-size:10px;color:#64748b}
+#mapSuggestions .sug-item{padding:8px 14px;font-size:12px;color:#cbd5e1;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);display:flex;flex-direction:column;gap:2px;transition:background .1s}
+#mapSuggestions .sug-item:hover,#mapSuggestions .sug-item.active{background:rgba(16,185,129,.15);color:#e2e8f0}
+#mapSuggestions .sug-item .sug-name{font-weight:600;color:#10b981;font-size:12.5px}
+#mapSuggestions .sug-item .sug-detail{font-size:10.5px;color:#64748b}
 #mapSuggestions::-webkit-scrollbar{width:5px}
 #mapSuggestions::-webkit-scrollbar-thumb{background:#1a3540;border-radius:3px}
 .fb-count{display:flex;align-items:center;justify-content:flex-end;font-size:13px;color:var(--text2);grid-column:-2/-1}
@@ -310,7 +311,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 
 <!-- PAGE: GEOSPATIAL MAP -->
 <div class="page" id="page-map" style="position:relative">
-  <div id="mapSearchWrap"><input type="text" id="mapSearch" placeholder="Search DT by name, feeder, customer, address..." oninput="searchMap()" onkeydown="mapSugNav(event)" autocomplete="off"><div id="mapSuggestions"></div></div>
+  <div id="mapSearchWrap"><span id="mapSearchIcon">&#128269;</span><input type="text" id="mapSearch" placeholder="Search DT by name, feeder, customer..." oninput="searchMapDebounced()" onkeydown="mapSugNav(event)" autocomplete="off"><div id="mapSuggestions"></div></div>
   <div id="mapContainer"></div>
 </div>
 
@@ -487,11 +488,15 @@ function updateFilterOptions(){
   });
 }
 
+let _applyTimer=null;
 function applyLive(){
+  // Immediate: update count and filter options (fast)
   filteredData=getFilteredData();
   document.getElementById('showCount').textContent=fmt(filteredData.length);
   updateFilterOptions();
-  renderAll();
+  // Debounce: heavy chart re-rendering
+  if(_applyTimer)clearTimeout(_applyTimer);
+  _applyTimer=setTimeout(()=>{renderAll()},150);
 }
 
 function refreshDashboard(){
@@ -732,6 +737,7 @@ function renderMap(data){
     count++;
   }
 
+  buildMapIndex();
   console.log('Map: '+count+' markers added from '+data.length+' records');
 
   if(count>0){
@@ -752,45 +758,55 @@ function renderMap(data){
   } else {leg.innerHTML=html}
 }
 
-// ============ MAP SEARCH ============
+// ============ MAP SEARCH (optimized with pre-built index) ============
 let mapSugIdx=-1;
+let _mapSearchTimer=null;
+// Pre-build lowercase search strings when markers are created
+function buildMapIndex(){
+  mapMarkers.forEach(m=>{
+    const r=m.r;
+    m._s=[r.nom,r.fn,r.cust,r.addr,r.bu,r.ut,r.sub,String(r.dt)].map(v=>(v||'').toLowerCase()).join('|');
+  });
+}
+function searchMapDebounced(){
+  if(_mapSearchTimer)clearTimeout(_mapSearchTimer);
+  _mapSearchTimer=setTimeout(searchMap,80);
+}
 function searchMap(){
   const q=(document.getElementById('mapSearch').value||'').toLowerCase().trim();
   const sugBox=document.getElementById('mapSuggestions');
   mapSugIdx=-1;
   if(!q||q.length<2||!mapMarkers.length){
-    sugBox.classList.remove('show');
+    sugBox.classList.remove('show');sugBox._matches=[];
     mapMarkers.forEach(m=>{m.marker.setStyle({opacity:0.5,fillOpacity:0.85})});
     return;
   }
   const matches=[];
-  mapMarkers.forEach(m=>{
-    const r=m.r;
-    const match=[r.nom,r.fn,r.cust,r.addr,r.bu,r.ut,r.sub,String(r.dt)].some(v=>(v||'').toLowerCase().includes(q));
-    if(match){
+  for(let i=0;i<mapMarkers.length;i++){
+    const m=mapMarkers[i];
+    if(m._s.includes(q)){
       m.marker.setStyle({opacity:1,fillOpacity:1});
       if(matches.length<15)matches.push(m);
     } else {
       m.marker.setStyle({opacity:0.15,fillOpacity:0.15});
     }
-  });
+  }
   if(matches.length){
-    sugBox.innerHTML=matches.map((m,i)=>{
-      const r=m.r;
-      return '<div class="sug-item" data-idx="'+i+'" onmousedown="selectMapSug('+i+')" onmouseover="mapSugIdx='+i+';highlightMapSug()"><div class="sug-name">'+(r.nom||'DT '+r.dt)+'</div><div class="sug-detail">'+[r.bu,r.fn,r.cap+'kVA'].filter(Boolean).join(' · ')+'</div></div>';
-    }).join('');
-    sugBox.classList.add('show');
-    sugBox._matches=matches;
+    const html=[];
+    for(let i=0;i<matches.length;i++){
+      const r=matches[i].r;
+      html.push('<div class="sug-item" data-idx="'+i+'" onmousedown="selectMapSug('+i+')" onmouseover="mapSugIdx='+i+';highlightMapSug()"><div class="sug-name">'+(r.nom||'DT '+r.dt)+'</div><div class="sug-detail">'+r.bu+' · '+(r.fn||'')+' · '+r.cap+'kVA</div></div>');
+    }
+    sugBox.innerHTML=html.join('');
+    sugBox.classList.add('show');sugBox._matches=matches;
   } else {
     sugBox.innerHTML='<div class="sug-item"><div class="sug-detail">No results found</div></div>';
-    sugBox.classList.add('show');
-    sugBox._matches=[];
+    sugBox.classList.add('show');sugBox._matches=[];
   }
 }
 function selectMapSug(idx){
   const sugBox=document.getElementById('mapSuggestions');
-  const matches=sugBox._matches||[];
-  if(!matches[idx])return;
+  const matches=sugBox._matches||[];if(!matches[idx])return;
   const m=matches[idx];
   document.getElementById('mapSearch').value=m.r.nom||'DT '+m.r.dt;
   sugBox.classList.remove('show');
