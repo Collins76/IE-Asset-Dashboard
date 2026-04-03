@@ -104,8 +104,21 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 /* MAP */
 #mapContainer{width:100%;height:calc(100vh - 160px);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
 #ovMapContainer{width:100%;height:calc(100vh - 120px);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-#ovToggleBtn{position:absolute;top:12px;right:12px;z-index:1000;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:all .2s}
-#ovToggleBtn:hover{background:rgba(16,185,129,.15);border-color:#10b981}
+#ovToggleBtn{position:absolute;top:12px;right:12px;z-index:1000;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:all .2s;overflow:hidden}
+#ovToggleBtn:hover{background:rgba(16,185,129,.15);border-color:#10b981;transform:translateY(-1px);box-shadow:0 6px 24px rgba(16,185,129,.25)}
+#ovToggleBtn .star{position:absolute;width:3px;height:3px;background:#10b981;border-radius:50%;animation:shoot 1.8s linear infinite;opacity:0}
+#ovToggleBtn .star:nth-child(1){top:20%;left:10%;animation-delay:0s}
+#ovToggleBtn .star:nth-child(2){top:60%;left:80%;animation-delay:.4s}
+#ovToggleBtn .star:nth-child(3){top:40%;left:50%;animation-delay:.8s}
+#ovToggleBtn .star:nth-child(4){top:80%;left:20%;animation-delay:1.2s}
+#ovToggleBtn .star:nth-child(5){top:10%;left:70%;animation-delay:1.5s}
+@keyframes shoot{0%{opacity:0;transform:translate(0,0) scale(0)}20%{opacity:1;transform:translate(8px,-8px) scale(1.5)}40%{opacity:1;transform:translate(16px,-16px) scale(1);box-shadow:0 0 6px #10b981,0 0 12px rgba(16,185,129,.5)}100%{opacity:0;transform:translate(30px,-30px) scale(0)}}
+.ov-group-hdr{display:flex;align-items:center;gap:6px;padding:6px 0 4px;margin-top:8px;border-top:1px solid rgba(255,255,255,.06);cursor:pointer;user-select:none}
+.ov-group-hdr:first-child{margin-top:0;border-top:none}
+.ov-group-hdr .ov-arrow{font-size:8px;color:#475569;transition:transform .2s}
+.ov-group-hdr.collapsed .ov-arrow{transform:rotate(-90deg)}
+.ov-group-body{overflow:hidden;transition:max-height .3s ease}
+.ov-group-hdr.collapsed+.ov-group-body{max-height:0!important;overflow:hidden}
 #ovFilterPanel{display:none;position:absolute;top:52px;right:12px;z-index:1000;width:240px;max-height:calc(100vh - 220px);overflow-y:auto;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.3);border-radius:12px;padding:12px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.7)}
 #ovFilterPanel.show{display:block}
 #ovFilterPanel::-webkit-scrollbar{width:5px}
@@ -343,7 +356,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 <!-- PAGE: IE NETWORK OVERVIEW MAP -->
 <div class="page" id="page-overview" style="position:relative">
   <div id="ovMapContainer"></div>
-  <div id="ovToggleBtn" onclick="toggleOvFilter()">&#9776; Filters</div>
+  <div id="ovToggleBtn" onclick="toggleOvFilter()"><span class="star"></span><span class="star"></span><span class="star"></span><span class="star"></span><span class="star"></span>&#9776; Filters</div>
   <div id="ovFilterPanel"></div>
 </div>
 
@@ -875,24 +888,29 @@ function highlightMapSug(){
 let ovMapInstance=null,ovMapInitialized=false;
 const OV_LAYERS={};
 const OV_LAYER_DEFS=[
-  {id:'lagos',name:'Lagos Boundary',color:'#f43f5e',icon:'&#127758;'},
-  {id:'tcn',name:'TCN Stations',color:'#ef4444',icon:'&#9889;'},
-  {id:'iss',name:'Injection Substations',color:'#f59e0b',icon:'&#9733;'},
-  {id:'pipeline',name:'Pipeline',color:'#8b5cf6',icon:'&#9472;'},
-  {id:'33kv',name:'33kV Network',color:'#06b6d4',icon:'&#9670;'},
-  {id:'33kv_lines',name:'33kV Feeder Routes',color:'#06b6d4',icon:'&#8212;'},
-  {id:'11kv_shomolu',name:'11kV Shomolu',color:'#ef4444',icon:'&#9679;'},
-  {id:'11kv_shomolu_lines',name:'11kV Shomolu Routes',color:'#ef4444',icon:'&#8212;'},
-  {id:'11kv_oshodi',name:'11kV Oshodi',color:'#8b5cf6',icon:'&#9679;'},
-  {id:'11kv_oshodi_lines',name:'11kV Oshodi Routes',color:'#8b5cf6',icon:'&#8212;'},
-  {id:'11kv_ikorodu',name:'11kV Ikorodu',color:'#10b981',icon:'&#9679;'},
-  {id:'11kv_ikorodu_lines',name:'11kV Ikorodu Routes',color:'#10b981',icon:'&#8212;'},
-  {id:'11kv_ikeja',name:'11kV Ikeja',color:'#00d4ff',icon:'&#9679;'},
-  {id:'11kv_ikeja_lines',name:'11kV Ikeja Routes',color:'#00d4ff',icon:'&#8212;'},
-  {id:'11kv_akowonjo',name:'11kV Akowonjo',color:'#f59e0b',icon:'&#9679;'},
-  {id:'11kv_akowonjo_lines',name:'11kV Akowonjo Routes',color:'#f59e0b',icon:'&#8212;'},
-  {id:'11kv_abuleegba',name:'11kV Abule Egba',color:'#f97316',icon:'&#9679;'},
-  {id:'11kv_abuleegba_lines',name:'11kV Abule Egba Routes',color:'#f97316',icon:'&#8212;'}
+  {id:'lagos',name:'Lagos Boundary',color:'#f43f5e',icon:'&#127758;',group:'Boundaries'},
+  {id:'ut_boundary',name:'UT Boundaries',color:'#94a3b8',icon:'&#9634;',group:'Boundaries'},
+  {id:'tcn',name:'TCN Stations',color:'#ef4444',icon:'&#9889;',group:'Infrastructure'},
+  {id:'iss',name:'Injection Substations',color:'#f59e0b',icon:'&#9733;',group:'Infrastructure'},
+  {id:'33kv_lines',name:'33kV Feeder Lines',color:'#06b6d4',icon:'&#8212;',group:'33kV Network'},
+  {id:'11kv_dss_shomolu',name:'11kV Shomolu DSS',color:'#ef4444',icon:'&#9679;',group:'11kV Shomolu'},
+  {id:'33kv_dss_shomolu',name:'33kV Shomolu DSS',color:'#ef4444',icon:'&#9670;',group:'11kV Shomolu'},
+  {id:'ht_lines_shomolu',name:'HT Lines Shomolu',color:'#ef4444',icon:'&#8212;',group:'11kV Shomolu'},
+  {id:'11kv_dss_oshodi',name:'11kV Oshodi DSS',color:'#8b5cf6',icon:'&#9679;',group:'11kV Oshodi'},
+  {id:'33kv_dss_oshodi',name:'33kV Oshodi DSS',color:'#8b5cf6',icon:'&#9670;',group:'11kV Oshodi'},
+  {id:'ht_lines_oshodi',name:'HT Lines Oshodi',color:'#8b5cf6',icon:'&#8212;',group:'11kV Oshodi'},
+  {id:'11kv_dss_ikorodu',name:'11kV Ikorodu DSS',color:'#10b981',icon:'&#9679;',group:'11kV Ikorodu'},
+  {id:'33kv_dss_ikorodu',name:'33kV Ikorodu DSS',color:'#10b981',icon:'&#9670;',group:'11kV Ikorodu'},
+  {id:'ht_lines_ikorodu',name:'HT Lines Ikorodu',color:'#10b981',icon:'&#8212;',group:'11kV Ikorodu'},
+  {id:'11kv_dss_ikeja',name:'11kV Ikeja DSS',color:'#00d4ff',icon:'&#9679;',group:'11kV Ikeja'},
+  {id:'33kv_dss_ikeja',name:'33kV Ikeja DSS',color:'#00d4ff',icon:'&#9670;',group:'11kV Ikeja'},
+  {id:'ht_lines_ikeja',name:'HT Lines Ikeja',color:'#00d4ff',icon:'&#8212;',group:'11kV Ikeja'},
+  {id:'11kv_dss_akowonjo',name:'11kV Akowonjo DSS',color:'#f59e0b',icon:'&#9679;',group:'11kV Akowonjo'},
+  {id:'33kv_dss_akowonjo',name:'33kV Akowonjo DSS',color:'#f59e0b',icon:'&#9670;',group:'11kV Akowonjo'},
+  {id:'ht_lines_akowonjo',name:'HT Lines Akowonjo',color:'#f59e0b',icon:'&#8212;',group:'11kV Akowonjo'},
+  {id:'11kv_dss_abule_egba',name:'11kV Abule Egba DSS',color:'#f97316',icon:'&#9679;',group:'11kV Abule Egba'},
+  {id:'33kv_dss_abule_egba',name:'33kV Abule Egba DSS',color:'#f97316',icon:'&#9670;',group:'11kV Abule Egba'},
+  {id:'ht_lines_abule_egba',name:'HT Lines Abule Egba',color:'#f97316',icon:'&#8212;',group:'11kV Abule Egba'}
 ];
 
 function toggleOvFilter(){document.getElementById('ovFilterPanel').classList.toggle('show')}
@@ -951,11 +969,25 @@ function buildOvFilters(){
   const panel=document.getElementById('ovFilterPanel');
   let total=0;
   let html='<div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08)">&#127760; Network Layers</div>';
+  // Group layers
+  const groups={};
   OV_LAYER_DEFS.forEach(def=>{
-    const info=OV_LAYERS[def.id];
-    if(!info)return;
-    total+=info.count;
-    html+='<label class="ov-item"><input type="checkbox" checked data-layer="'+def.id+'" onchange="toggleOvLayer(this)"><span class="ov-dot" style="background:'+def.color+'"></span>'+def.icon+' '+def.name+'<span class="ov-count">'+fmt(info.count)+'</span></label>';
+    const g=def.group||'Other';
+    if(!groups[g])groups[g]=[];
+    groups[g].push(def);
+  });
+  Object.entries(groups).forEach(([gname,defs])=>{
+    let gCount=0;
+    let items='';
+    defs.forEach(def=>{
+      const info=OV_LAYERS[def.id];
+      if(!info)return;
+      gCount+=info.count;total+=info.count;
+      items+='<label class="ov-item"><input type="checkbox" checked data-layer="'+def.id+'" onchange="toggleOvLayer(this)"><span class="ov-dot" style="background:'+def.color+'"></span>'+def.icon+' '+def.name+'<span class="ov-count">'+fmt(info.count)+'</span></label>';
+    });
+    if(!items)return;
+    html+='<div class="ov-group-hdr" onclick="this.classList.toggle(\'collapsed\')"><span class="ov-arrow">&#9660;</span><span class="ov-group-title" style="flex:1;margin:0;font-size:11px">'+gname+'</span><span class="ov-count">'+fmt(gCount)+'</span></div>';
+    html+='<div class="ov-group-body" style="max-height:500px">'+items+'</div>';
   });
   html+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:#475569;text-align:center">'+fmt(total)+' features &middot; '+Object.keys(OV_LAYERS).length+' layers</div>';
   panel.innerHTML=html;
