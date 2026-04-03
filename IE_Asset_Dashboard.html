@@ -1002,13 +1002,13 @@ function initOverviewMap(){
           if(def.id==='ut_boundary'&&p.name){
             layer.bindTooltip(p.name,{permanent:true,direction:'center',className:'ut-label',opacity:0.85});
           }
-          let popup='<div style="min-width:200px;max-width:280px"><div style="font-size:14px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(p.name||'Unknown')+'</div>';
+          let popup='<div style="min-width:220px;max-width:450px"><div style="font-size:14px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(p.name||'Unknown')+'</div>';
           popup+='<div style="font-size:10px;color:#475569;margin-bottom:4px">'+def.name+'</div>';
           popup+='<table style="width:100%;font-size:11px;line-height:1.7">';
           const show=['BU','BU_NAME','UT_NAME','FEEDER_NAME','Feeder_Nam','CAPACITY','Capacity','OWNERSHIP','Ownership','ADDRESS','Addresses','METERING_STATUS','Metering_S','Metering Status','CONNECTION_STATUS','Connection','Connection Status','COMMISSIONING_STATUS','Commission','Commissioning Status','MAINTENANCE','Maintenanc','DISCONNECTION_STATUS','Disconnect','Disconnection Status','INJECTION','TOTAL CAP','POWER TRANSFORMER','VOLTAGE__RATIO','NUMBER OF FEEDER','OPERATING_CAPACITY','DECIMAL_DEGREE_LAT','DECIMAL_DEGREE_LONG','LAT1','LONG1','LAT_DEC','LONG_DEC','Coordinates__LAT_','Coordinates__LONG_','Coordinates (LAT)','Coordinates (LONG)'];
           show.forEach(k=>{if(p[k]&&p[k]!=='&lt;Null&gt;'&&p[k]!=='<Null>')popup+='<tr><td style="color:#7a8a9e;width:100px;vertical-align:top"><b>'+k.replace(/_/g,' ')+'</b></td><td>'+p[k]+'</td></tr>'});
           popup+='</table></div>';
-          layer.bindPopup(popup,{maxWidth:300});
+          layer.bindPopup(popup,{maxWidth:500,autoPanPadding:[20,20]});
         }
       }).addTo(ovMapInstance);
       OV_LAYERS[def.id]={layer:layerGrp,count:features.length,visible:true};
