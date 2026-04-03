@@ -35,15 +35,46 @@ LAYERS = [
     ('Abule Egba HT Feeder Lines.geojson', 'ht_lines_abule_egba', 'HT Lines Abule Egba', '#f97316', 'ABULE EGBA'),
 ]
 
-KEEP_FIELDS = {
-    'BU_NAME', 'UT_NAME', 'DSS_NAME', 'FED_NAME', 'FEEDER_NAME', 'DT_CODE',
-    'CAPACITY', 'OWNERSHIP', 'INSTALATION_POSITION', 'METERING_STATUS',
-    'METER_NUMBER', 'COMMUNICATION_STATUS', 'COMMISSIONING_STATUS',
-    'MAINTENANCE', 'DISCONNECTION_STATUS', 'ADDRESS',
-    'DECIMAL_DEGREE_LAT', 'DECIMAL_DEGREE_LONG',
-    'INJECTION', 'TOTAL CAP', 'POWER TRANSFORMER', 'VOLTAGE__RATIO',
-    'NUMBER OF FEEDER', 'OPERATING_CAPACITY',
+# Normalize field name variants to standard keys
+FIELD_MAP = {
+    # Standard key -> list of source field name variants
+    'BU_NAME': ['BU_NAME', 'BU', 'Bu'],
+    'UT_NAME': ['UT_NAME', 'New_UT_Nam', 'UT'],
+    'DSS_NAME': ['DSS_NAME'],
+    'FED_NAME': ['FED_NAME'],
+    'FEEDER_NAME': ['FEEDER_NAME', 'Feeder_Nam', 'Feeder_Name', 'FEEDER_NAM'],
+    'DT_CODE': ['UNIQUE_NOM', 'CIS_DT_NAM', 'DT_CODE'],
+    'CAPACITY': ['CAPACITY', 'Capacity'],
+    'OWNERSHIP': ['OWNERSHIP', 'Ownership'],
+    'INSTALL_POS': ['INSTALATION_POSITION', 'Installati', 'Installation', 'INSTALATIO', 'INSTL_POSI'],
+    'METERING': ['METERING_STATUS', 'Metering_S', 'Metering Status', 'METERING__'],
+    'METER_NO': ['METER_NUMBER', 'Meter_Numb', 'Meter_Number', 'METER_NUMB'],
+    'CONNECTION': ['CONNECTION', 'Connection', 'Connection Status', 'CONNECTION_STATUS', 'COMMUNICATION_STATUS', 'COMMUNICAT'],
+    'COMMISSION': ['COMMISSIONING_STATUS', 'Commission', 'Commissioning Status', 'COMMISSION'],
+    'MAINTENANCE': ['MAINTENANCE', 'Maintenanc', 'MAINTENANC'],
+    'STATUS': ['DISCONNECTION_STATUS', 'Disconnect', 'Disconnection Status', 'DISCONNECT'],
+    'ADDRESS': ['ADDRESS', 'Addresses', 'Address'],
+    'LAT': ['DECIMAL_DEGREE_LAT', 'LAT1', 'LAT_DEC', 'Coordinates__LAT_', 'Coordinates (LAT)', 'DECIMAL_DE'],
+    'LONG': ['DECIMAL_DEGREE_LONG', 'LONG1', 'LONG_DEC', 'Coordinates__LONG_', 'Coordinates (LONG)', 'DECIMAL__1'],
+    'INJECTION': ['INJECTION'],
+    'TOTAL_CAP': ['TOTAL CAP'],
+    'POWER_TX': ['POWER TRANSFORMER'],
+    'VOLT_RATIO': ['VOLTAGE__RATIO'],
+    'NUM_FEEDER': ['NUMBER OF FEEDER'],
+    'OP_CAPACITY': ['OPERATING_CAPACITY'],
+    'CIS_DT': ['CIS_DT_Num', 'CIS_ACCOUNT_NUMBER'],
+    'STATE': ['STATE'],
 }
+
+def normalize_props(parsed):
+    """Map variant field names to standard keys."""
+    result = {}
+    for std_key, variants in FIELD_MAP.items():
+        for v in variants:
+            if v in parsed and parsed[v] and str(parsed[v]).lower() not in ('', '<null>', '&lt;null&gt;', 'null', 'n/a'):
+                result[std_key] = parsed[v]
+                break
+    return result
 
 
 def parse_html_rows(desc_html):
@@ -94,23 +125,30 @@ def main():
             desc_html = orig_props.get('description', '')
             parsed = parse_html_rows(desc_html)
 
+            # Normalize all field names
+            norm = normalize_props(parsed)
+
             # Build proper name based on layer type
             name = orig_name
             is_dss = 'dss' in layer_id
             is_ht = 'ht_lines' in layer_id
 
             if is_dss:
-                # For DSS: use FEEDER_NAME-DSS_NAME or FEEDER_NAME-Name
-                feeder = parsed.get('FEEDER_NAME', '')
-                dss_name = parsed.get('DSS_NAME', orig_name)
-                if feeder and dss_name:
-                    name = feeder + '-' + dss_name
-                elif feeder:
-                    name = feeder + '-' + orig_name
-                elif dss_name:
-                    name = dss_name
+                # Prefer UNIQUE_NOM/DT_CODE if available (full nomenclature)
+                unique_nom = norm.get('DT_CODE', '')
+                if unique_nom and '-' in unique_nom:
+                    name = unique_nom
+                else:
+                    # Build from FEEDER_NAME + DSS_NAME
+                    feeder = norm.get('FEEDER_NAME', '') or parsed.get('FEEDER_NAME', '') or parsed.get('Feeder_Nam', '')
+                    dss_name = norm.get('DSS_NAME', '') or parsed.get('DSS_NAME', orig_name)
+                    if feeder and dss_name:
+                        name = feeder + '-' + dss_name
+                    elif feeder:
+                        name = feeder + '-' + orig_name
+                    elif dss_name:
+                        name = dss_name
             elif is_ht:
-                # For HT Lines: use full feeder nomenclature from FED_NAME
                 fed_name = parsed.get('FED_NAME', orig_name)
                 name = fed_name if fed_name else orig_name
 
@@ -118,9 +156,9 @@ def main():
             if bu_key:
                 new_props['_bu'] = bu_key
 
-            # Add useful parsed fields
-            for k, v in parsed.items():
-                if k in KEEP_FIELDS and len(str(v)) < 200:
+            # Add all normalized fields
+            for k, v in norm.items():
+                if len(str(v)) < 200:
                     new_props[k] = v
 
             new_geom = {
