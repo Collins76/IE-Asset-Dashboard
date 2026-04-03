@@ -132,6 +132,19 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ov-count{margin-left:auto;font-size:10px;color:#475569;font-weight:600}
 .ov-select-all{font-size:11px;color:#10b981;cursor:pointer;margin-left:auto;font-weight:600}
 .ov-select-all:hover{text-decoration:underline}
+#ovSearchWrap{position:absolute;top:12px;left:55px;z-index:1000;display:flex;flex-direction:column}
+.ov-search-icon{position:absolute;top:11px;left:12px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
+#ovSearch{width:320px;padding:10px 14px 10px 34px;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.4);border-radius:10px;color:#e2e8f0;font-size:13px;font-weight:500;outline:none;backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(0,0,0,.6);transition:border-color .15s,box-shadow .15s}
+#ovSearch:focus{border-color:#10b981;box-shadow:0 0 12px rgba(16,185,129,.4)}
+#ovSearch::placeholder{color:#64748b;font-weight:400}
+#ovSuggestions{display:none;width:320px;max-height:240px;overflow-y:auto;background:rgba(11,18,26,.97);border:2px solid rgba(16,185,129,.3);border-top:1px solid rgba(16,185,129,.15);border-radius:0 0 10px 10px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.7)}
+#ovSuggestions.show{display:block}
+#ovSuggestions .sug-item{padding:8px 14px;font-size:12px;color:#cbd5e1;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);display:flex;flex-direction:column;gap:2px;transition:background .1s}
+#ovSuggestions .sug-item:hover,#ovSuggestions .sug-item.active{background:rgba(16,185,129,.15);color:#e2e8f0}
+#ovSuggestions .sug-item .sug-name{font-weight:600;color:#10b981;font-size:12.5px}
+#ovSuggestions .sug-item .sug-detail{font-size:10.5px;color:#64748b}
+#ovSuggestions::-webkit-scrollbar{width:5px}
+#ovSuggestions::-webkit-scrollbar-thumb{background:#1a3540;border-radius:3px}
 .map-legend{position:absolute;bottom:20px;left:20px;background:rgba(11,16,21,.92);border:1px solid var(--border);border-radius:10px;padding:12px 16px;z-index:800;font-size:12px;backdrop-filter:blur(8px)}
 .map-legend h5{color:var(--green);margin-bottom:6px;font-size:11px;text-transform:uppercase}
 .legend-item{display:flex;align-items:center;gap:8px;margin-bottom:3px}
@@ -355,6 +368,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 
 <!-- PAGE: IE NETWORK OVERVIEW MAP -->
 <div class="page" id="page-overview" style="position:relative">
+  <div id="ovSearchWrap"><span class="ov-search-icon">&#128269;</span><input type="text" id="ovSearch" placeholder="Search network features..." oninput="ovSearchDebounced()" onkeydown="ovSugNav(event)" autocomplete="off"><div id="ovSuggestions"></div></div>
   <div id="ovMapContainer"></div>
   <div id="ovToggleBtn" onclick="toggleOvFilter()"><span class="star"></span><span class="star"></span><span class="star"></span><span class="star"></span><span class="star"></span>&#9776; Filters</div>
   <div id="ovFilterPanel"></div>
@@ -913,6 +927,17 @@ const OV_LAYER_DEFS=[
   {id:'ht_lines_abule_egba',name:'HT Lines Abule Egba',color:'#f97316',icon:'&#8212;',group:'11kV Abule Egba'}
 ];
 
+// UT boundary distinct colors (hue-spaced for 54 UTs)
+const UT_COLORS=[];
+for(let i=0;i<60;i++){UT_COLORS.push('hsl('+(i*137.508%360)+',65%,55%)')}
+const _utColorMap={};
+let _utIdx=0;
+function getUtColor(name){if(!_utColorMap[name])_utColorMap[name]=UT_COLORS[_utIdx++%UT_COLORS.length];return _utColorMap[name]}
+
+// Overview search state
+let _ovSearchTimer=null,ovSugIdx=-1;
+const ovSearchableFeatures=[];
+
 function toggleOvFilter(){document.getElementById('ovFilterPanel').classList.toggle('show')}
 
 function initOverviewMap(){
@@ -939,16 +964,22 @@ function initOverviewMap(){
           return mk;
         },
         style:function(feature){
-          const c=feature.properties._color||def.color;
           const gt=feature.geometry.type;
-          const isRoute=feature.properties._type==='feeder_route';
-          if(gt==='LineString')return {color:c,weight:isRoute?3:2,opacity:isRoute?0.9:0.7};
-          if(gt==='Polygon'||gt==='MultiPolygon'){const isLagos=feature.properties._layer==='lagos';return {color:c,weight:isLagos?4:2,fillColor:c,fillOpacity:isLagos?0.12:0.06,dashArray:isLagos?'':'6 4'}}
+          const lid=feature.properties._layer;
+          const isLagos=lid==='lagos';
+          const isUT=lid==='ut_boundary';
+          let c=feature.properties._color||def.color;
+          if(isUT){c=getUtColor(feature.properties.name||'');feature.properties._color=c}
+          if(gt==='LineString'||gt==='MultiLineString')return {color:c,weight:3,opacity:0.8};
+          if(gt==='Polygon'||gt==='MultiPolygon')return {color:c,weight:isLagos?4:isUT?3:2,fillColor:c,fillOpacity:isLagos?0.12:isUT?0.15:0.06,dashArray:isLagos?'':isUT?'':'6 4'};
           return {color:c,weight:2};
         },
         onEachFeature:function(feature,layer){
           const p=feature.properties;
           const c=p._color||def.color;
+          // Store for search
+          const searchStr=[p.name||'',p.BU||'',p.UT_NAME||'',p.FEEDER_NAME||p.Feeder_Nam||'',p._bu||'',def.name].join('|').toLowerCase();
+          ovSearchableFeatures.push({layer:layer,name:p.name||'',detail:def.name,bu:p._bu||p.BU||'',color:c,search:searchStr});
           let popup='<div style="min-width:200px;max-width:280px"><div style="font-size:14px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(p.name||'Unknown')+'</div>';
           popup+='<div style="font-size:10px;color:#475569;margin-bottom:4px">'+def.name+'</div>';
           popup+='<table style="width:100%;font-size:11px;line-height:1.7">';
@@ -1007,8 +1038,71 @@ function toggleOvLayer(cb){
 }
 
 function renderOverviewMap(){
-  // Overview map is self-contained with its own data; no-op for dashboard filter sync
   if(ovMapInstance)ovMapInstance.invalidateSize();
+}
+
+// ============ OVERVIEW MAP SEARCH ============
+function ovSearchDebounced(){
+  if(_ovSearchTimer)clearTimeout(_ovSearchTimer);
+  _ovSearchTimer=setTimeout(ovSearch,100);
+}
+function ovSearch(){
+  const q=(document.getElementById('ovSearch').value||'').toLowerCase().trim();
+  const sugBox=document.getElementById('ovSuggestions');
+  ovSugIdx=-1;
+  if(!q||q.length<2||!ovSearchableFeatures.length){
+    sugBox.classList.remove('show');sugBox._matches=[];
+    return;
+  }
+  const matches=[];
+  for(let i=0;i<ovSearchableFeatures.length;i++){
+    if(ovSearchableFeatures[i].search.includes(q)){
+      if(matches.length<20)matches.push(ovSearchableFeatures[i]);
+    }
+  }
+  if(matches.length){
+    const html=[];
+    for(let i=0;i<matches.length;i++){
+      const m=matches[i];
+      html.push('<div class="sug-item" data-idx="'+i+'" onmousedown="selectOvSug('+i+')" onmouseover="ovSugIdx='+i+';highlightOvSug()"><div class="sug-name" style="color:'+m.color+'">'+(m.name||'Unknown')+'</div><div class="sug-detail">'+m.detail+(m.bu?' · '+m.bu:'')+'</div></div>');
+    }
+    sugBox.innerHTML=html.join('');
+    sugBox.classList.add('show');sugBox._matches=matches;
+  } else {
+    sugBox.innerHTML='<div class="sug-item"><div class="sug-detail">No results found</div></div>';
+    sugBox.classList.add('show');sugBox._matches=[];
+  }
+}
+function selectOvSug(idx){
+  const sugBox=document.getElementById('ovSuggestions');
+  const matches=sugBox._matches||[];if(!matches[idx])return;
+  const m=matches[idx];
+  document.getElementById('ovSearch').value=m.name;
+  sugBox.classList.remove('show');
+  // Zoom to selected feature
+  const layer=m.layer;
+  if(layer&&ovMapInstance){
+    if(layer.getBounds){
+      ovMapInstance.fitBounds(layer.getBounds(),{padding:[60,60],maxZoom:16});
+    } else if(layer.getLatLng){
+      ovMapInstance.setView(layer.getLatLng(),16);
+    }
+    layer.openPopup();
+  }
+}
+function ovSugNav(e){
+  const sugBox=document.getElementById('ovSuggestions');
+  const matches=sugBox._matches||[];
+  if(!matches.length||!sugBox.classList.contains('show'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();ovSugIdx=Math.min(ovSugIdx+1,matches.length-1);highlightOvSug()}
+  else if(e.key==='ArrowUp'){e.preventDefault();ovSugIdx=Math.max(ovSugIdx-1,0);highlightOvSug()}
+  else if(e.key==='Enter'&&ovSugIdx>=0){e.preventDefault();selectOvSug(ovSugIdx)}
+  else if(e.key==='Escape'){sugBox.classList.remove('show')}
+}
+function highlightOvSug(){
+  const items=document.querySelectorAll('#ovSuggestions .sug-item');
+  items.forEach((el,i)=>{el.classList.toggle('active',i===ovSugIdx)});
+  if(items[ovSugIdx])items[ovSugIdx].scrollIntoView({block:'nearest'});
 }
 
 // ============ PAGE 7: TABLE ============
