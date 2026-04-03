@@ -132,6 +132,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ov-count{margin-left:auto;font-size:10px;color:#475569;font-weight:600}
 .ov-select-all{font-size:11px;color:#10b981;cursor:pointer;margin-left:auto;font-weight:600}
 .ov-select-all:hover{text-decoration:underline}
+.ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:10px!important;font-weight:700!important;color:rgba(255,255,255,.7)!important;text-shadow:0 0 4px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.7),1px 1px 2px rgba(0,0,0,.8)!important;letter-spacing:.5px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
 #ovSearchWrap{position:absolute;top:12px;left:55px;z-index:1000;display:flex;flex-direction:column}
 .ov-search-icon{position:absolute;top:11px;left:12px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
 #ovSearch{width:320px;padding:10px 14px 10px 34px;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.4);border-radius:10px;color:#e2e8f0;font-size:13px;font-weight:500;outline:none;backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(0,0,0,.6);transition:border-color .15s,box-shadow .15s}
@@ -980,6 +981,10 @@ function initOverviewMap(){
           // Store for search
           const searchStr=[p.name||'',p.BU||'',p.UT_NAME||'',p.FEEDER_NAME||p.Feeder_Nam||'',p._bu||'',def.name].join('|').toLowerCase();
           ovSearchableFeatures.push({layer:layer,name:p.name||'',detail:def.name,bu:p._bu||p.BU||'',color:c,search:searchStr});
+          // Add permanent label for UT boundaries
+          if(def.id==='ut_boundary'&&p.name){
+            layer.bindTooltip(p.name,{permanent:true,direction:'center',className:'ut-label',opacity:0.85});
+          }
           let popup='<div style="min-width:200px;max-width:280px"><div style="font-size:14px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(p.name||'Unknown')+'</div>';
           popup+='<div style="font-size:10px;color:#475569;margin-bottom:4px">'+def.name+'</div>';
           popup+='<table style="width:100%;font-size:11px;line-height:1.7">';
