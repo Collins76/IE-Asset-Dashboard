@@ -999,7 +999,7 @@ function initOverviewMap(){
 function buildOvFilters(){
   const panel=document.getElementById('ovFilterPanel');
   let total=0;
-  let html='<div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08)">&#127760; Network Layers</div>';
+  let html='<div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08)"><span style="font-size:14px;font-weight:700;color:#e2e8f0;flex:1">&#127760; Network Layers</span><button onclick="ovSelectAll(true)" style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#10b981;font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;cursor:pointer;margin-right:4px">All On</button><button onclick="ovSelectAll(false)" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444;font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;cursor:pointer">All Off</button></div>';
   // Group layers
   const groups={};
   OV_LAYER_DEFS.forEach(def=>{
@@ -1035,6 +1035,15 @@ function toggleOvLayer(cb){
     if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
     info.visible=false;
   }
+}
+function ovSelectAll(on){
+  document.querySelectorAll('#ovFilterPanel input[data-layer]').forEach(cb=>{
+    cb.checked=on;
+    const info=OV_LAYERS[cb.dataset.layer];
+    if(!info||!ovMapInstance)return;
+    if(on){if(!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);info.visible=true}
+    else{if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);info.visible=false}
+  });
 }
 
 function renderOverviewMap(){

@@ -1,10 +1,10 @@
 """
 Build ie_network_overview.js from GeoJSON files.
-Strips unnecessary properties, reduces coordinate precision, extracts useful
-attributes from HTML descriptions, and tags each feature with _layer and _color.
+Parses HTML description tables row-by-row, extracts key fields,
+builds proper nomenclature names for DSS and HT lines.
 """
-import json, os, re, html
-from collections import Counter, defaultdict
+import json, os, re, html as htmlmod
+from collections import Counter
 
 SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_geojson_temp', 'GeoJSON Files')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ie_network_overview.js')
@@ -35,22 +35,31 @@ LAYERS = [
     ('Abule Egba HT Feeder Lines.geojson', 'ht_lines_abule_egba', 'HT Lines Abule Egba', '#f97316', 'ABULE EGBA'),
 ]
 
+KEEP_FIELDS = {
+    'BU_NAME', 'UT_NAME', 'DSS_NAME', 'FED_NAME', 'FEEDER_NAME', 'DT_CODE',
+    'CAPACITY', 'OWNERSHIP', 'INSTALATION_POSITION', 'METERING_STATUS',
+    'METER_NUMBER', 'COMMUNICATION_STATUS', 'COMMISSIONING_STATUS',
+    'MAINTENANCE', 'DISCONNECTION_STATUS', 'ADDRESS',
+    'DECIMAL_DEGREE_LAT', 'DECIMAL_DEGREE_LONG',
+    'INJECTION', 'TOTAL CAP', 'POWER TRANSFORMER', 'VOLTAGE__RATIO',
+    'NUMBER OF FEEDER', 'OPERATING_CAPACITY',
+}
 
-def parse_html_desc(desc_html):
+
+def parse_html_rows(desc_html):
+    """Parse HTML description using row-based extraction (correct order)."""
     if not desc_html:
         return {}
-    txt = html.unescape(str(desc_html))
-    tds = re.findall(r'<td[^>]*>(.*?)</td>', txt, re.DOTALL | re.IGNORECASE)
-    clean = [re.sub(r'<[^>]+>', '', td).strip() for td in tds]
+    txt = htmlmod.unescape(str(desc_html))
+    rows = re.findall(r'<tr[^>]*>(.*?)</tr>', txt, re.DOTALL | re.IGNORECASE)
     props = {}
-    i = 0
-    while i < len(clean) - 1:
-        key = clean[i].strip()
-        val = clean[i + 1].strip()
-        if key and val and key != val and not key.startswith('SHAPE'):
-            if val.lower() not in ('null', '<null>', '&lt;null&gt;', '', 'polygon', 'point', 'polyline'):
+    for row in rows:
+        tds = re.findall(r'<td[^>]*>(.*?)</td>', row, re.DOTALL | re.IGNORECASE)
+        clean = [re.sub(r'<[^>]+>', '', td).strip() for td in tds]
+        if len(clean) == 2:
+            key, val = clean[0], clean[1]
+            if key and val and val.lower() not in ('', '<null>', '&lt;null&gt;', 'null'):
                 props[key] = val
-        i += 2
     return props
 
 
@@ -81,15 +90,37 @@ def main():
         for ft in features:
             geom = ft.get('geometry', {})
             orig_props = ft.get('properties', {})
-            name = orig_props.get('Name', '') or ''
+            orig_name = orig_props.get('Name', '') or ''
             desc_html = orig_props.get('description', '')
-            parsed = parse_html_desc(desc_html)
+            parsed = parse_html_rows(desc_html)
+
+            # Build proper name based on layer type
+            name = orig_name
+            is_dss = 'dss' in layer_id
+            is_ht = 'ht_lines' in layer_id
+
+            if is_dss:
+                # For DSS: use FEEDER_NAME-DSS_NAME or FEEDER_NAME-Name
+                feeder = parsed.get('FEEDER_NAME', '')
+                dss_name = parsed.get('DSS_NAME', orig_name)
+                if feeder and dss_name:
+                    name = feeder + '-' + dss_name
+                elif feeder:
+                    name = feeder + '-' + orig_name
+                elif dss_name:
+                    name = dss_name
+            elif is_ht:
+                # For HT Lines: use full feeder nomenclature from FED_NAME
+                fed_name = parsed.get('FED_NAME', orig_name)
+                name = fed_name if fed_name else orig_name
 
             new_props = {'name': name, '_layer': layer_id, '_color': color}
             if bu_key:
                 new_props['_bu'] = bu_key
+
+            # Add useful parsed fields
             for k, v in parsed.items():
-                if len(str(v)) < 200:
+                if k in KEEP_FIELDS and len(str(v)) < 200:
                     new_props[k] = v
 
             new_geom = {
