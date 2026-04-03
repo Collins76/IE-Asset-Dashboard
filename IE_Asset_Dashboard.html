@@ -957,8 +957,22 @@ function initOverviewMap(){
       if(!features.length)return;
       const layerGrp=L.geoJSON({type:'FeatureCollection',features:features},{
         pointToLayer:function(feature,latlng){
-          const c=feature.properties._color||def.color;
-          const r=def.id==='tcn'?9:def.id==='iss'?7:5;
+          const c=def.color;
+          const lid=def.id;
+          // TCN: large star marker
+          if(lid==='tcn'){
+            return L.marker(latlng,{icon:L.divIcon({className:'',html:'<svg width="20" height="20"><polygon points="10,0 12.5,7 20,7 14,11.5 16,19 10,14 4,19 6,11.5 0,7 7.5,7" fill="'+c+'" stroke="#fff" stroke-width="1"/></svg>',iconSize:[20,20],iconAnchor:[10,10]})});
+          }
+          // ISS: pentagon/star outline
+          if(lid==='iss'){
+            return L.marker(latlng,{icon:L.divIcon({className:'',html:'<svg width="16" height="16"><polygon points="8,0 10,6 16,6 11,9.5 13,16 8,12 3,16 5,9.5 0,6 6,6" fill="'+c+'" stroke="#fff" stroke-width="1"/></svg>',iconSize:[16,16],iconAnchor:[8,8]})});
+          }
+          // 33kV DSS: diamond
+          if(lid.startsWith('33kv_dss')){
+            return L.marker(latlng,{icon:L.divIcon({className:'',html:'<svg width="14" height="14"><rect x="3" y="3" width="8" height="8" rx="1" transform="rotate(45 7 7)" fill="'+c+'" stroke="#fff" stroke-width="1"/></svg>',iconSize:[14,14],iconAnchor:[7,7]})});
+          }
+          // 11kV DSS: circle (default)
+          const r=5;
           const mk=L.circleMarker(latlng,{radius:r,fillColor:c,fillOpacity:0.85,color:'#fff',weight:1.5,opacity:0.8,bubblingMouseEvents:false});
           mk.on('mouseover',function(){this.setStyle({radius:r+4,weight:2,fillOpacity:1})});
           mk.on('mouseout',function(){this.setStyle({radius:r,weight:1.5,fillOpacity:0.85})});
@@ -969,9 +983,12 @@ function initOverviewMap(){
           const lid=feature.properties._layer;
           const isLagos=lid==='lagos';
           const isUT=lid==='ut_boundary';
-          let c=feature.properties._color||def.color;
+          let c=def.color;
           if(isUT){c=getUtColor(feature.properties.name||'');feature.properties._color=c}
-          if(gt==='LineString'||gt==='MultiLineString')return {color:c,weight:3,opacity:0.8};
+          if(gt==='LineString'||gt==='MultiLineString'){
+            const isHT=lid.startsWith('ht_lines');
+            return {color:c,weight:isHT?3:2,opacity:0.8,dashArray:isHT?'8 5':''};
+          }
           if(gt==='Polygon'||gt==='MultiPolygon')return {color:c,weight:isLagos?4:isUT?3:2,fillColor:c,fillOpacity:isLagos?0.12:isUT?0.15:0.06,dashArray:isLagos?'':isUT?'':'6 4'};
           return {color:c,weight:2};
         },
