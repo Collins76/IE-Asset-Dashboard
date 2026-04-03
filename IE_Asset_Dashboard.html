@@ -128,7 +128,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ov-item{display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:#cbd5e1;transition:opacity .15s}
 .ov-item:hover{color:#e2e8f0}
 .ov-item input[type="checkbox"]{accent-color:#10b981;width:14px;height:14px;cursor:pointer}
-.ov-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;box-shadow:0 0 4px rgba(0,0,0,.3)}
+.ov-dot{width:14px;height:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center}
 .ov-count{margin-left:auto;font-size:10px;color:#475569;font-weight:600}
 .ov-select-all{font-size:11px;color:#10b981;cursor:pointer;margin-left:auto;font-weight:600}
 .ov-select-all:hover{text-decoration:underline}
@@ -903,29 +903,29 @@ function highlightMapSug(){
 let ovMapInstance=null,ovMapInitialized=false;
 const OV_LAYERS={};
 const OV_LAYER_DEFS=[
-  {id:'lagos',name:'Lagos Boundary',color:'#f43f5e',icon:'&#127758;',group:'Boundaries'},
-  {id:'ut_boundary',name:'UT Boundaries',color:'#94a3b8',icon:'&#9645;',group:'Boundaries'},
-  {id:'tcn',name:'TCN Stations',color:'#fbbf24',icon:'&#9889;',group:'Infrastructure'},
-  {id:'iss',name:'Injection Substations',color:'#22d3ee',icon:'&#9733;',group:'Infrastructure'},
-  {id:'33kv_lines',name:'33kV Feeder Lines',color:'#38bdf8',icon:'&#10140;',group:'33kV Network'},
-  {id:'11kv_dss_shomolu',name:'11kV Shomolu DSS',color:'#fb7185',icon:'&#9679;',group:'11kV Shomolu'},
-  {id:'33kv_dss_shomolu',name:'33kV Shomolu DSS',color:'#e11d48',icon:'&#9670;',group:'11kV Shomolu'},
-  {id:'ht_lines_shomolu',name:'HT Lines Shomolu',color:'#fda4af',icon:'&#126;&#126;',group:'11kV Shomolu'},
-  {id:'11kv_dss_oshodi',name:'11kV Oshodi DSS',color:'#a78bfa',icon:'&#9679;',group:'11kV Oshodi'},
-  {id:'33kv_dss_oshodi',name:'33kV Oshodi DSS',color:'#7c3aed',icon:'&#9670;',group:'11kV Oshodi'},
-  {id:'ht_lines_oshodi',name:'HT Lines Oshodi',color:'#c4b5fd',icon:'&#126;&#126;',group:'11kV Oshodi'},
-  {id:'11kv_dss_ikorodu',name:'11kV Ikorodu DSS',color:'#34d399',icon:'&#9679;',group:'11kV Ikorodu'},
-  {id:'33kv_dss_ikorodu',name:'33kV Ikorodu DSS',color:'#059669',icon:'&#9670;',group:'11kV Ikorodu'},
-  {id:'ht_lines_ikorodu',name:'HT Lines Ikorodu',color:'#6ee7b7',icon:'&#126;&#126;',group:'11kV Ikorodu'},
-  {id:'11kv_dss_ikeja',name:'11kV Ikeja DSS',color:'#22d3ee',icon:'&#9679;',group:'11kV Ikeja'},
-  {id:'33kv_dss_ikeja',name:'33kV Ikeja DSS',color:'#0891b2',icon:'&#9670;',group:'11kV Ikeja'},
-  {id:'ht_lines_ikeja',name:'HT Lines Ikeja',color:'#67e8f9',icon:'&#126;&#126;',group:'11kV Ikeja'},
-  {id:'11kv_dss_akowonjo',name:'11kV Akowonjo DSS',color:'#fbbf24',icon:'&#9679;',group:'11kV Akowonjo'},
-  {id:'33kv_dss_akowonjo',name:'33kV Akowonjo DSS',color:'#d97706',icon:'&#9670;',group:'11kV Akowonjo'},
-  {id:'ht_lines_akowonjo',name:'HT Lines Akowonjo',color:'#fcd34d',icon:'&#126;&#126;',group:'11kV Akowonjo'},
-  {id:'11kv_dss_abule_egba',name:'11kV Abule Egba DSS',color:'#fb923c',icon:'&#9679;',group:'11kV Abule Egba'},
-  {id:'33kv_dss_abule_egba',name:'33kV Abule Egba DSS',color:'#c2410c',icon:'&#9670;',group:'11kV Abule Egba'},
-  {id:'ht_lines_abule_egba',name:'HT Lines Abule Egba',color:'#fdba74',icon:'&#126;&#126;',group:'11kV Abule Egba'}
+  {id:'lagos',name:'Lagos Boundary',color:'#f43f5e',group:'Boundaries'},
+  {id:'ut_boundary',name:'UT Boundaries',color:'#94a3b8',group:'Boundaries'},
+  {id:'tcn',name:'TCN Stations',color:'#facc15',group:'Infrastructure'},
+  {id:'iss',name:'Injection Substations',color:'#2dd4bf',group:'Infrastructure'},
+  {id:'33kv_lines',name:'33kV Feeder Lines',color:'#38bdf8',group:'33kV Network'},
+  {id:'11kv_dss_shomolu',name:'11kV Shomolu DSS',color:'#fb7185',group:'11kV Shomolu'},
+  {id:'33kv_dss_shomolu',name:'33kV Shomolu DSS',color:'#be123c',group:'11kV Shomolu'},
+  {id:'ht_lines_shomolu',name:'HT Lines Shomolu',color:'#fecdd3',group:'11kV Shomolu'},
+  {id:'11kv_dss_oshodi',name:'11kV Oshodi DSS',color:'#a78bfa',group:'11kV Oshodi'},
+  {id:'33kv_dss_oshodi',name:'33kV Oshodi DSS',color:'#6d28d9',group:'11kV Oshodi'},
+  {id:'ht_lines_oshodi',name:'HT Lines Oshodi',color:'#ddd6fe',group:'11kV Oshodi'},
+  {id:'11kv_dss_ikorodu',name:'11kV Ikorodu DSS',color:'#34d399',group:'11kV Ikorodu'},
+  {id:'33kv_dss_ikorodu',name:'33kV Ikorodu DSS',color:'#047857',group:'11kV Ikorodu'},
+  {id:'ht_lines_ikorodu',name:'HT Lines Ikorodu',color:'#a7f3d0',group:'11kV Ikorodu'},
+  {id:'11kv_dss_ikeja',name:'11kV Ikeja DSS',color:'#22d3ee',group:'11kV Ikeja'},
+  {id:'33kv_dss_ikeja',name:'33kV Ikeja DSS',color:'#0e7490',group:'11kV Ikeja'},
+  {id:'ht_lines_ikeja',name:'HT Lines Ikeja',color:'#a5f3fc',group:'11kV Ikeja'},
+  {id:'11kv_dss_akowonjo',name:'11kV Akowonjo DSS',color:'#fbbf24',group:'11kV Akowonjo'},
+  {id:'33kv_dss_akowonjo',name:'33kV Akowonjo DSS',color:'#a16207',group:'11kV Akowonjo'},
+  {id:'ht_lines_akowonjo',name:'HT Lines Akowonjo',color:'#fef08a',group:'11kV Akowonjo'},
+  {id:'11kv_dss_abule_egba',name:'11kV Abule Egba DSS',color:'#fb923c',group:'11kV Abule Egba'},
+  {id:'33kv_dss_abule_egba',name:'33kV Abule Egba DSS',color:'#9a3412',group:'11kV Abule Egba'},
+  {id:'ht_lines_abule_egba',name:'HT Lines Abule Egba',color:'#fed7aa',group:'11kV Abule Egba'}
 ];
 
 // UT boundary distinct colors (hue-spaced for 54 UTs)
@@ -1019,10 +1019,18 @@ function buildOvFilters(){
       const info=OV_LAYERS[def.id];
       if(!info)return;
       gCount+=info.count;total+=info.count;
-      const isDSS33=def.id.startsWith('33kv_dss');
-      const isHT=def.id.startsWith('ht_lines');
-      const dotStyle=isDSS33?'background:'+def.color+';transform:rotate(45deg);border-radius:2px;width:9px;height:9px':isHT?'background:none;border-top:3px solid '+def.color+';width:14px;height:0;border-radius:0':'background:'+def.color;
-      items+='<label class="ov-item"><input type="checkbox" checked data-layer="'+def.id+'" onchange="toggleOvLayer(this)"><span class="ov-dot" style="'+dotStyle+'"></span>'+def.icon+' '+def.name+'<span class="ov-count">'+fmt(info.count)+'</span></label>';
+      const c=def.color;
+      let svg='';
+      if(def.id==='lagos')svg='<svg width="14" height="14"><rect x="1" y="1" width="12" height="12" rx="2" fill="none" stroke="'+c+'" stroke-width="2.5"/></svg>';
+      else if(def.id==='ut_boundary')svg='<svg width="14" height="14"><rect x="1" y="1" width="12" height="12" rx="1" fill="'+c+'" fill-opacity=".3" stroke="'+c+'" stroke-width="1.5" stroke-dasharray="3 2"/></svg>';
+      else if(def.id==='tcn')svg='<svg width="14" height="14"><polygon points="7,1 9,5 13,5 10,8 11,13 7,10 3,13 4,8 1,5 5,5" fill="'+c+'"/></svg>';
+      else if(def.id==='iss')svg='<svg width="14" height="14"><polygon points="7,0 9,5 14,5 10,9 12,14 7,11 2,14 4,9 0,5 5,5" fill="'+c+'" stroke="#fff" stroke-width=".5"/></svg>';
+      else if(def.id==='33kv_lines')svg='<svg width="14" height="6"><line x1="0" y1="3" x2="14" y2="3" stroke="'+c+'" stroke-width="3"/></svg>';
+      else if(def.id.startsWith('11kv_dss'))svg='<svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="'+c+'" stroke="#fff" stroke-width="1"/></svg>';
+      else if(def.id.startsWith('33kv_dss'))svg='<svg width="14" height="14"><rect x="3" y="3" width="8" height="8" rx="1" transform="rotate(45 7 7)" fill="'+c+'" stroke="#fff" stroke-width="1"/></svg>';
+      else if(def.id.startsWith('ht_lines'))svg='<svg width="18" height="8"><path d="M0,4 Q3,0 5,4 Q7,8 9,4 Q11,0 13,4 Q15,8 18,4" fill="none" stroke="'+c+'" stroke-width="2.5"/></svg>';
+      else svg='<svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="'+c+'"/></svg>';
+      items+='<label class="ov-item"><input type="checkbox" checked data-layer="'+def.id+'" onchange="toggleOvLayer(this)"><span class="ov-dot">'+svg+'</span> '+def.name+'<span class="ov-count">'+fmt(info.count)+'</span></label>';
     });
     if(!items)return;
     html+='<div class="ov-group-hdr" onclick="this.classList.toggle(\'collapsed\')"><span class="ov-arrow">&#9660;</span><span class="ov-group-title" style="flex:1;margin:0;font-size:11px">'+gname+'</span><span class="ov-count">'+fmt(gCount)+'</span></div>';
