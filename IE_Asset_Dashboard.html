@@ -1109,43 +1109,73 @@ function renderOverviewMap(){
   applyDashboardFiltersToOverview();
 }
 
+function _normOvMeter(v){
+  if(!v)return '';
+  const u=v.toUpperCase().trim();
+  if(u.includes('UNMETERED')||u==='NOT METERED')return 'UNMETERED';
+  if(u.includes('METER'))return 'METERED';
+  return u;
+}
+function _normOvConn(v){
+  if(!v)return '';
+  const u=v.toUpperCase().trim();
+  if(u==='NOT CONNECTED'||u==='Not Connected')return 'NOT CONNECTED';
+  if(u.includes('CONNECT')||u.includes('CONCTED'))return 'CONNECTED';
+  return u;
+}
+function _normOvOwn(v){
+  if(!v)return '';
+  const u=v.toUpperCase().trim();
+  if(u.includes('PRIVATE'))return 'PRIVATE';
+  if(u==='PUBLIC')return 'PUBLIC';
+  return u;
+}
+
 function applyDashboardFiltersToOverview(){
   if(!ovMapInstance||!Object.keys(OV_LAYERS).length)return;
-  // Get active dashboard filter selections
   const sels={};
   FDEFS.forEach(f=>{sels[f.id]=getSelVals(f.id)});
-  const activeBU=sels['fBU'];
-  const activeOwn=sels['fOwn'];
-  const activeMs=sels['fMeter'];
-  const activeConn=sels['fConn'];
-  // If all filters are empty (All selected), show everything
+  const activeBU=sels['fBU']||[];
+  const activeOwn=sels['fOwn']||[];
+  const activeMs=sels['fMeter']||[];
+  const activeConn=sels['fConn']||[];
   const noFilter=!activeBU.length&&!activeOwn.length&&!activeMs.length&&!activeConn.length;
 
   Object.keys(OV_LAYERS).forEach(lid=>{
     const info=OV_LAYERS[lid];
-    if(!info||!info.visible)return;
+    if(!info)return;
     const isDSS=lid.includes('_dss_');
-    if(!isDSS)return; // Only filter DSS layers, leave infra/boundaries/HT lines alone
+    if(!isDSS)return;
 
-    info.layer.eachLayer(function(sublayer){
-      const p=sublayer.feature?sublayer.feature.properties:{};
-      if(noFilter){
-        // Show all
-        if(sublayer._icon)sublayer._icon.style.display='';
-        if(sublayer._path)sublayer._path.style.display='';
-        if(typeof sublayer.setStyle==='function')sublayer.setStyle({opacity:0.8,fillOpacity:0.85});
-        return;
-      }
-      // Check if feature matches active filters
-      const buMatch=!activeBU.length||activeBU.includes(p._bu||p.BU_NAME||'');
-      const ownMatch=!activeOwn.length||activeBU.length||activeOwn.includes(p.OWNERSHIP||'');
-      const msMatch=!activeMs.length||activeMs.includes(p.METERING||'');
-      const connMatch=!activeConn.length||activeConn.includes(p.CONNECTION||'');
-      const show=buMatch&&ownMatch&&msMatch&&connMatch;
+    // Get the BU from the layer ID
+    const layerBU=lid.replace(/^(11kv|33kv)_dss_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
 
-      if(sublayer._icon){sublayer._icon.style.display=show?'':'none'}
-      if(sublayer._path){sublayer._path.style.display=show?'':'none'}
-      if(typeof sublayer.setStyle==='function'){sublayer.setStyle({opacity:show?0.8:0,fillOpacity:show?0.85:0})}
+    // If BU filter is active and this layer's BU is not selected, hide entire layer
+    if(activeBU.length&&!activeBU.includes(layerBU)){
+      if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
+      return;
+    }
+    // Ensure layer is on the map if it should be visible
+    if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
+
+    // If only BU filter or no other filters, show all features in this layer
+    if(!activeOwn.length&&!activeMs.length&&!activeConn.length){
+      info.layer.eachLayer(function(sl){
+        if(sl._icon)sl._icon.style.display='';
+        if(sl._path)sl._path.style.display='';
+      });
+      return;
+    }
+
+    // Sub-filter individual features by ownership, metering, connection
+    info.layer.eachLayer(function(sl){
+      const p=sl.feature?sl.feature.properties:{};
+      const ownMatch=!activeOwn.length||activeOwn.includes(_normOvOwn(p.OWNERSHIP));
+      const msMatch=!activeMs.length||activeMs.includes(_normOvMeter(p.METERING));
+      const connMatch=!activeConn.length||activeConn.includes(_normOvConn(p.CONNECTION));
+      const show=ownMatch&&msMatch&&connMatch;
+      if(sl._icon)sl._icon.style.display=show?'':'none';
+      if(sl._path)sl._path.style.display=show?'':'none';
     });
   });
 }
