@@ -1002,11 +1002,38 @@ function initOverviewMap(){
           if(def.id==='ut_boundary'&&p.name){
             layer.bindTooltip(p.name,{permanent:true,direction:'center',className:'ut-label',opacity:0.85});
           }
-          let popup='<div style="min-width:220px;max-width:450px"><div style="font-size:14px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(p.name||'Unknown')+'</div>';
-          popup+='<div style="font-size:10px;color:#475569;margin-bottom:4px">'+def.name+'</div>';
-          popup+='<table style="width:100%;font-size:11px;line-height:1.7">';
-          const show=['BU','BU_NAME','UT_NAME','FEEDER_NAME','Feeder_Nam','CAPACITY','Capacity','OWNERSHIP','Ownership','ADDRESS','Addresses','METERING_STATUS','Metering_S','Metering Status','CONNECTION_STATUS','Connection','Connection Status','COMMISSIONING_STATUS','Commission','Commissioning Status','MAINTENANCE','Maintenanc','DISCONNECTION_STATUS','Disconnect','Disconnection Status','INJECTION','TOTAL CAP','POWER TRANSFORMER','VOLTAGE__RATIO','NUMBER OF FEEDER','OPERATING_CAPACITY','DECIMAL_DEGREE_LAT','DECIMAL_DEGREE_LONG','LAT1','LONG1','LAT_DEC','LONG_DEC','Coordinates__LAT_','Coordinates__LONG_','Coordinates (LAT)','Coordinates (LONG)'];
-          show.forEach(k=>{if(p[k]&&p[k]!=='&lt;Null&gt;'&&p[k]!=='<Null>')popup+='<tr><td style="color:#7a8a9e;width:100px;vertical-align:top"><b>'+k.replace(/_/g,' ')+'</b></td><td>'+p[k]+'</td></tr>'});
+          const isDSS=def.id.includes('_dss_');
+          const isHT=def.id.startsWith('ht_lines');
+          let popup='<div style="min-width:220px;max-width:500px"><div style="font-size:14px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(p.name||'Unknown')+'</div>';
+          popup+='<div style="font-size:10px;color:#475569;margin-bottom:6px">'+def.name+'</div>';
+          popup+='<table style="width:100%;font-size:11px;line-height:1.8;border-collapse:separate;border-spacing:0 2px">';
+          if(isDSS){
+            // Structured DSS popup
+            const row=function(lbl,val,clr){if(!val||val==='<Null>'||val==='&lt;Null&gt;')return '';return '<tr><td style="color:#7a8a9e;width:120px;padding:3px 6px;vertical-align:top"><b>'+lbl+'</b></td><td style="padding:3px 6px;'+(clr?'color:'+clr+';font-weight:600':'')+'">'+(val||'-')+'</td></tr>'};
+            popup+=row('BU',p.BU_NAME||p._bu,c);
+            popup+=row('UT',p.UT_NAME);
+            popup+=row('Feeder',p.FEEDER_NAME);
+            popup+=row('Capacity',p.CAPACITY?p.CAPACITY+' kVA':'','#10b981');
+            popup+=row('Ownership',p.OWNERSHIP);
+            popup+=row('Install Type',p.INSTALATION_POSITION);
+            popup+=row('Metering',p.METERING_STATUS,p.METERING_STATUS==='METERED'?'#10b981':'#ef4444');
+            popup+=row('Meter No.',p.METER_NUMBER);
+            popup+=row('Connection',p.COMMUNICATION_STATUS||'',p.COMMUNICATION_STATUS==='CONNECTED'?'#10b981':'#ef4444');
+            popup+=row('Commission',p.COMMISSIONING_STATUS,p.COMMISSIONING_STATUS==='COMMISSIONED'?'#10b981':'#f59e0b');
+            popup+=row('Maintenance',p.MAINTENANCE,p.MAINTENANCE==='HEALTHY'?'#10b981':'#ef4444');
+            popup+=row('Status',p.DISCONNECTION_STATUS,p.DISCONNECTION_STATUS==='ACTIVE'?'#10b981':'#ef4444');
+            popup+=row('Address',p.ADDRESS);
+            if(p.DECIMAL_DEGREE_LAT&&p.DECIMAL_DEGREE_LONG)popup+=row('Lat, Long',p.DECIMAL_DEGREE_LAT+', '+p.DECIMAL_DEGREE_LONG);
+          } else if(isHT){
+            // HT Lines popup
+            const row=function(lbl,val){if(!val)return '';return '<tr><td style="color:#7a8a9e;width:120px;padding:3px 6px"><b>'+lbl+'</b></td><td style="padding:3px 6px">'+val+'</td></tr>'};
+            popup+=row('BU',p._bu||p.BU_NAME);
+            popup+=row('Feeder',p.FED_NAME||p.FEEDER_NAME);
+          } else {
+            // Generic popup for TCN, ISS, boundaries, 33kV lines
+            const show=['BU','BU_NAME','UT_NAME','FEEDER_NAME','FED_NAME','CAPACITY','OWNERSHIP','ADDRESS','METERING_STATUS','COMMISSIONING_STATUS','MAINTENANCE','DISCONNECTION_STATUS','INJECTION','TOTAL CAP','POWER TRANSFORMER','VOLTAGE__RATIO','NUMBER OF FEEDER','OPERATING_CAPACITY','DECIMAL_DEGREE_LAT','DECIMAL_DEGREE_LONG'];
+            show.forEach(function(k){if(p[k]&&p[k]!=='&lt;Null&gt;'&&p[k]!=='<Null>')popup+='<tr><td style="color:#7a8a9e;width:120px;padding:3px 6px;vertical-align:top"><b>'+k.replace(/_/g,' ')+'</b></td><td style="padding:3px 6px">'+p[k]+'</td></tr>'});
+          }
           popup+='</table></div>';
           layer.bindPopup(popup,{maxWidth:500,autoPanPadding:[20,20]});
         }
