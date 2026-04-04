@@ -247,6 +247,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <button class="nav-tab" data-page="network">Network Infrastructure</button>
     <button class="nav-tab" data-page="metering">Metering Analytics</button>
     <button class="nav-tab" data-page="operations">Operational Status</button>
+    <button class="nav-tab" data-page="upriser">Upriser &amp; Feeder Pillar</button>
     <button class="nav-tab" data-page="map">Geospatial DT Map</button>
     <button class="nav-tab" data-page="overview">IE Network Overview</button>
     <button class="nav-tab" data-page="table">Asset Data Table</button>
@@ -362,6 +363,29 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
   </div>
 </div>
 
+<!-- PAGE: UPRISER & FEEDER PILLAR -->
+<div class="page" id="page-upriser">
+  <div class="kpi-grid" id="ufKPIs"></div>
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px">
+    <div style="position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);height:calc(50vh)">
+      <div id="ufMapContainer" style="width:100%;height:100%"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="chart-box" style="flex:1;margin:0"><h4>Feeder Pillar Condition by BU</h4><div class="chart-container" id="ch_uf_cond_bu"></div></div>
+      <div class="chart-box" style="flex:1;margin:0"><h4>Feeder Pillar Type</h4><div class="chart-container" id="ch_uf_type"></div></div>
+    </div>
+  </div>
+  <div class="chart-box" style="padding:12px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <h4 style="margin:0;flex:1">Survey Records</h4>
+      <input type="text" id="ufTableSearch" placeholder="Search DT, address, BU..." oninput="renderUfTable()" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px;width:220px">
+      <select id="ufPageSize" onchange="renderUfTable()" style="padding:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px"><option>10</option><option>25</option><option>50</option></select>
+    </div>
+    <div style="overflow-x:auto"><table class="data-table" style="width:100%"><thead><tr id="ufTableHead"></tr></thead><tbody id="ufTableBody"></tbody></table></div>
+    <div id="ufPagination" style="display:flex;gap:4px;margin-top:8px;justify-content:center"></div>
+  </div>
+</div>
+
 <!-- PAGE: GEOSPATIAL MAP -->
 <div class="page" id="page-map" style="position:relative">
   <div id="mapSearchWrap"><span id="mapSearchIcon">&#128269;</span><input type="text" id="mapSearch" placeholder="Search DT by name, feeder, customer..." oninput="searchMapDebounced()" onkeydown="mapSugNav(event)" autocomplete="off"><div id="mapSuggestions"></div></div>
@@ -394,6 +418,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 
 <!-- DATA -->
 <script src="dashboard_data.js"></script>
+<script src="upriser_feeder_pillar.js"></script>
 <script src="ie_network_overview.js"></script>
 <script>
 // ============ GLOBALS ============
@@ -427,7 +452,8 @@ document.querySelectorAll('.nav-tab').forEach(tab=>{
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     currentPage=tab.dataset.page;
     document.getElementById('page-'+currentPage).classList.add('active');
-    if(currentPage==='map'){if(!mapInitialized)initMap();else if(mapInstance){setTimeout(()=>{mapInstance.invalidateSize();if(_pagesDirty.map){renderMap(filteredData);_pagesDirty.map=false}},150)}}
+    if(currentPage==='upriser'){renderUpriserPage()}
+    else if(currentPage==='map'){if(!mapInitialized)initMap();else if(mapInstance){setTimeout(()=>{mapInstance.invalidateSize();if(_pagesDirty.map){renderMap(filteredData);_pagesDirty.map=false}},150)}}
     else if(currentPage==='overview'){if(!ovMapInitialized)initOverviewMap();else if(ovMapInstance){setTimeout(()=>{ovMapInstance.invalidateSize();if(_pagesDirty.overview){renderOverviewMap();_pagesDirty.overview=false}},150)}}
     else{renderActivePage()}
   });
@@ -569,6 +595,7 @@ function renderActivePage(){
   else if(p==='network'&&_pagesDirty.network){renderNetwork(filteredData);_pagesDirty.network=false}
   else if(p==='metering'&&_pagesDirty.metering){renderMetering(filteredData);_pagesDirty.metering=false}
   else if(p==='operations'&&_pagesDirty.operations){renderOperations(filteredData);_pagesDirty.operations=false}
+  else if(p==='upriser'){renderUpriserPage()}
   else if(p==='map'&&_pagesDirty.map){if(mapInitialized&&mapInstance){renderMap(filteredData);zoomToNomFilter(mapInstance,mapMarkers)}_pagesDirty.map=false}
   else if(p==='overview'&&_pagesDirty.overview){if(ovMapInitialized&&ovMapInstance){renderOverviewMap();zoomToNomFilterOv()}_pagesDirty.overview=false}
   else if(p==='table'&&_pagesDirty.table){filterTable();_pagesDirty.table=false}
@@ -1008,6 +1035,142 @@ function highlightMapSug(){
   const items=document.querySelectorAll('#mapSuggestions .sug-item');
   items.forEach((el,i)=>{el.classList.toggle('active',i===mapSugIdx)});
   if(items[mapSugIdx])items[mapSugIdx].scrollIntoView({block:'nearest'});
+}
+
+// ============ PAGE 5B: UPRISER & FEEDER PILLAR ============
+let ufMapInstance=null,ufMapInitialized=false,ufLayerGroup=null,ufPage=0;
+const UF_COND_CLR={'Excellent':'#10b981','Good':'#22d3ee','Poor':'#f59e0b','Critical':'#ef4444','No':'#64748b'};
+
+function getUfFiltered(){
+  if(typeof UF_DATA==='undefined')return [];
+  let d=UF_DATA;
+  const buSel=getSelVals('fBU');
+  if(buSel.length)d=d.filter(r=>buSel.includes(r.bu));
+  const utSel=getSelVals('fUT');
+  if(utSel.length)d=d.filter(r=>utSel.includes(r.ut));
+  return d;
+}
+
+function renderUfKPIs(data){
+  const total=data.length;
+  const goodU=data.reduce((s,r)=>s+r.gd,0);
+  const badU=data.reduce((s,r)=>s+r.bd,0);
+  const totalU=goodU+badU;
+  const healthPct=totalU?((goodU/totalU)*100).toFixed(1):'0';
+  const fpYes=data.filter(r=>r.fp).length;
+  const fpPct=total?((fpYes/total)*100).toFixed(1):'0';
+  const critical=data.filter(r=>r.fc==='Critical').length;
+  const valid=data.filter(r=>r.vl==='Valid').length;
+  const validPct=total?((valid/total)*100).toFixed(1):'0';
+  document.getElementById('ufKPIs').innerHTML=[
+    {v:fmt(total),l:'DTs Surveyed',s:'From field survey data',c:'var(--accent)',i:'&#128202;'},
+    {v:fmt(goodU)+' / '+fmt(badU),l:'Uprisers Good / Bad',s:healthPct+'% health rate',c:parseFloat(healthPct)>80?'#10b981':'#f59e0b',i:'&#9889;'},
+    {v:fpPct+'%',l:'Feeder Pillar Coverage',s:fmt(fpYes)+' of '+fmt(total)+' have FP',c:parseFloat(fpPct)>90?'#10b981':'#f59e0b',i:'&#9632;'},
+    {v:fmt(critical),l:'Critical Condition',s:'Urgent attention needed',c:'#ef4444',i:'&#9888;'},
+    {v:validPct+'%',l:'Validation Rate',s:fmt(valid)+' valid of '+fmt(total),c:parseFloat(validPct)>95?'#10b981':'#f59e0b',i:'&#9989;'}
+  ].map(k=>'<div class="kpi-card" style="border-left:3px solid '+k.c+'"><div class="kpi-icon" style="background:linear-gradient(135deg,rgba(0,0,0,.2),rgba(0,0,0,.1));color:'+k.c+'">'+k.i+'</div><div class="kpi-val" style="color:'+k.c+'">'+k.v+'</div><div class="kpi-label">'+k.l+'</div><div class="kpi-sub">'+k.s+'</div></div>').join('');
+}
+
+function initUfMap(){
+  if(ufMapInitialized)return;
+  ufMapInitialized=true;
+  const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'OSM'});
+  ufMapInstance=L.map('ufMapContainer',{zoomControl:true,layers:[osm],preferCanvas:true}).setView([6.55,3.38],11);
+  ufLayerGroup=L.featureGroup().addTo(ufMapInstance);
+  setTimeout(()=>{ufMapInstance.invalidateSize()},300);
+}
+
+function renderUfMap(data){
+  if(!ufMapInstance||!ufLayerGroup)return;
+  ufLayerGroup.clearLayers();
+  let count=0;
+  for(let i=0;i<data.length;i++){
+    const r=data[i];
+    const lat=r.la,lng=r.ln;
+    if(!lat||!lng||lat<1||lat>15||lng<0||lng>10)continue;
+    const c=UF_COND_CLR[r.fc]||'#64748b';
+    const mk=L.circleMarker([lat,lng],{radius:5,fillColor:c,fillOpacity:0.8,color:'#fff',weight:0.8,opacity:0.5,bubblingMouseEvents:false});
+    mk.on('mouseover',function(){this.setStyle({radius:9,weight:2,fillOpacity:1})});
+    mk.on('mouseout',function(){this.setStyle({radius:5,weight:0.8,fillOpacity:0.8})});
+    // Photo thumbnail from Google Drive
+    const photoHTML=r.ph?'<div style="margin-top:6px"><img src="https://drive.google.com/thumbnail?id='+r.ph+'&sz=w200" style="width:100%;max-width:200px;border-radius:6px;border:1px solid #1a2535" onerror="this.style.display=\'none\'"></div>':'';
+    mk.bindPopup('<div style="min-width:250px"><div style="font-size:13px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(r.dt||'Unknown DT')+'</div><table style="width:100%;font-size:11px;line-height:1.7"><tr><td style="color:#7a8a9e;width:110px"><b>BU</b></td><td style="color:'+c+';font-weight:600">'+r.bu+'</td></tr><tr><td style="color:#7a8a9e"><b>Undertaking</b></td><td>'+r.ut+'</td></tr><tr><td style="color:#7a8a9e"><b>Good Uprisers</b></td><td style="color:#10b981;font-weight:600">'+r.gd+'</td></tr><tr><td style="color:#7a8a9e"><b>Bad Uprisers</b></td><td style="color:#ef4444;font-weight:600">'+r.bd+'</td></tr><tr><td style="color:#7a8a9e"><b>Total Uprisers</b></td><td>'+r.tt+'</td></tr><tr><td style="color:#7a8a9e"><b>FP Condition</b></td><td style="color:'+c+';font-weight:600">'+r.fc+'</td></tr><tr><td style="color:#7a8a9e"><b>FP Type</b></td><td>'+(r.ft||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Validation</b></td><td>'+(r.vl==='Valid'?'<span style="color:#10b981">Valid</span>':'<span style="color:#ef4444">Invalid</span>')+'</td></tr><tr><td style="color:#7a8a9e"><b>Address</b></td><td style="word-break:break-word">'+(r.addr||'-')+'</td></tr></table>'+photoHTML+'</div>',{maxWidth:600});
+    mk.addTo(ufLayerGroup);
+    count++;
+  }
+  if(count>0){try{ufMapInstance.fitBounds(ufLayerGroup.getBounds(),{padding:[30,30],maxZoom:14})}catch(e){}}
+  // Add legend
+  let leg=document.getElementById('ufMapLegend');
+  const legHTML='<h5>FP Condition</h5>'+Object.entries(UF_COND_CLR).map(([k,c])=>{
+    const n=data.filter(r=>r.fc===k).length;
+    return '<div class="legend-item"><div class="legend-dot" style="background:'+c+'"></div>'+k+' ('+fmt(n)+')</div>';
+  }).join('')+'<div style="margin-top:4px;font-size:10px;color:#475569;border-top:1px solid #1a2535;padding-top:4px">'+fmt(count)+' DTs on map</div>';
+  if(!leg){
+    const lc=L.control({position:'bottomleft'});
+    lc.onAdd=function(){const d=L.DomUtil.create('div','map-legend');d.id='ufMapLegend';d.innerHTML=legHTML;return d};
+    lc.addTo(ufMapInstance);
+  } else {leg.innerHTML=legHTML}
+}
+
+function renderUfCharts(data){
+  const PL={paper_bgcolor:'transparent',plot_bgcolor:'transparent',font:{color:'#94a3b8',size:10},margin:{t:10,b:40,l:40,r:10},height:180};
+  const PC={responsive:true,displayModeBar:false};
+  const bus=['IKEJA','IKORODU','AKOWONJO','SHOMOLU','OSHODI','ABULE EGBA'];
+  const conds=['Excellent','Good','Poor','Critical','No'];
+  // Stacked bar: Condition by BU
+  const barTraces=conds.map(cond=>({
+    x:bus,y:bus.map(bu=>data.filter(r=>r.bu===bu&&r.fc===cond).length),
+    name:cond,type:'bar',marker:{color:UF_COND_CLR[cond]},
+    text:bus.map(bu=>data.filter(r=>r.bu===bu&&r.fc===cond).length),textposition:'inside',textfont:{size:9,color:'#fff'}
+  }));
+  Plotly.newPlot('ch_uf_cond_bu',barTraces,{...PL,barmode:'stack',legend:{font:{size:9},orientation:'h',y:1.15}},PC);
+  // Donut: FP Type
+  const types=['Wired','Fused','No'];
+  const typeCounts=types.map(t=>data.filter(r=>r.ft===t).length);
+  Plotly.newPlot('ch_uf_type',[{labels:types,values:typeCounts,type:'pie',hole:0.5,marker:{colors:['#06b6d4','#8b5cf6','#475569']},textinfo:'label+percent',textfont:{size:10,color:'#e2e8f0'}}],{...PL,showlegend:false},PC);
+}
+
+const UF_COLS=[
+  {key:'dt',label:'Public DT',w:200},{key:'bu',label:'BU',w:90},{key:'ut',label:'Undertaking',w:100},
+  {key:'gd',label:'Good',w:50},{key:'bd',label:'Bad',w:50},{key:'tt',label:'Total',w:50},
+  {key:'fc',label:'FP Condition',w:90},{key:'ft',label:'FP Type',w:80},{key:'vl',label:'Valid',w:60}
+];
+
+function renderUfTable(){
+  const s=(document.getElementById('ufTableSearch').value||'').toLowerCase();
+  let rows=getUfFiltered();
+  if(s)rows=rows.filter(r=>(r.dt||'').toLowerCase().includes(s)||(r.addr||'').toLowerCase().includes(s)||(r.bu||'').toLowerCase().includes(s)||(r.ut||'').toLowerCase().includes(s));
+  const ps=parseInt(document.getElementById('ufPageSize').value)||10;
+  const tp=Math.ceil(rows.length/ps);
+  if(ufPage>=tp)ufPage=0;
+  const pr=rows.slice(ufPage*ps,ufPage*ps+ps);
+  document.getElementById('ufTableHead').innerHTML=UF_COLS.map(c=>'<th style="min-width:'+c.w+'px;padding:6px 8px;font-size:11px;color:#94a3b8;text-align:left;border-bottom:1px solid var(--border)">'+c.label+'</th>').join('')+'<th style="width:60px;padding:6px;font-size:11px;color:#94a3b8;border-bottom:1px solid var(--border)">Photo</th>';
+  document.getElementById('ufTableBody').innerHTML=pr.map(r=>{
+    const condClr=UF_COND_CLR[r.fc]||'#94a3b8';
+    const photoTD=r.ph?'<td style="padding:4px"><img src="https://drive.google.com/thumbnail?id='+r.ph+'&sz=w60" style="width:40px;height:30px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="window.open(\'https://drive.google.com/file/d/'+r.ph+'/view\',\'_blank\')" onerror="this.src=\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>\';this.style.opacity=0.2"></td>':'<td style="padding:4px;color:#334155;font-size:10px">-</td>';
+    return '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">'+UF_COLS.map(c=>{
+      let v=r[c.key]||'';
+      if(c.key==='fc')v='<span style="color:'+condClr+';font-weight:600">'+v+'</span>';
+      if(c.key==='vl')v=v==='Valid'?'<span style="color:#10b981">&#10003;</span>':'<span style="color:#ef4444">&#10007;</span>';
+      if(c.key==='gd')v='<span style="color:#10b981">'+v+'</span>';
+      if(c.key==='bd')v='<span style="color:#ef4444">'+v+'</span>';
+      return '<td style="padding:6px 8px;font-size:11px">'+v+'</td>';
+    }).join('')+photoTD+'</tr>';
+  }).join('');
+  // Pagination
+  let pgHTML='';
+  if(tp>1){for(let i=0;i<Math.min(tp,10);i++){pgHTML+='<button onclick="ufPage='+i+';renderUfTable()" style="padding:4px 8px;background:'+(i===ufPage?'var(--green)':'var(--bg3)')+';border:1px solid var(--border);color:'+(i===ufPage?'#fff':'var(--text)')+';border-radius:4px;cursor:pointer;font-size:10px">'+(i+1)+'</button>'}}
+  document.getElementById('ufPagination').innerHTML=pgHTML;
+}
+
+function renderUpriserPage(){
+  if(typeof UF_DATA==='undefined')return;
+  const data=getUfFiltered();
+  renderUfKPIs(data);
+  if(!ufMapInitialized)initUfMap();
+  setTimeout(()=>{if(ufMapInstance){ufMapInstance.invalidateSize();renderUfMap(data)}},200);
+  renderUfCharts(data);
+  renderUfTable();
 }
 
 // ============ PAGE 6: IE NETWORK OVERVIEW MAP ============
