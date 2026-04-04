@@ -388,6 +388,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
       <h4 style="margin:0;flex:1">Survey Records</h4>
       <div style="position:relative;width:280px"><input type="text" id="ufTableSearch" placeholder="Search DT, address, BU, officer..." oninput="ufSearchInput()" onkeydown="ufSugNav(event)" autocomplete="off" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px;width:100%"><div id="ufSuggestions"></div></div>
+      <div class="ms-wrap" id="ufFoFilter" style="width:200px"><button class="ms-btn" onclick="toggleMS('ufFoFilter')">All Officers</button><div class="ms-panel" id="ufFoPanel" style="max-height:300px"></div></div>
       <select id="ufPageSize" onchange="renderUfTable()" style="padding:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px"><option>25</option><option>50</option><option>100</option><option>500</option><option value="99999">All</option></select>
     </div>
     <div style="overflow-x:auto"><table class="data-table" style="width:100%"><thead><tr id="ufTableHead"></tr></thead><tbody id="ufTableBody"></tbody></table></div>
@@ -1063,6 +1064,9 @@ function getUfFiltered(){
   // DT Nom filter: exact match on DT name
   const nomSel=getSelVals('fNom');
   if(nomSel.length)d=d.filter(r=>nomSel.includes(r.dt));
+  // Field Officer filter (local to upriser page)
+  const foSel=getUfFoSel();
+  if(foSel.length)d=d.filter(r=>foSel.includes(r.fo));
   return d;
 }
 
@@ -1149,10 +1153,10 @@ function renderUfCharts(data){
 }
 
 const UF_COLS=[
+  {key:'fo',label:'Field Officer',w:160},{key:'rp',label:'Role Position',w:130},
   {key:'dt',label:'Public DT',w:200},{key:'bu',label:'BU',w:90},{key:'ut',label:'Undertaking',w:100},
   {key:'gd',label:'Good',w:50},{key:'bd',label:'Bad',w:50},{key:'tt',label:'Total',w:50},
-  {key:'fc',label:'FP Condition',w:90},{key:'ft',label:'FP Type',w:80},{key:'vl',label:'Valid',w:60},
-  {key:'fo',label:'Field Officer',w:150},{key:'rp',label:'Role Position',w:120}
+  {key:'fc',label:'FP Condition',w:90},{key:'ft',label:'FP Type',w:80},{key:'vl',label:'Valid',w:60}
 ];
 
 function renderUfTable(){
@@ -1245,8 +1249,46 @@ function ufHighlight(){
   document.querySelectorAll('#ufSuggestions .uf-sug').forEach((el,i)=>{el.style.background=i===_ufSugIdx?'rgba(16,185,129,.12)':''});
 }
 
+function populateUfFoFilter(){
+  const panel=document.getElementById('ufFoPanel');
+  if(!panel||typeof UF_DATA==='undefined')return;
+  const officers=new Set();
+  UF_DATA.forEach(r=>{if(r.fo)officers.add(r.fo)});
+  const sorted=[...officers].sort();
+  panel.innerHTML='<input type="text" class="ms-search" placeholder="Search officers..." oninput="filterUfFoPanel(this)" onclick="event.stopPropagation()">'
+    +'<label class="all-opt"><input type="checkbox" value="" checked onchange="ufFoCheck(this)"> All</label>'
+    +sorted.map(v=>'<label><input type="checkbox" value="'+v+'" onchange="ufFoCheck(this)"> '+v+'</label>').join('');
+}
+function filterUfFoPanel(input){
+  const q=input.value.toLowerCase();
+  const panel=document.getElementById('ufFoPanel');
+  panel.querySelectorAll('label:not(.all-opt)').forEach(l=>{
+    l.style.display=l.textContent.toLowerCase().includes(q)?'':'none';
+  });
+}
+function ufFoCheck(cb){
+  const panel=document.getElementById('ufFoPanel');
+  const allCb=panel.querySelector('input[value=""]');
+  const valueCbs=[...panel.querySelectorAll('input[type="checkbox"]')].filter(c=>c.value!=='');
+  if(cb.value===''){valueCbs.forEach(c=>c.checked=false);allCb.checked=true}
+  else{allCb.checked=false;if(!valueCbs.some(c=>c.checked))allCb.checked=true}
+  // Update button text
+  const btn=document.querySelector('#ufFoFilter .ms-btn');
+  if(allCb.checked){btn.textContent='All Officers'}
+  else{const sel=valueCbs.filter(c=>c.checked);btn.textContent=sel.length<=1?sel.map(c=>c.value).join(''): sel.length+' officers'}
+  renderUpriserPage();
+}
+function getUfFoSel(){
+  const panel=document.getElementById('ufFoPanel');
+  if(!panel)return[];
+  const allCb=panel.querySelector('input[value=""]');
+  if(allCb&&allCb.checked)return[];
+  return[...panel.querySelectorAll('input[type="checkbox"]:checked')].filter(c=>c.value!=='').map(c=>c.value);
+}
+
 function renderUpriserPage(){
   if(typeof UF_DATA==='undefined')return;
+  if(!document.getElementById('ufFoPanel').children.length)populateUfFoFilter();
   const data=getUfFiltered();
   renderUfKPIs(data);
   if(!ufMapInitialized)initUfMap();
