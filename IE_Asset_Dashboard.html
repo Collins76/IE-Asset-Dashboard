@@ -1304,20 +1304,20 @@ function applyDashboardFiltersToOverview(){
     });
   });
 
-  // Zoom to fit visible filterable layers (DSS, HT, ISS, TCN)
+  // Zoom to fit visible BU-specific layers (DSS + HT only, not global ISS/TCN)
   if(!noFilter){
     const bounds=L.latLngBounds([]);
     Object.keys(OV_LAYERS).forEach(lid=>{
-      if(!lid.includes('_dss_')&&!lid.startsWith('ht_lines_')&&lid!=='iss'&&lid!=='tcn')return;
+      // Only use BU-specific layers for zoom calculation (not global ISS/TCN)
+      if(!lid.includes('_dss_')&&!lid.startsWith('ht_lines_'))return;
       const info=OV_LAYERS[lid];
       if(!info||!ovMapInstance.hasLayer(info.layer))return;
       try{bounds.extend(info.layer.getBounds())}catch(e){}
     });
     if(bounds.isValid()){
-      ovMapInstance.flyToBounds(bounds,{padding:[50,50],maxZoom:14,duration:0.8});
+      ovMapInstance.flyToBounds(bounds,{padding:[30,30],maxZoom:16,duration:0.8});
     }
   } else {
-    // No filter: zoom to full extent
     ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
   }
 }
