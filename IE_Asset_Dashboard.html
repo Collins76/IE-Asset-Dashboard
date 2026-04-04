@@ -426,9 +426,9 @@ document.querySelectorAll('.nav-tab').forEach(tab=>{
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     currentPage=tab.dataset.page;
     document.getElementById('page-'+currentPage).classList.add('active');
-    if(currentPage==='map'){if(!mapInitialized)initMap();else if(mapInstance){setTimeout(()=>{mapInstance.invalidateSize();renderMap(filteredData)},200)}}
-    if(currentPage==='overview'){if(!ovMapInitialized)initOverviewMap();else if(ovMapInstance){setTimeout(()=>{ovMapInstance.invalidateSize();renderOverviewMap()},200)}}
-    if(currentPage==='table')filterTable();
+    if(currentPage==='map'){if(!mapInitialized)initMap();else if(mapInstance){setTimeout(()=>{mapInstance.invalidateSize();if(_pagesDirty.map){renderMap(filteredData);_pagesDirty.map=false}},150)}}
+    else if(currentPage==='overview'){if(!ovMapInitialized)initOverviewMap();else if(ovMapInstance){setTimeout(()=>{ovMapInstance.invalidateSize();if(_pagesDirty.overview){renderOverviewMap();_pagesDirty.overview=false}},150)}}
+    else{renderActivePage()}
   });
 });
 
@@ -551,31 +551,90 @@ function updateFilterOptions(){
 }
 
 let _applyTimer=null;
+let _pagesDirty={summary:true,network:true,metering:true,operations:true,map:true,overview:true,table:true};
 function applyLive(){
-  // Immediate: update count and filter options (fast)
   filteredData=getFilteredData();
   document.getElementById('showCount').textContent=fmt(filteredData.length);
   updateFilterOptions();
-  // Debounce: heavy chart re-rendering
+  // Mark all pages dirty
+  Object.keys(_pagesDirty).forEach(k=>{_pagesDirty[k]=true});
+  // Only render the active page (fast!)
   if(_applyTimer)clearTimeout(_applyTimer);
-  _applyTimer=setTimeout(()=>{renderAll()},150);
+  _applyTimer=setTimeout(()=>{renderActivePage()},80);
+}
+function renderActivePage(){
+  const p=currentPage;
+  if(p==='summary'&&_pagesDirty.summary){renderSummary(filteredData);_pagesDirty.summary=false}
+  else if(p==='network'&&_pagesDirty.network){renderNetwork(filteredData);_pagesDirty.network=false}
+  else if(p==='metering'&&_pagesDirty.metering){renderMetering(filteredData);_pagesDirty.metering=false}
+  else if(p==='operations'&&_pagesDirty.operations){renderOperations(filteredData);_pagesDirty.operations=false}
+  else if(p==='map'&&_pagesDirty.map){if(mapInitialized&&mapInstance){renderMap(filteredData);zoomToNomFilter(mapInstance,mapMarkers)}_pagesDirty.map=false}
+  else if(p==='overview'&&_pagesDirty.overview){if(ovMapInitialized&&ovMapInstance){renderOverviewMap();zoomToNomFilterOv()}_pagesDirty.overview=false}
+  else if(p==='table'&&_pagesDirty.table){filterTable();_pagesDirty.table=false}
+}
+// DT Nom zoom: pulse animation on selected DTs
+function zoomToNomFilter(map,markers){
+  const nomSels=getSelVals('fNom');
+  if(!nomSels.length||!map)return;
+  const bounds=L.latLngBounds([]);
+  const matchedMarkers=[];
+  markers.forEach(m=>{
+    if(nomSels.includes(m.r.nom||'')){bounds.extend([m.lat,m.lng]);matchedMarkers.push(m)}
+  });
+  if(!bounds.isValid())return;
+  map.flyToBounds(bounds,{padding:[60,60],maxZoom:17,duration:0.8});
+  // Pulse animation on matched markers
+  matchedMarkers.forEach(m=>{
+    const mk=m.marker;
+    if(typeof mk.setStyle!=='function')return;
+    const origR=mk.options.radius||7;
+    let pulseCount=0;
+    const pulse=setInterval(()=>{
+      mk.setStyle({radius:origR+(pulseCount%2===0?6:0),fillOpacity:pulseCount%2===0?1:0.85,weight:pulseCount%2===0?3:0.8});
+      pulseCount++;
+      if(pulseCount>=6){clearInterval(pulse);mk.setStyle({radius:origR,fillOpacity:0.85,weight:0.8})}
+    },300);
+  });
+}
+function zoomToNomFilterOv(){
+  if(!ovMapInstance)return;
+  const nomSels=getSelVals('fNom');
+  if(!nomSels.length)return;
+  // Search network features that match the DT Nom selections
+  const bounds=L.latLngBounds([]);
+  ovSearchableFeatures.forEach(sf=>{
+    if(nomSels.some(n=>sf.name.toLowerCase().includes(n.toLowerCase()))){
+      try{const ll=sf.layer.getLatLng?sf.layer.getLatLng():sf.layer.getBounds().getCenter();bounds.extend(ll)}catch(e){}
+    }
+  });
+  if(bounds.isValid()){
+    ovMapInstance.flyToBounds(bounds,{padding:[60,60],maxZoom:17,duration:0.8});
+  }
 }
 
 function resetDashboardFast(btnEl){
-  // Instant visual feedback: spin the icon
-  const icon=btnEl.querySelector('.reset-icon');
+  const icon=btnEl?btnEl.querySelector('.reset-icon'):null;
   if(icon){icon.style.display='inline-block';icon.style.animation='spin-reset .5s ease'}
-  btnEl.style.animation='btn-pulse .4s ease';
-  // Reset filters immediately
-  document.querySelectorAll('.ms-panel input[type="checkbox"]').forEach(cb=>{cb.checked=cb.value===''});
+  if(btnEl)btnEl.style.animation='btn-pulse .4s ease';
+  // Reset all filters instantly (batch DOM writes)
+  const panels=document.querySelectorAll('.ms-panel');
+  panels.forEach(panel=>{
+    const cbs=panel.querySelectorAll('input[type="checkbox"]');
+    cbs.forEach(cb=>{cb.checked=cb.value===''});
+    panel.querySelectorAll('label').forEach(l=>{l.style.display='';l.style.opacity='1'});
+    const search=panel.querySelector('.ms-search');
+    if(search)search.value='';
+  });
   document.querySelectorAll('.ms-btn').forEach(btn=>{btn.textContent='All'});
-  document.querySelectorAll('.ms-panel label').forEach(l=>{l.style.display='';l.style.opacity='1'});
-  // Clear search inputs
-  document.querySelectorAll('.ms-search').forEach(s=>{s.value=''});
   filteredData=[...ASSET_DATA];
   document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
-  // Debounce heavy rendering
-  setTimeout(()=>{renderAll();if(icon)icon.style.animation='';btnEl.style.animation=''},200);
+  // Only render active page
+  Object.keys(_pagesDirty).forEach(k=>{_pagesDirty[k]=true});
+  requestAnimationFrame(()=>{
+    renderActivePage();
+    if(icon)icon.style.animation='';
+    if(btnEl)btnEl.style.animation='';
+  });
 }
 function refreshDashboard(){resetDashboardFast(document.querySelector('.btn-reset'))}
 
@@ -1752,10 +1811,9 @@ function generatePDF(){
 
 // ============ RENDER ALL ============
 function renderAll(){
-  renderSummary(filteredData);renderNetwork(filteredData);renderMetering(filteredData);renderOperations(filteredData);
-  if(mapInitialized&&mapInstance)renderMap(filteredData);
-  if(ovMapInitialized&&ovMapInstance)renderOverviewMap();
-  filterTable();
+  // Mark all dirty and render active page only
+  Object.keys(_pagesDirty).forEach(k=>{_pagesDirty[k]=true});
+  renderActivePage();
 }
 
 // ============ INIT ============
