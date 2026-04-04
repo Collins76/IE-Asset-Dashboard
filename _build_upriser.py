@@ -81,6 +81,7 @@ def main():
             'ln': round(float(lng), 6) if lng else 0,
             'fo': p.get('FIELD OFFICERS', ''),
             'rp': p.get('Role Position', ''),
+            'ts': p.get('Timestamp', ''),
         }
         records.append(rec)
 
