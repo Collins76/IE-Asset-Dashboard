@@ -811,7 +811,7 @@ function renderMap(data){
   console.log('Map: '+count+' markers added from '+data.length+' records');
 
   if(count>0){
-    try{mapInstance.fitBounds(mapLayerGroup.getBounds(),{padding:[40,40],maxZoom:14})}catch(e){console.warn('fitBounds:',e)}
+    try{mapInstance.flyToBounds(mapLayerGroup.getBounds(),{padding:[40,40],maxZoom:14,duration:0.8})}catch(e){console.warn('fitBounds:',e)}
   }
 
   // Legend
@@ -1178,6 +1178,23 @@ function applyDashboardFiltersToOverview(){
       if(sl._path)sl._path.style.display=show?'':'none';
     });
   });
+
+  // Zoom to fit visible DSS layers
+  if(!noFilter){
+    const bounds=L.latLngBounds([]);
+    Object.keys(OV_LAYERS).forEach(lid=>{
+      if(!lid.includes('_dss_'))return;
+      const info=OV_LAYERS[lid];
+      if(!info||!ovMapInstance.hasLayer(info.layer))return;
+      try{bounds.extend(info.layer.getBounds())}catch(e){}
+    });
+    if(bounds.isValid()){
+      ovMapInstance.flyToBounds(bounds,{padding:[50,50],maxZoom:14,duration:0.8});
+    }
+  } else {
+    // No filter: zoom to full extent
+    ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
+  }
 }
 
 // ============ OVERVIEW MAP SEARCH ============
