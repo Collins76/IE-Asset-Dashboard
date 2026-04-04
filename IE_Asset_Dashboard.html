@@ -225,7 +225,8 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 @keyframes marquee-scroll{0%{transform:translateX(100vw)}100%{transform:translateX(-100%)}}
 @keyframes spark-flash{0%,100%{color:#fff;text-shadow:0 0 6px rgba(245,158,11,.4),0 0 12px rgba(245,158,11,.2)}25%{color:#fcd34d;text-shadow:0 0 16px rgba(245,158,11,1),0 0 32px rgba(245,158,11,.6),0 0 48px rgba(245,158,11,.3)}50%{color:#fff;text-shadow:0 0 8px rgba(245,158,11,.5),0 0 16px rgba(245,158,11,.2)}75%{color:#fbbf24;text-shadow:0 0 20px rgba(245,158,11,1),0 0 40px rgba(245,158,11,.7),0 0 60px rgba(245,158,11,.3)}}
 /* Leaflet dark theme */
-.leaflet-popup-content-wrapper{background:#0f171f!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important}
+.leaflet-popup-content-wrapper{background:#0f171f!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important;max-width:600px!important}
+.leaflet-popup-content{max-width:none!important;width:auto!important}
 .leaflet-popup-tip{background:#0f171f!important}
 .leaflet-popup-content{font-size:12px;line-height:1.6;overflow-wrap:break-word;word-wrap:break-word}
 .leaflet-popup-content b{color:var(--green)}
@@ -895,7 +896,7 @@ function renderMap(data){
     });
     marker.on('mouseover',function(){this.setStyle({radius:11,weight:2,fillOpacity:1})});
     marker.on('mouseout',function(){this.setStyle({radius:7,weight:0.8,fillOpacity:0.85})});
-    marker.bindPopup(`<div style="min-width:220px">
+    marker.bindPopup(`<div style="min-width:280px">
       <div style="font-size:14px;font-weight:700;color:${color};border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">${r.nom||'DT '+r.dt}</div>
       <table style="width:100%;font-size:11px;line-height:1.7">
         <tr><td style="color:#7a8a9e;width:95px"><b>BU</b></td><td style="color:${color};font-weight:600">${r.bu}</td></tr>
@@ -911,7 +912,7 @@ function renderMap(data){
         <tr><td style="color:#7a8a9e"><b>Address</b></td><td style="word-break:break-word;overflow-wrap:break-word">${r.addr||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>State</b></td><td>${r.st||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>Lat, Long</b></td><td>${lat.toFixed(6)}, ${lng.toFixed(6)}</td></tr>
-      </table></div>`,{maxWidth:500});
+      </table></div>`,{maxWidth:600});
     marker.addTo(mapLayerGroup);
     mapMarkers.push({marker,r,lat,lng});
     count++;
@@ -1114,7 +1115,7 @@ function initOverviewMap(){
           }
           const isDSS=def.id.includes('_dss_');
           const isHT=def.id.startsWith('ht_lines');
-          let popup='<div style="min-width:220px;max-width:500px"><div style="font-size:14px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(p.name||'Unknown')+'</div>';
+          let popup='<div style="min-width:300px"><div style="font-size:14px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(p.name||'Unknown')+'</div>';
           popup+='<div style="font-size:10px;color:#475569;margin-bottom:6px">'+def.name+'</div>';
           popup+='<table style="width:100%;font-size:11px;line-height:1.8;border-collapse:separate;border-spacing:0 2px">';
           const row=function(lbl,val,clr){if(!val||val==='<Null>'||val==='&lt;Null&gt;'||val==='--')return '';return '<tr><td style="color:#7a8a9e;width:120px;padding:3px 6px;vertical-align:top"><b>'+lbl+'</b></td><td style="padding:3px 6px;word-break:break-word;overflow-wrap:break-word;'+(clr?'color:'+clr+';font-weight:600':'')+'">'+(val||'-')+'</td></tr>'};
@@ -1142,7 +1143,7 @@ function initOverviewMap(){
             show.forEach(function(k){if(p[k])popup+=row(k.replace(/_/g,' '),p[k])});
           }
           popup+='</table></div>';
-          layer.bindPopup(popup,{maxWidth:500,autoPanPadding:[20,20]});
+          layer.bindPopup(popup,{maxWidth:600,autoPanPadding:[20,20]});
         }
       }).addTo(ovMapInstance);
       OV_LAYERS[def.id]={layer:layerGrp,count:features.length,visible:true};
