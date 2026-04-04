@@ -251,7 +251,14 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <div class="logo-icon"><img src="https://raw.githubusercontent.com/Collins76/IE-Asset-Dashboard/main/IE%20Logo.png" alt="IE Logo" style="width:100%;height:100%;object-fit:contain;border-radius:6px;"></div>
     <div><div>IE Asset Dashboard</div><div class="logo-sub">Distribution Transformer Network &middot; Ikeja Electric</div></div>
   </div>
-  <div class="nav-tabs">
+  <div class="nav-right">
+    <button class="btn btn-csv" onclick="exportCSV()" style="border-color:var(--green);color:var(--green)">&#128196; CSV</button>
+    <button class="btn btn-pdf" onclick="generatePDF()" style="border-color:var(--accent);color:var(--accent)">&#128196; PDF Report</button>
+    <button class="btn btn-reset" onclick="resetDashboardFast(this)" style="color:var(--red);border-color:var(--red)"><span class="reset-icon">&#8635;</span> Reset</button>
+  </div>
+</nav>
+<div style="background:rgba(15,23,42,.98);border-bottom:1px solid var(--border);padding:0 24px;position:sticky;top:56px;z-index:99">
+  <div class="nav-tabs" style="max-width:1600px;margin:0 auto">
     <button class="nav-tab active" data-page="summary">Executive Summary</button>
     <button class="nav-tab" data-page="network">Network Infrastructure</button>
     <button class="nav-tab" data-page="metering">Metering Analytics</button>
@@ -261,14 +268,9 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <button class="nav-tab" data-page="overview">IE Network Overview</button>
     <button class="nav-tab" data-page="table">Asset Data Table</button>
   </div>
-  <div class="nav-right">
-    <button class="btn btn-csv" onclick="exportCSV()" style="border-color:var(--green);color:var(--green)">&#128196; CSV</button>
-    <button class="btn btn-pdf" onclick="generatePDF()" style="border-color:var(--accent);color:var(--accent)">&#128196; PDF Report</button>
-    <button class="btn btn-reset" onclick="resetDashboardFast(this)" style="color:var(--red);border-color:var(--red)"><span class="reset-icon">&#8635;</span> Reset</button>
-  </div>
-</nav>
+</div>
 
-<div class="powered-bar" style="margin-top:56px"><span>Powered by the GIS Team, Ikeja Electric</span></div>
+<div class="powered-bar" style="margin-top:90px"><span>Powered by the GIS Team, Ikeja Electric</span></div>
 
 <!-- INLINE FILTER BAR -->
 <div class="filter-bar" id="filterBar">
