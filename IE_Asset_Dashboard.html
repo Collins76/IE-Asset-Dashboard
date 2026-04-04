@@ -379,7 +379,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
       <h4 style="margin:0;flex:1">Survey Records</h4>
       <input type="text" id="ufTableSearch" placeholder="Search DT, address, BU..." oninput="renderUfTable()" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px;width:220px">
-      <select id="ufPageSize" onchange="renderUfTable()" style="padding:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px"><option>10</option><option>25</option><option>50</option></select>
+      <select id="ufPageSize" onchange="renderUfTable()" style="padding:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px"><option>25</option><option>50</option><option>100</option><option>500</option><option value="99999">All</option></select>
     </div>
     <div style="overflow-x:auto"><table class="data-table" style="width:100%"><thead><tr id="ufTableHead"></tr></thead><tbody id="ufTableBody"></tbody></table></div>
     <div id="ufPagination" style="display:flex;gap:4px;margin-top:8px;justify-content:center"></div>
@@ -1159,7 +1159,17 @@ function renderUfTable(){
   }).join('');
   // Pagination
   let pgHTML='';
-  if(tp>1){for(let i=0;i<Math.min(tp,10);i++){pgHTML+='<button onclick="ufPage='+i+';renderUfTable()" style="padding:4px 8px;background:'+(i===ufPage?'var(--green)':'var(--bg3)')+';border:1px solid var(--border);color:'+(i===ufPage?'#fff':'var(--text)')+';border-radius:4px;cursor:pointer;font-size:10px">'+(i+1)+'</button>'}}
+  if(tp>1){
+    // Show prev, first few pages, current area, last few, next
+    const btnStyle='padding:4px 8px;border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px;';
+    if(ufPage>0)pgHTML+='<button onclick="ufPage='+(ufPage-1)+';renderUfTable()" style="'+btnStyle+'background:var(--bg3);color:var(--text)">&laquo; Prev</button>';
+    const start=Math.max(0,ufPage-3),end=Math.min(tp,ufPage+4);
+    if(start>0)pgHTML+='<button onclick="ufPage=0;renderUfTable()" style="'+btnStyle+'background:var(--bg3);color:var(--text)">1</button><span style="color:#475569">...</span>';
+    for(let i=start;i<end;i++){pgHTML+='<button onclick="ufPage='+i+';renderUfTable()" style="'+btnStyle+'background:'+(i===ufPage?'var(--green)':'var(--bg3)')+';color:'+(i===ufPage?'#fff':'var(--text)')+'">'+(i+1)+'</button>'}
+    if(end<tp)pgHTML+='<span style="color:#475569">...</span><button onclick="ufPage='+(tp-1)+';renderUfTable()" style="'+btnStyle+'background:var(--bg3);color:var(--text)">'+tp+'</button>';
+    if(ufPage<tp-1)pgHTML+='<button onclick="ufPage='+(ufPage+1)+';renderUfTable()" style="'+btnStyle+'background:var(--bg3);color:var(--text)">Next &raquo;</button>';
+    pgHTML+='<span style="font-size:10px;color:#475569;margin-left:8px">'+fmt(rows.length)+' records</span>';
+  }
   document.getElementById('ufPagination').innerHTML=pgHTML;
 }
 

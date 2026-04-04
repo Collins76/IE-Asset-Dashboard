@@ -40,8 +40,7 @@ def main():
                 lng = coords[0]
                 lat = coords[1]
 
-        if not lat or not lng:
-            continue
+        # Keep all records (even without coords) for the data table
 
         good = p.get('Number of upriser that are good', 0)
         bad = p.get('Number of upriser that are bad', 0)
@@ -78,8 +77,8 @@ def main():
             'fc': fp_cond if fp_cond else '',
             'vl': validation,
             'ph': photo_id,
-            'la': round(float(lat), 6),
-            'ln': round(float(lng), 6),
+            'la': round(float(lat), 6) if lat else 0,
+            'ln': round(float(lng), 6) if lng else 0,
         }
         records.append(rec)
 
