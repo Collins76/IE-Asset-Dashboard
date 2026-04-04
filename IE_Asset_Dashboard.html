@@ -573,43 +573,101 @@ function renderActivePage(){
   else if(p==='table'&&_pagesDirty.table){filterTable();_pagesDirty.table=false}
 }
 // DT Nom zoom: pulse animation on selected DTs
+function _pulseMarkers(map,matchedMarkers){
+  // Add pulsing ring overlays after fly animation completes
+  const rings=[];
+  matchedMarkers.forEach(m=>{
+    const ll=m.marker.getLatLng?m.marker.getLatLng():[m.lat,m.lng];
+    const color=m.marker.options?m.marker.options.fillColor||'#10b981':'#10b981';
+    // Create expanding ring
+    const ring=L.circleMarker(ll,{radius:8,fillColor:'transparent',fillOpacity:0,color:color,weight:3,opacity:1}).addTo(map);
+    rings.push({ring,color,step:0});
+    // Highlight the marker itself
+    if(typeof m.marker.setStyle==='function'){
+      m.marker.setStyle({radius:12,weight:3,fillOpacity:1});
+    }
+  });
+  // Animate rings expanding outward
+  let frame=0;
+  const anim=setInterval(()=>{
+    rings.forEach(r=>{
+      const size=8+frame*4;
+      const fade=Math.max(0,1-frame/8);
+      r.ring.setStyle({radius:size,opacity:fade,weight:Math.max(1,3-frame*0.3)});
+    });
+    frame++;
+    if(frame>=9){
+      clearInterval(anim);
+      rings.forEach(r=>{map.removeLayer(r.ring)});
+      // Reset markers to normal
+      matchedMarkers.forEach(m=>{
+        if(typeof m.marker.setStyle==='function'){
+          m.marker.setStyle({radius:m.marker.options._origR||7,weight:0.8,fillOpacity:0.85});
+        }
+      });
+      // Second pulse
+      setTimeout(()=>{
+        const rings2=[];
+        matchedMarkers.forEach(m=>{
+          const ll=m.marker.getLatLng?m.marker.getLatLng():[m.lat,m.lng];
+          const color=m.marker.options?m.marker.options.fillColor||'#10b981':'#10b981';
+          const ring=L.circleMarker(ll,{radius:8,fillColor:'transparent',fillOpacity:0,color:color,weight:3,opacity:1}).addTo(map);
+          rings2.push(ring);
+          if(typeof m.marker.setStyle==='function')m.marker.setStyle({radius:12,weight:3,fillOpacity:1});
+        });
+        let f2=0;
+        const anim2=setInterval(()=>{
+          rings2.forEach(r=>{r.setStyle({radius:8+f2*4,opacity:Math.max(0,1-f2/8),weight:Math.max(1,3-f2*0.3)})});
+          f2++;
+          if(f2>=9){
+            clearInterval(anim2);
+            rings2.forEach(r=>{map.removeLayer(r)});
+            matchedMarkers.forEach(m=>{
+              if(typeof m.marker.setStyle==='function')m.marker.setStyle({radius:m.marker.options._origR||7,weight:0.8,fillOpacity:0.85});
+            });
+          }
+        },60);
+      },200);
+    }
+  },60);
+}
+
 function zoomToNomFilter(map,markers){
   const nomSels=getSelVals('fNom');
   if(!nomSels.length||!map)return;
   const bounds=L.latLngBounds([]);
   const matchedMarkers=[];
   markers.forEach(m=>{
-    if(nomSels.includes(m.r.nom||'')){bounds.extend([m.lat,m.lng]);matchedMarkers.push(m)}
+    if(nomSels.includes(m.r.nom||'')){
+      bounds.extend([m.lat,m.lng]);
+      m.marker.options._origR=m.marker.options.radius||7;
+      matchedMarkers.push(m);
+    }
   });
-  if(!bounds.isValid())return;
-  map.flyToBounds(bounds,{padding:[60,60],maxZoom:17,duration:0.8});
-  // Pulse animation on matched markers
-  matchedMarkers.forEach(m=>{
-    const mk=m.marker;
-    if(typeof mk.setStyle!=='function')return;
-    const origR=mk.options.radius||7;
-    let pulseCount=0;
-    const pulse=setInterval(()=>{
-      mk.setStyle({radius:origR+(pulseCount%2===0?6:0),fillOpacity:pulseCount%2===0?1:0.85,weight:pulseCount%2===0?3:0.8});
-      pulseCount++;
-      if(pulseCount>=6){clearInterval(pulse);mk.setStyle({radius:origR,fillOpacity:0.85,weight:0.8})}
-    },300);
-  });
+  if(!bounds.isValid()||!matchedMarkers.length)return;
+  map.flyToBounds(bounds,{padding:[80,80],maxZoom:17,duration:1});
+  // Wait for fly animation to finish, then pulse
+  map.once('moveend',function(){_pulseMarkers(map,matchedMarkers)});
 }
+
 function zoomToNomFilterOv(){
   if(!ovMapInstance)return;
   const nomSels=getSelVals('fNom');
   if(!nomSels.length)return;
-  // Search network features that match the DT Nom selections
   const bounds=L.latLngBounds([]);
+  const matchedFeatures=[];
   ovSearchableFeatures.forEach(sf=>{
     if(nomSels.some(n=>sf.name.toLowerCase().includes(n.toLowerCase()))){
-      try{const ll=sf.layer.getLatLng?sf.layer.getLatLng():sf.layer.getBounds().getCenter();bounds.extend(ll)}catch(e){}
+      try{
+        const ll=sf.layer.getLatLng?sf.layer.getLatLng():sf.layer.getBounds().getCenter();
+        bounds.extend(ll);
+        matchedFeatures.push({marker:sf.layer,lat:ll.lat,lng:ll.lng});
+      }catch(e){}
     }
   });
-  if(bounds.isValid()){
-    ovMapInstance.flyToBounds(bounds,{padding:[60,60],maxZoom:17,duration:0.8});
-  }
+  if(!bounds.isValid()||!matchedFeatures.length)return;
+  ovMapInstance.flyToBounds(bounds,{padding:[80,80],maxZoom:17,duration:1});
+  ovMapInstance.once('moveend',function(){_pulseMarkers(ovMapInstance,matchedFeatures)});
 }
 
 function resetDashboardFast(btnEl){
