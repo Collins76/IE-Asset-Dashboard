@@ -4,12 +4,12 @@ import json, os, re
 SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'IE_Upriser_FeederPillar.geojson')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'upriser_feeder_pillar.js')
 
-def extract_photo_id(photo_str):
-    """Extract first Google Drive file ID from photo field."""
+def extract_photo_ids(photo_str):
+    """Extract ALL Google Drive file IDs from photo field."""
     if not photo_str:
-        return ''
-    m = re.search(r'id=([a-zA-Z0-9_-]+)', str(photo_str))
-    return m.group(1) if m else ''
+        return []
+    ids = re.findall(r'id=([a-zA-Z0-9_-]+)', str(photo_str))
+    return ids if ids else []
 
 def clean_bu(bu):
     """Normalize BU name: 'Ikorodu BU' -> 'IKORODU'"""
@@ -62,7 +62,7 @@ def main():
         fp_type = p.get('Select below if the Feeder Pillar is', '')
         fp_cond = p.get('Condition of Feeder Pillar', '')
         validation = p.get('Validation', '')
-        photo_id = extract_photo_id(p.get('Photo', ''))
+        photo_ids = extract_photo_ids(p.get('Photo', ''))
 
         rec = {
             'dt': p.get('PUBLIC DTs', ''),
@@ -76,7 +76,7 @@ def main():
             'ft': fp_type if fp_type else '',
             'fc': fp_cond if fp_cond else '',
             'vl': validation,
-            'ph': photo_id,
+            'ph': photo_ids,
             'la': round(float(lat), 6) if lat else 0,
             'ln': round(float(lng), 6) if lng else 0,
             'fo': p.get('FIELD OFFICERS', ''),
