@@ -574,62 +574,51 @@ function renderActivePage(){
 }
 // DT Nom zoom: pulse animation on selected DTs
 function _pulseMarkers(map,matchedMarkers){
-  // Add pulsing ring overlays after fly animation completes
-  const rings=[];
+  const startTime=Date.now();
+  const DURATION=2000; // total pulse duration in ms
+  const CYCLE=500; // one expand cycle in ms
+  const FRAME=50;
+  const activeRings=[];
+  // Highlight markers
   matchedMarkers.forEach(m=>{
-    const ll=m.marker.getLatLng?m.marker.getLatLng():[m.lat,m.lng];
-    const color=m.marker.options?m.marker.options.fillColor||'#10b981':'#10b981';
-    // Create expanding ring
-    const ring=L.circleMarker(ll,{radius:8,fillColor:'transparent',fillOpacity:0,color:color,weight:3,opacity:1}).addTo(map);
-    rings.push({ring,color,step:0});
-    // Highlight the marker itself
-    if(typeof m.marker.setStyle==='function'){
-      m.marker.setStyle({radius:12,weight:3,fillOpacity:1});
-    }
+    if(typeof m.marker.setStyle==='function')m.marker.setStyle({radius:12,weight:3,fillOpacity:1});
   });
-  // Animate rings expanding outward
-  let frame=0;
-  const anim=setInterval(()=>{
-    rings.forEach(r=>{
-      const size=8+frame*4;
-      const fade=Math.max(0,1-frame/8);
-      r.ring.setStyle({radius:size,opacity:fade,weight:Math.max(1,3-frame*0.3)});
+  function doPulse(){
+    // Remove old rings
+    activeRings.forEach(r=>{try{map.removeLayer(r)}catch(e){}});
+    activeRings.length=0;
+    // Create new ring per marker
+    matchedMarkers.forEach(m=>{
+      const ll=m.marker.getLatLng?m.marker.getLatLng():[m.lat,m.lng];
+      const color=m.marker.options?m.marker.options.fillColor||'#10b981':'#10b981';
+      const ring=L.circleMarker(ll,{radius:6,fillColor:'transparent',fillOpacity:0,color:color,weight:3,opacity:1}).addTo(map);
+      activeRings.push(ring);
     });
-    frame++;
-    if(frame>=9){
-      clearInterval(anim);
-      rings.forEach(r=>{map.removeLayer(r.ring)});
-      // Reset markers to normal
-      matchedMarkers.forEach(m=>{
-        if(typeof m.marker.setStyle==='function'){
-          m.marker.setStyle({radius:m.marker.options._origR||7,weight:0.8,fillOpacity:0.85});
-        }
+    let frame=0;
+    const maxFrames=Math.floor(CYCLE/FRAME);
+    const expand=setInterval(()=>{
+      const progress=frame/maxFrames;
+      activeRings.forEach(r=>{
+        r.setStyle({radius:6+progress*30,opacity:Math.max(0,1-progress),weight:Math.max(1,3*(1-progress))});
       });
-      // Second pulse
-      setTimeout(()=>{
-        const rings2=[];
-        matchedMarkers.forEach(m=>{
-          const ll=m.marker.getLatLng?m.marker.getLatLng():[m.lat,m.lng];
-          const color=m.marker.options?m.marker.options.fillColor||'#10b981':'#10b981';
-          const ring=L.circleMarker(ll,{radius:8,fillColor:'transparent',fillOpacity:0,color:color,weight:3,opacity:1}).addTo(map);
-          rings2.push(ring);
-          if(typeof m.marker.setStyle==='function')m.marker.setStyle({radius:12,weight:3,fillOpacity:1});
-        });
-        let f2=0;
-        const anim2=setInterval(()=>{
-          rings2.forEach(r=>{r.setStyle({radius:8+f2*4,opacity:Math.max(0,1-f2/8),weight:Math.max(1,3-f2*0.3)})});
-          f2++;
-          if(f2>=9){
-            clearInterval(anim2);
-            rings2.forEach(r=>{map.removeLayer(r)});
-            matchedMarkers.forEach(m=>{
-              if(typeof m.marker.setStyle==='function')m.marker.setStyle({radius:m.marker.options._origR||7,weight:0.8,fillOpacity:0.85});
-            });
-          }
-        },60);
-      },200);
-    }
-  },60);
+      frame++;
+      if(frame>=maxFrames){
+        clearInterval(expand);
+        activeRings.forEach(r=>{try{map.removeLayer(r)}catch(e){}});
+        activeRings.length=0;
+        // Continue if within duration
+        if(Date.now()-startTime<DURATION){
+          setTimeout(doPulse,100);
+        } else {
+          // Final cleanup: reset markers
+          matchedMarkers.forEach(m=>{
+            if(typeof m.marker.setStyle==='function')m.marker.setStyle({radius:m.marker.options._origR||7,weight:0.8,fillOpacity:0.85});
+          });
+        }
+      }
+    },FRAME);
+  }
+  doPulse();
 }
 
 function zoomToNomFilter(map,markers){
@@ -1256,7 +1245,8 @@ function applyDashboardFiltersToOverview(){
   const activeOwn=sels['fOwn']||[];
   const activeMs=sels['fMeter']||[];
   const activeConn=sels['fConn']||[];
-  const noFilter=!activeBU.length&&!activeOwn.length&&!activeMs.length&&!activeConn.length;
+  const activeState=sels['fState']||[];
+  const noFilter=!activeBU.length&&!activeOwn.length&&!activeMs.length&&!activeConn.length&&!activeState.length;
 
   Object.keys(OV_LAYERS).forEach(lid=>{
     const info=OV_LAYERS[lid];
@@ -1275,8 +1265,8 @@ function applyDashboardFiltersToOverview(){
     // Ensure layer is on the map if it should be visible
     if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
 
-    // If only BU filter or no other filters, show all features in this layer
-    if(!activeOwn.length&&!activeMs.length&&!activeConn.length){
+    // If only BU filter or no sub-filters, show all features in this layer
+    if(!activeOwn.length&&!activeMs.length&&!activeConn.length&&!activeState.length){
       info.layer.eachLayer(function(sl){
         if(sl._icon)sl._icon.style.display='';
         if(sl._path)sl._path.style.display='';
@@ -1284,13 +1274,14 @@ function applyDashboardFiltersToOverview(){
       return;
     }
 
-    // Sub-filter individual features by ownership, metering, connection
+    // Sub-filter individual features by ownership, metering, connection, state
     info.layer.eachLayer(function(sl){
       const p=sl.feature?sl.feature.properties:{};
       const ownMatch=!activeOwn.length||activeOwn.includes(_normOvOwn(p.OWNERSHIP));
       const msMatch=!activeMs.length||activeMs.includes(_normOvMeter(p.METERING));
       const connMatch=!activeConn.length||activeConn.includes(_normOvConn(p.CONNECTION));
-      const show=ownMatch&&msMatch&&connMatch;
+      const stateMatch=!activeState.length||activeState.includes((p.STATE||'').toUpperCase());
+      const show=ownMatch&&msMatch&&connMatch&&stateMatch;
       if(sl._icon)sl._icon.style.display=show?'':'none';
       if(sl._path)sl._path.style.display=show?'':'none';
     });
