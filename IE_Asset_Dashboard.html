@@ -909,6 +909,7 @@ function renderMap(data){
         <tr><td style="color:#7a8a9e"><b>SRT Band</b></td><td>${r.srt||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>Customer</b></td><td>${r.cust||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>Address</b></td><td style="word-break:break-all">${r.addr||'-'}</td></tr>
+        <tr><td style="color:#7a8a9e"><b>State</b></td><td>${r.st||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>Lat, Long</b></td><td>${lat.toFixed(6)}, ${lng.toFixed(6)}</td></tr>
       </table></div>`,{maxWidth:500});
     marker.addTo(mapLayerGroup);
@@ -1136,7 +1137,7 @@ function initOverviewMap(){
             popup+=row('BU',p._bu||p.BU_NAME);
             popup+=row('Feeder',p.FEEDER_NAME||p.FED_NAME);
           } else {
-            const show=['BU_NAME','UT_NAME','FEEDER_NAME','FED_NAME','CAPACITY','OWNERSHIP','ADDRESS','METERING','CONNECTION','COMMISSION','MAINTENANCE','STATUS','INJECTION','TOTAL_CAP','POWER_TX','VOLT_RATIO','NUM_FEEDER','OP_CAPACITY','LAT','LONG'];
+            const show=['BU_NAME','UT_NAME','FEEDER_NAME','FED_NAME','CAPACITY','OWNERSHIP','INSTALL_POS','METERING','METER_NO','CONNECTION','COMMISSION','MAINTENANCE','STATUS','ADDRESS','STATE','INJECTION','TOTAL_CAP','POWER_TX','VOLT_RATIO','NUM_FEEDER','OP_CAPACITY','LAT','LONG'];
             show.forEach(function(k){if(p[k])popup+=row(k.replace(/_/g,' '),p[k])});
           }
           popup+='</table></div>';
