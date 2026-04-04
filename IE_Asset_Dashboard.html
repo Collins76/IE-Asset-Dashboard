@@ -32,6 +32,15 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .btn-reset:hover{border-color:var(--red)!important;color:var(--red)!important;box-shadow:0 4px 15px rgba(239,68,68,.2)}
 @keyframes btn-pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.15)}70%{box-shadow:0 0 0 8px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
 @keyframes spin-reset{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes uf-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+@keyframes uf-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes uf-glow{0%,100%{filter:drop-shadow(0 0 2px currentColor)}50%{filter:drop-shadow(0 0 8px currentColor)}}
+@keyframes uf-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+@keyframes uf-spin-slow{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+#ufSuggestions{display:none;position:absolute;top:100%;left:0;width:100%;max-height:200px;overflow-y:auto;background:rgba(14,24,32,.97);border:1px solid #1a3540;border-top:none;border-radius:0 0 8px 8px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+#ufSuggestions.show{display:block}
+#ufSuggestions .uf-sug{padding:6px 10px;font-size:11px;color:#cbd5e1;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.03)}
+#ufSuggestions .uf-sug:hover{background:rgba(16,185,129,.12);color:#e2e8f0}
 /* INLINE FILTER BAR */
 .filter-bar{background:linear-gradient(180deg,#0c141c,#0e1820);border-top:2px solid var(--red);border-bottom:1px solid var(--border);padding:12px 24px 10px;display:flex;flex-direction:column;gap:8px}
 .filter-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px 12px;align-items:center}
@@ -378,7 +387,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
   <div class="chart-box" style="padding:12px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
       <h4 style="margin:0;flex:1">Survey Records</h4>
-      <input type="text" id="ufTableSearch" placeholder="Search DT, address, BU..." oninput="renderUfTable()" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px;width:220px">
+      <div style="position:relative;width:280px"><input type="text" id="ufTableSearch" placeholder="Search DT, address, BU, officer..." oninput="ufSearchInput()" onkeydown="ufSugNav(event)" autocomplete="off" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px;width:100%"><div id="ufSuggestions"></div></div>
       <select id="ufPageSize" onchange="renderUfTable()" style="padding:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px"><option>25</option><option>50</option><option>100</option><option>500</option><option value="99999">All</option></select>
     </div>
     <div style="overflow-x:auto"><table class="data-table" style="width:100%"><thead><tr id="ufTableHead"></tr></thead><tbody id="ufTableBody"></tbody></table></div>
@@ -1048,6 +1057,12 @@ function getUfFiltered(){
   if(buSel.length)d=d.filter(r=>buSel.includes(r.bu));
   const utSel=getSelVals('fUT');
   if(utSel.length)d=d.filter(r=>utSel.includes(r.ut));
+  // Feeder filter: match if DT name starts with the feeder name
+  const feederSel=getSelVals('fFeeder');
+  if(feederSel.length)d=d.filter(r=>{const dt=(r.dt||'').toLowerCase();return feederSel.some(f=>dt.startsWith(f.toLowerCase()))});
+  // DT Nom filter: exact match on DT name
+  const nomSel=getSelVals('fNom');
+  if(nomSel.length)d=d.filter(r=>nomSel.includes(r.dt));
   return d;
 }
 
@@ -1068,7 +1083,10 @@ function renderUfKPIs(data){
     {v:fpPct+'%',l:'Feeder Pillar Coverage',s:fmt(fpYes)+' of '+fmt(total)+' have FP',c:parseFloat(fpPct)>90?'#10b981':'#f59e0b',i:'&#9632;'},
     {v:fmt(critical),l:'Critical Condition',s:'Urgent attention needed',c:'#ef4444',i:'&#9888;'},
     {v:validPct+'%',l:'Validation Rate',s:fmt(valid)+' valid of '+fmt(total),c:parseFloat(validPct)>95?'#10b981':'#f59e0b',i:'&#9989;'}
-  ].map(k=>'<div class="kpi-card" style="border-left:3px solid '+k.c+'"><div class="kpi-icon" style="background:linear-gradient(135deg,rgba(0,0,0,.2),rgba(0,0,0,.1));color:'+k.c+'">'+k.i+'</div><div class="kpi-val" style="color:'+k.c+'">'+k.v+'</div><div class="kpi-label">'+k.l+'</div><div class="kpi-sub">'+k.s+'</div></div>').join('');
+  ].map((k,idx)=>{
+    const anims=['uf-pulse 2s ease-in-out infinite','uf-bounce 1.5s ease infinite','uf-glow 2s ease-in-out infinite','uf-shake 2s ease-in-out infinite','uf-spin-slow 3s linear infinite'];
+    return '<div class="kpi-card" style="border-left:3px solid '+k.c+'"><div class="kpi-icon" style="background:linear-gradient(135deg,rgba(0,0,0,.2),rgba(0,0,0,.1));color:'+k.c+';animation:'+anims[idx%anims.length]+'">'+k.i+'</div><div class="kpi-val" style="color:'+k.c+'">'+k.v+'</div><div class="kpi-label">'+k.l+'</div><div class="kpi-sub">'+k.s+'</div></div>';
+  }).join('');
 }
 
 function initUfMap(){
@@ -1113,7 +1131,7 @@ function renderUfMap(data){
 }
 
 function renderUfCharts(data){
-  const PL={paper_bgcolor:'transparent',plot_bgcolor:'transparent',font:{color:'#94a3b8',size:10},margin:{t:10,b:40,l:40,r:10},height:180};
+  const PL={paper_bgcolor:'transparent',plot_bgcolor:'transparent',font:{color:'#94a3b8',size:10},margin:{t:10,b:40,l:40,r:10}};
   const PC={responsive:true,displayModeBar:false};
   const bus=['IKEJA','IKORODU','AKOWONJO','SHOMOLU','OSHODI','ABULE EGBA'];
   const conds=['Excellent','Good','Poor','Critical','No'];
@@ -1133,13 +1151,14 @@ function renderUfCharts(data){
 const UF_COLS=[
   {key:'dt',label:'Public DT',w:200},{key:'bu',label:'BU',w:90},{key:'ut',label:'Undertaking',w:100},
   {key:'gd',label:'Good',w:50},{key:'bd',label:'Bad',w:50},{key:'tt',label:'Total',w:50},
-  {key:'fc',label:'FP Condition',w:90},{key:'ft',label:'FP Type',w:80},{key:'vl',label:'Valid',w:60}
+  {key:'fc',label:'FP Condition',w:90},{key:'ft',label:'FP Type',w:80},{key:'vl',label:'Valid',w:60},
+  {key:'fo',label:'Field Officer',w:150},{key:'rp',label:'Role Position',w:120}
 ];
 
 function renderUfTable(){
   const s=(document.getElementById('ufTableSearch').value||'').toLowerCase();
   let rows=getUfFiltered();
-  if(s)rows=rows.filter(r=>(r.dt||'').toLowerCase().includes(s)||(r.addr||'').toLowerCase().includes(s)||(r.bu||'').toLowerCase().includes(s)||(r.ut||'').toLowerCase().includes(s));
+  if(s)rows=rows.filter(r=>(r.dt||'').toLowerCase().includes(s)||(r.addr||'').toLowerCase().includes(s)||(r.bu||'').toLowerCase().includes(s)||(r.ut||'').toLowerCase().includes(s)||(r.fo||'').toLowerCase().includes(s)||(r.fc||'').toLowerCase().includes(s));
   const ps=parseInt(document.getElementById('ufPageSize').value)||10;
   const tp=Math.ceil(rows.length/ps);
   if(ufPage>=tp)ufPage=0;
@@ -1171,6 +1190,59 @@ function renderUfTable(){
     pgHTML+='<span style="font-size:10px;color:#475569;margin-left:8px">'+fmt(rows.length)+' records</span>';
   }
   document.getElementById('ufPagination').innerHTML=pgHTML;
+}
+
+let _ufSearchTimer=null,_ufSugIdx=-1;
+function ufSearchInput(){
+  if(_ufSearchTimer)clearTimeout(_ufSearchTimer);
+  _ufSearchTimer=setTimeout(()=>{
+    renderUfTable();
+    ufShowSuggestions();
+  },100);
+}
+function ufShowSuggestions(){
+  const q=(document.getElementById('ufTableSearch').value||'').toLowerCase().trim();
+  const box=document.getElementById('ufSuggestions');
+  _ufSugIdx=-1;
+  if(!q||q.length<2){box.classList.remove('show');return}
+  const data=getUfFiltered();
+  const matches=[];
+  for(let i=0;i<data.length&&matches.length<12;i++){
+    const r=data[i];
+    if((r.dt||'').toLowerCase().includes(q)||(r.addr||'').toLowerCase().includes(q)||(r.fo||'').toLowerCase().includes(q)){
+      matches.push(r);
+    }
+  }
+  if(!matches.length){box.classList.remove('show');return}
+  box.innerHTML=matches.map((r,i)=>'<div class="uf-sug" data-idx="'+i+'" onmousedown="ufSelectSug('+i+')">'+
+    '<b style="color:'+( UF_COND_CLR[r.fc]||'#94a3b8')+'">'+(r.dt||'Unknown')+'</b>'+
+    '<span style="color:#475569;font-size:10px;margin-left:6px">'+r.bu+' &middot; '+(r.fc||'-')+'</span></div>').join('');
+  box._matches=matches;
+  box.classList.add('show');
+}
+function ufSelectSug(idx){
+  const box=document.getElementById('ufSuggestions');
+  const m=(box._matches||[])[idx];
+  if(!m)return;
+  document.getElementById('ufTableSearch').value=m.dt||'';
+  box.classList.remove('show');
+  renderUfTable();
+  // Zoom to location on map if it has coords
+  if(m.la&&m.ln&&ufMapInstance){
+    ufMapInstance.flyTo([m.la,m.ln],17,{duration:0.8});
+  }
+}
+function ufSugNav(e){
+  const box=document.getElementById('ufSuggestions');
+  const m=box._matches||[];
+  if(!m.length||!box.classList.contains('show'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();_ufSugIdx=Math.min(_ufSugIdx+1,m.length-1);ufHighlight()}
+  else if(e.key==='ArrowUp'){e.preventDefault();_ufSugIdx=Math.max(_ufSugIdx-1,0);ufHighlight()}
+  else if(e.key==='Enter'&&_ufSugIdx>=0){e.preventDefault();ufSelectSug(_ufSugIdx)}
+  else if(e.key==='Escape'){box.classList.remove('show')}
+}
+function ufHighlight(){
+  document.querySelectorAll('#ufSuggestions .uf-sug').forEach((el,i)=>{el.style.background=i===_ufSugIdx?'rgba(16,185,129,.12)':''});
 }
 
 function renderUpriserPage(){

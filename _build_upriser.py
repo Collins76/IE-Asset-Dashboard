@@ -79,6 +79,8 @@ def main():
             'ph': photo_id,
             'la': round(float(lat), 6) if lat else 0,
             'ln': round(float(lng), 6) if lng else 0,
+            'fo': p.get('FIELD OFFICERS', ''),
+            'rp': p.get('Role Position', ''),
         }
         records.append(rec)
 
