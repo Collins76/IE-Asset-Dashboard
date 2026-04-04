@@ -1240,6 +1240,13 @@ function _normOvOwn(v){
   return u;
 }
 
+function _getFeatureLatLng(sl){
+  // Get lat/lng from a leaflet layer (point, line, or polygon)
+  if(sl.getLatLng)return sl.getLatLng();
+  if(sl.getBounds){try{return sl.getBounds().getCenter()}catch(e){}}
+  return null;
+}
+
 function applyDashboardFiltersToOverview(){
   if(!ovMapInstance||!Object.keys(OV_LAYERS).length)return;
   const sels={};
@@ -1251,6 +1258,26 @@ function applyDashboardFiltersToOverview(){
   const activeState=sels['fState']||[];
   const noFilter=!activeBU.length&&!activeOwn.length&&!activeMs.length&&!activeConn.length&&!activeState.length;
 
+  // Build geographic bounding box from filteredData when state filter is active
+  let stateBounds=null;
+  if(activeState.length){
+    let minLat=90,maxLat=-90,minLng=180,maxLng=-180;
+    let count=0;
+    filteredData.forEach(r=>{
+      const lat=parseFloat(r.lat),lng=parseFloat(r.lng);
+      if(!isNaN(lat)&&!isNaN(lng)&&lat>1&&lat<15&&lng>0&&lng<10){
+        if(lat<minLat)minLat=lat;if(lat>maxLat)maxLat=lat;
+        if(lng<minLng)minLng=lng;if(lng>maxLng)maxLng=lng;
+        count++;
+      }
+    });
+    if(count>0){
+      // Add small padding to the bounds
+      const pad=0.02;
+      stateBounds={minLat:minLat-pad,maxLat:maxLat+pad,minLng:minLng-pad,maxLng:maxLng+pad};
+    }
+  }
+
   Object.keys(OV_LAYERS).forEach(lid=>{
     const info=OV_LAYERS[lid];
     if(!info)return;
@@ -1258,7 +1285,8 @@ function applyDashboardFiltersToOverview(){
     const isHT=lid.startsWith('ht_lines_');
     const isISS=lid==='iss';
     const isTCN=lid==='tcn';
-    const isFilterable=isDSS||isHT||isISS||isTCN;
+    const is33kv=lid==='33kv_lines';
+    const isFilterable=isDSS||isHT||isISS||isTCN||is33kv;
     if(!isFilterable)return;
 
     // Extract BU from layer ID for DSS and HT layers
@@ -1287,10 +1315,15 @@ function applyDashboardFiltersToOverview(){
     // Sub-filter individual features
     info.layer.eachLayer(function(sl){
       const p=sl.feature?sl.feature.properties:{};
-      // State filter applies to all filterable layers
-      const st=(p.STATE||'').toUpperCase();
-      const stateMatch=!activeState.length||activeState.includes(st);
-      // Ownership/metering/connection only apply to DSS layers (HT/ISS/TCN don't have these)
+      // Geographic state filter: check if feature is within the state's bounding box
+      let stateMatch=true;
+      if(stateBounds){
+        const ll=_getFeatureLatLng(sl);
+        if(ll){
+          stateMatch=ll.lat>=stateBounds.minLat&&ll.lat<=stateBounds.maxLat&&ll.lng>=stateBounds.minLng&&ll.lng<=stateBounds.maxLng;
+        }
+      }
+      // Ownership/metering/connection only apply to DSS layers
       let subMatch=true;
       if(isDSS){
         const ownMatch=!activeOwn.length||activeOwn.includes(_normOvOwn(p.OWNERSHIP));
