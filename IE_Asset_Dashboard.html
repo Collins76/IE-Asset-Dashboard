@@ -1101,6 +1101,37 @@ function initUfMap(){
   const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'OSM'});
   ufMapInstance=L.map('ufMapContainer',{zoomControl:true,layers:[osm],preferCanvas:true}).setView([6.55,3.38],11);
   ufLayerGroup=L.featureGroup().addTo(ufMapInstance);
+  // Add UT and Lagos boundaries from network overview data
+  if(typeof OV_NETWORK_DATA!=='undefined'){
+    const utFeatures=OV_NETWORK_DATA.features.filter(f=>f.properties._layer==='ut_boundary');
+    const lagosFeatures=OV_NETWORK_DATA.features.filter(f=>f.properties._layer==='lagos');
+    // Lagos boundary
+    if(lagosFeatures.length){
+      L.geoJSON({type:'FeatureCollection',features:lagosFeatures},{
+        style:function(){return {color:'#f43f5e',weight:4,fillColor:'#f43f5e',fillOpacity:0.05,dashArray:''}},
+        onEachFeature:function(f,l){l.bindPopup('<b style="color:#f43f5e">Lagos State Boundary</b>')}
+      }).addTo(ufMapInstance);
+    }
+    // UT boundaries with labels
+    if(utFeatures.length){
+      L.geoJSON({type:'FeatureCollection',features:utFeatures},{
+        style:function(feature){
+          const c=typeof getUtColor==='function'?getUtColor(feature.properties.name||''):'#64748b';
+          return {color:c,weight:2,fillColor:c,fillOpacity:0.1,dashArray:''}
+        },
+        onEachFeature:function(feature,layer){
+          const name=feature.properties.name||'';
+          if(name){
+            layer.bindTooltip(name,{permanent:true,direction:'center',className:'ut-label',opacity:0.85});
+            const c=typeof getUtColor==='function'?getUtColor(name):'#64748b';
+            layer.bindPopup('<b style="color:'+c+'">'+name+'</b><br>UT Boundary');
+          }
+          layer.on('mouseover',function(){this.setStyle({weight:4,fillOpacity:0.2})});
+          layer.on('mouseout',function(){this.setStyle({weight:2,fillOpacity:0.1})});
+        }
+      }).addTo(ufMapInstance);
+    }
+  }
   setTimeout(()=>{ufMapInstance.invalidateSize()},300);
 }
 
@@ -1118,7 +1149,7 @@ function renderUfMap(data){
     mk.on('mouseout',function(){this.setStyle({radius:5,weight:0.8,fillOpacity:0.8})});
     // Photo thumbnail from Google Drive
     const photos=Array.isArray(r.ph)?r.ph:(r.ph?[r.ph]:[]);
-    const photoHTML=photos.length?'<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">'+photos.map((id,i)=>'<a href="https://drive.google.com/file/d/'+id+'/view" target="_blank" title="Photo '+(i+1)+'"><img src="https://drive.google.com/thumbnail?id='+id+'&sz=w150" style="width:'+( photos.length===1?'200':'90')+'px;height:'+(photos.length===1?'auto':'70')+'px;object-fit:cover;border-radius:6px;border:1px solid #1a2535" onerror="this.style.display=\'none\'"></a>').join('')+'</div>':'';
+    const photoHTML=photos.length?'<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">'+photos.map((id,i)=>'<a href="https://drive.google.com/file/d/'+id+'/view" target="_blank" title="Photo '+(i+1)+'"><img src="https://lh3.googleusercontent.com/d/'+id+'=w150" style="width:'+(photos.length===1?'200':'90')+'px;height:'+(photos.length===1?'auto':'70')+'px;object-fit:cover;border-radius:6px;border:1px solid #1a2535" onerror="this.parentElement.innerHTML=\'&#128247; Photo '+(i+1)+'\'"></a>').join('')+'</div>':'';
     mk.bindPopup('<div style="min-width:250px"><div style="font-size:13px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(r.dt||'Unknown DT')+'</div><table style="width:100%;font-size:11px;line-height:1.7"><tr><td style="color:#7a8a9e;width:110px"><b>BU</b></td><td style="color:'+c+';font-weight:600">'+r.bu+'</td></tr><tr><td style="color:#7a8a9e"><b>Undertaking</b></td><td>'+r.ut+'</td></tr><tr><td style="color:#7a8a9e"><b>Good Uprisers</b></td><td style="color:#10b981;font-weight:600">'+r.gd+'</td></tr><tr><td style="color:#7a8a9e"><b>Bad Uprisers</b></td><td style="color:#ef4444;font-weight:600">'+r.bd+'</td></tr><tr><td style="color:#7a8a9e"><b>Total Uprisers</b></td><td>'+r.tt+'</td></tr><tr><td style="color:#7a8a9e"><b>FP Condition</b></td><td style="color:'+c+';font-weight:600">'+r.fc+'</td></tr><tr><td style="color:#7a8a9e"><b>FP Type</b></td><td>'+(r.ft||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Validation</b></td><td>'+(r.vl==='Valid'?'<span style="color:#10b981">Valid</span>':'<span style="color:#ef4444">Invalid</span>')+'</td></tr><tr><td style="color:#7a8a9e"><b>Address</b></td><td style="word-break:break-word">'+(r.addr||'-')+'</td></tr></table>'+photoHTML+'</div>',{maxWidth:600});
     mk.addTo(ufLayerGroup);
     count++;
@@ -1174,7 +1205,7 @@ function renderUfTable(){
   document.getElementById('ufTableBody').innerHTML=pr.map(r=>{
     const condClr=UF_COND_CLR[r.fc]||'#94a3b8';
     const tPhotos=Array.isArray(r.ph)?r.ph:(r.ph?[r.ph]:[]);
-    const photoTD=tPhotos.length?'<td style="padding:4px;display:flex;gap:2px">'+tPhotos.map(id=>'<img src="https://drive.google.com/thumbnail?id='+id+'&sz=w60" style="width:30px;height:24px;object-fit:cover;border-radius:3px;cursor:pointer" onclick="window.open(\'https://drive.google.com/file/d/'+id+'/view\',\'_blank\')" onerror="this.style.display=\'none\'">').join('')+'</td>':'<td style="padding:4px;color:#334155;font-size:10px">-</td>';
+    const photoTD=tPhotos.length?'<td style="padding:4px;display:flex;gap:2px">'+tPhotos.map(id=>'<img src="https://lh3.googleusercontent.com/d/'+id+'=w60" style="width:30px;height:24px;object-fit:cover;border-radius:3px;cursor:pointer" onclick="window.open(\'https://drive.google.com/file/d/'+id+'/view\',\'_blank\')" onerror="this.outerHTML=\'<span style=cursor:pointer;font-size:14px;color:#475569 onclick=window.open(\\x27https://drive.google.com/file/d/'+id+'/view\\x27)>&#128247;</span>\'">').join('')+'</td>':'<td style="padding:4px;color:#334155;font-size:10px">-</td>';
     return '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">'+UF_COLS.map(c=>{
       let v=r[c.key]||'';
       if(c.key==='fc')v='<span style="color:'+condClr+';font-weight:600">'+v+'</span>';
