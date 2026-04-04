@@ -229,7 +229,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 .ai-hints{font-size:9.5px;color:var(--text2);margin-top:5px;line-height:1.4}
 @media(max-width:1200px){.g3{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.g2,.g3{grid-template-columns:1fr}.nav-tabs{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}.filter-row{gap:4px}}
-.powered-bar{overflow:hidden;padding:6px 0;background:linear-gradient(90deg,transparent,rgba(245,158,11,.04),transparent)}
+.powered-bar{overflow:hidden;padding:3px 0;background:linear-gradient(90deg,transparent,rgba(245,158,11,.04),transparent)}
 .powered-bar span{display:inline-block;font-size:15px;font-weight:700;letter-spacing:2px;color:#fff;white-space:nowrap;animation:marquee-scroll 12s linear infinite,spark-flash 1.5s ease-in-out infinite}
 @keyframes marquee-scroll{0%{transform:translateX(100vw)}100%{transform:translateX(-100%)}}
 @keyframes spark-flash{0%,100%{color:#fff;text-shadow:0 0 6px rgba(245,158,11,.4),0 0 12px rgba(245,158,11,.2)}25%{color:#fcd34d;text-shadow:0 0 16px rgba(245,158,11,1),0 0 32px rgba(245,158,11,.6),0 0 48px rgba(245,158,11,.3)}50%{color:#fff;text-shadow:0 0 8px rgba(245,158,11,.5),0 0 16px rgba(245,158,11,.2)}75%{color:#fbbf24;text-shadow:0 0 20px rgba(245,158,11,1),0 0 40px rgba(245,158,11,.7),0 0 60px rgba(245,158,11,.3)}}
@@ -253,8 +253,8 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
   </div>
 
 </nav>
-<div style="background:rgba(15,23,42,.98);border-bottom:1px solid var(--border);padding:0 24px;position:sticky;top:56px;z-index:99">
-  <div class="nav-tabs" style="max-width:1600px;margin:0 auto">
+<div style="background:rgba(15,23,42,.98);border-bottom:1px solid var(--border);padding:0 24px;position:sticky;top:56px;z-index:99;display:flex;align-items:center;gap:8px">
+  <div class="nav-tabs" style="flex:1">
     <button class="nav-tab active" data-page="summary">Executive Summary</button>
     <button class="nav-tab" data-page="network">Network Infrastructure</button>
     <button class="nav-tab" data-page="metering">Metering Analytics</button>
@@ -264,9 +264,13 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <button class="nav-tab" data-page="overview">IE Network Overview</button>
     <button class="nav-tab" data-page="table">Asset Data Table</button>
   </div>
+  <div style="display:flex;gap:6px;flex-shrink:0">
+    <button class="btn btn-csv" onclick="exportCSV()" style="border-color:var(--green);color:var(--green)">&#128196; CSV</button>
+    <button class="btn btn-pdf" onclick="generatePDF()" style="border-color:var(--accent);color:var(--accent)">&#128196; PDF Report</button>
+    <button class="btn btn-reset" onclick="resetDashboardFast(this)" style="color:var(--red);border-color:var(--red)"><span class="reset-icon">&#8635;</span> Reset</button>
+  </div>
 </div>
-
-<div class="powered-bar" style="margin-top:90px;display:flex;align-items:center;justify-content:space-between;padding:4px 24px"><span>Powered by the GIS Team, Ikeja Electric</span><div style="display:flex;gap:8px"><button class="btn btn-csv" onclick="exportCSV()" style="border-color:var(--green);color:var(--green)">&#128196; CSV</button><button class="btn btn-pdf" onclick="generatePDF()" style="border-color:var(--accent);color:var(--accent)">&#128196; PDF Report</button><button class="btn btn-reset" onclick="resetDashboardFast(this)" style="color:var(--red);border-color:var(--red)"><span class="reset-icon">&#8635;</span> Reset</button></div></div>
+<div class="powered-bar" style="margin-top:86px"><span>Powered by the GIS Team, Ikeja Electric</span></div>
 
 <!-- INLINE FILTER BAR -->
 <div class="filter-bar" id="filterBar">
