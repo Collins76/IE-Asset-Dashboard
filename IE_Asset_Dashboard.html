@@ -227,7 +227,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 /* Leaflet dark theme */
 .leaflet-popup-content-wrapper{background:#0f171f!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important}
 .leaflet-popup-tip{background:#0f171f!important}
-.leaflet-popup-content{font-size:12px;line-height:1.6}
+.leaflet-popup-content{font-size:12px;line-height:1.6;overflow-wrap:break-word;word-wrap:break-word}
 .leaflet-popup-content b{color:var(--green)}
 .leaflet-control-layers{background:rgba(11,16,21,.94)!important;border:1px solid var(--border)!important;border-radius:8px!important;color:var(--text)!important;padding:8px 12px!important;box-shadow:0 4px 16px rgba(0,0,0,.5)!important;backdrop-filter:blur(8px)}
 .leaflet-control-layers label{color:var(--text)!important;font-size:12px}
@@ -910,7 +910,7 @@ function renderMap(data){
         <tr><td style="color:#7a8a9e"><b>Customer</b></td><td>${r.cust||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>Address</b></td><td style="word-break:break-all">${r.addr||'-'}</td></tr>
         <tr><td style="color:#7a8a9e"><b>Lat, Long</b></td><td>${lat.toFixed(6)}, ${lng.toFixed(6)}</td></tr>
-      </table></div>`,{maxWidth:280});
+      </table></div>`,{maxWidth:500});
     marker.addTo(mapLayerGroup);
     mapMarkers.push({marker,r,lat,lng});
     count++;
