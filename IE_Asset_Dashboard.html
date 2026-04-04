@@ -1255,21 +1255,28 @@ function applyDashboardFiltersToOverview(){
     const info=OV_LAYERS[lid];
     if(!info)return;
     const isDSS=lid.includes('_dss_');
-    if(!isDSS)return;
+    const isHT=lid.startsWith('ht_lines_');
+    const isISS=lid==='iss';
+    const isTCN=lid==='tcn';
+    const isFilterable=isDSS||isHT||isISS||isTCN;
+    if(!isFilterable)return;
 
-    // Get the BU from the layer ID
-    const layerBU=lid.replace(/^(11kv|33kv)_dss_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
+    // Extract BU from layer ID for DSS and HT layers
+    let layerBU='';
+    if(isDSS)layerBU=lid.replace(/^(11kv|33kv)_dss_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
+    if(isHT)layerBU=lid.replace(/^ht_lines_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
 
-    // If BU filter is active and this layer's BU is not selected, hide entire layer
-    if(activeBU.length&&!activeBU.includes(layerBU)){
+    // If BU filter active and this layer has a BU that's not selected, hide entire layer
+    if(activeBU.length&&layerBU&&!activeBU.includes(layerBU)){
       if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
       return;
     }
     // Ensure layer is on the map if it should be visible
     if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
 
-    // If only BU filter or no sub-filters, show all features in this layer
-    if(!activeOwn.length&&!activeMs.length&&!activeConn.length&&!activeState.length){
+    // If no sub-filters, show all features in this layer
+    const hasSub=activeOwn.length||activeMs.length||activeConn.length||activeState.length;
+    if(!hasSub){
       info.layer.eachLayer(function(sl){
         if(sl._icon)sl._icon.style.display='';
         if(sl._path)sl._path.style.display='';
@@ -1277,24 +1284,31 @@ function applyDashboardFiltersToOverview(){
       return;
     }
 
-    // Sub-filter individual features by ownership, metering, connection, state
+    // Sub-filter individual features
     info.layer.eachLayer(function(sl){
       const p=sl.feature?sl.feature.properties:{};
-      const ownMatch=!activeOwn.length||activeOwn.includes(_normOvOwn(p.OWNERSHIP));
-      const msMatch=!activeMs.length||activeMs.includes(_normOvMeter(p.METERING));
-      const connMatch=!activeConn.length||activeConn.includes(_normOvConn(p.CONNECTION));
-      const stateMatch=!activeState.length||activeState.includes((p.STATE||'').toUpperCase());
-      const show=ownMatch&&msMatch&&connMatch&&stateMatch;
+      // State filter applies to all filterable layers
+      const st=(p.STATE||'').toUpperCase();
+      const stateMatch=!activeState.length||activeState.includes(st);
+      // Ownership/metering/connection only apply to DSS layers (HT/ISS/TCN don't have these)
+      let subMatch=true;
+      if(isDSS){
+        const ownMatch=!activeOwn.length||activeOwn.includes(_normOvOwn(p.OWNERSHIP));
+        const msMatch=!activeMs.length||activeMs.includes(_normOvMeter(p.METERING));
+        const connMatch=!activeConn.length||activeConn.includes(_normOvConn(p.CONNECTION));
+        subMatch=ownMatch&&msMatch&&connMatch;
+      }
+      const show=stateMatch&&subMatch;
       if(sl._icon)sl._icon.style.display=show?'':'none';
       if(sl._path)sl._path.style.display=show?'':'none';
     });
   });
 
-  // Zoom to fit visible DSS layers
+  // Zoom to fit visible filterable layers (DSS, HT, ISS, TCN)
   if(!noFilter){
     const bounds=L.latLngBounds([]);
     Object.keys(OV_LAYERS).forEach(lid=>{
-      if(!lid.includes('_dss_'))return;
+      if(!lid.includes('_dss_')&&!lid.startsWith('ht_lines_')&&lid!=='iss'&&lid!=='tcn')return;
       const info=OV_LAYERS[lid];
       if(!info||!ovMapInstance.hasLayer(info.layer))return;
       try{bounds.extend(info.layer.getBounds())}catch(e){}
