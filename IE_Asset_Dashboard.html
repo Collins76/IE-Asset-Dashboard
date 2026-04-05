@@ -921,7 +921,7 @@ function renderOperations(data){
 }
 
 // ============ PAGE 5: MAP (Canvas CircleMarker) ============
-let mapLayerGroup=null;
+let mapLayerGroup=null,mapSvgRenderer=null;
 
 function initMap(){
   if(mapInitialized)return;
@@ -939,6 +939,10 @@ function initMap(){
   }).setView([6.55,3.38],12);
 
   mapLayerGroup=L.featureGroup().addTo(mapInstance);
+  // Dedicated SVG renderer so each DT marker becomes a real <path> element
+  // that CSS can animate (Leaflet's default canvas renderer draws pixels
+  // which CSS can't style).
+  mapSvgRenderer=L.svg({padding:0.5}).addTo(mapInstance);
 
   L.control.layers({
     'OpenStreetMap':osmTile,
@@ -967,6 +971,7 @@ function renderMap(data){
     if(isNaN(lat)||isNaN(lng)||lat<1||lat>15||lng<0||lng>10)continue;
     const color=BU_CLR[r.bu]||'#94a3b8';
     const marker=L.circleMarker([lat,lng],{
+      renderer:mapSvgRenderer,
       className:'dt-ping-svg',
       radius:4,
       fillColor:color,
