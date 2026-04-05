@@ -147,8 +147,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 @keyframes ht-flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-26}}
 .ht-flow{animation:ht-flow .6s linear infinite;stroke-dasharray:8 5!important}
 .leaflet-overlay-pane svg path.ht-flow{animation:ht-flow .6s linear infinite}
-@keyframes dt-pulse{0%,100%{opacity:.55;stroke-width:.8}50%{opacity:1;stroke-width:2.2}}
-.leaflet-overlay-pane svg path.dt-pulse{animation:dt-pulse 1.7s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes dt-pulse{0%,100%{transform:scale(.85);opacity:.65}50%{transform:scale(1.35);opacity:1}}
+.leaflet-overlay-pane svg path.dt-pulse,path.dt-pulse{transform-box:fill-box;transform-origin:center;animation:dt-pulse 1.6s ease-in-out infinite!important;-webkit-animation:dt-pulse 1.6s ease-in-out infinite!important}
 .ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:10px!important;font-weight:700!important;color:rgba(255,255,255,.7)!important;text-shadow:0 0 4px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.7),1px 1px 2px rgba(0,0,0,.8)!important;letter-spacing:.5px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
 #ovSearchWrap{position:absolute;top:12px;left:55px;z-index:1000;display:flex;flex-direction:column}
 .ov-search-icon{position:absolute;top:11px;left:12px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
@@ -993,6 +993,8 @@ function renderMap(data){
         <tr><td style="color:#7a8a9e"><b>Lat, Long</b></td><td>${lat.toFixed(6)}, ${lng.toFixed(6)}</td></tr>
       </table></div>`,{maxWidth:600});
     marker.addTo(mapLayerGroup);
+    const _el=marker.getElement&&marker.getElement();
+    if(_el){_el.classList.add('dt-pulse');_el.style.transformBox='fill-box';_el.style.transformOrigin='center';_el.style.animation='dt-pulse 1.6s ease-in-out infinite';_el.style.webkitAnimation='dt-pulse 1.6s ease-in-out infinite'}
     mapMarkers.push({marker,r,lat,lng});
     count++;
   }
@@ -1202,6 +1204,8 @@ function renderUfMap(data){
     const photoHTML=photos.length?'<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">'+photos.map((id,i)=>'<a href="https://drive.google.com/file/d/'+id+'/view" target="_blank" title="Photo '+(i+1)+'"><img src="https://lh3.googleusercontent.com/d/'+id+'=w150" style="width:'+(photos.length===1?'200':'90')+'px;height:'+(photos.length===1?'auto':'70')+'px;object-fit:cover;border-radius:6px;border:1px solid #1a2535" onerror="this.parentElement.innerHTML=\'&#128247; Photo '+(i+1)+'\'"></a>').join('')+'</div>':'';
     mk.bindPopup('<div style="min-width:250px"><div style="font-size:13px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(r.dt||'Unknown DT')+'</div><table style="width:100%;font-size:11px;line-height:1.7"><tr><td style="color:#7a8a9e;width:110px"><b>BU</b></td><td style="color:'+c+';font-weight:600">'+r.bu+'</td></tr><tr><td style="color:#7a8a9e"><b>Undertaking</b></td><td>'+r.ut+'</td></tr><tr><td style="color:#7a8a9e"><b>Good Uprisers</b></td><td style="color:#10b981;font-weight:600">'+r.gd+'</td></tr><tr><td style="color:#7a8a9e"><b>Bad Uprisers</b></td><td style="color:#ef4444;font-weight:600">'+r.bd+'</td></tr><tr><td style="color:#7a8a9e"><b>Total Uprisers</b></td><td>'+r.tt+'</td></tr><tr><td style="color:#7a8a9e"><b>FP Condition</b></td><td style="color:'+c+';font-weight:600">'+r.fc+'</td></tr><tr><td style="color:#7a8a9e"><b>FP Type</b></td><td>'+(r.ft||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Validation</b></td><td>'+(r.vl==='Valid'?'<span style="color:#10b981">Valid</span>':'<span style="color:#ef4444">Invalid</span>')+'</td></tr><tr><td style="color:#7a8a9e"><b>Address</b></td><td style="word-break:break-word">'+(r.addr||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Field Officer</b></td><td>'+(r.fo||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Role Position</b></td><td style="word-break:break-word">'+(r.rp||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>State</b></td><td>'+getUfState(r.dt)+'</td></tr><tr><td style="color:#7a8a9e"><b>Timestamp</b></td><td>'+(r.ts||'-')+'</td></tr></table>'+photoHTML+'</div>',{maxWidth:600});
     mk.addTo(ufLayerGroup);
+    const _uel=mk.getElement&&mk.getElement();
+    if(_uel){_uel.classList.add('dt-pulse');_uel.style.transformBox='fill-box';_uel.style.transformOrigin='center';_uel.style.animation='dt-pulse 1.6s ease-in-out infinite';_uel.style.webkitAnimation='dt-pulse 1.6s ease-in-out infinite'}
     count++;
   }
   if(count>0){try{ufMapInstance.fitBounds(ufLayerGroup.getBounds(),{padding:[30,30],maxZoom:14})}catch(e){}}
