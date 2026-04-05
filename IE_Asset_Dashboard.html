@@ -1446,8 +1446,18 @@ function initOverviewMap(){
   L.control.layers({'OpenStreetMap':osm,'Dark Gray (Esri)':dark,'Satellite (Esri)':sat,'Humanitarian (OSM)':hot},null,{position:'bottomright',collapsed:true}).addTo(ovMapInstance);
   // Load all network layers from OV_NETWORK_DATA
   if(typeof OV_NETWORK_DATA!=='undefined'){
+    // Single-pass group by _layer (avoids 23 full-array filters across 21k features)
+    const _byLayer={};
+    const _allFeats=OV_NETWORK_DATA.features;
+    for(let _i=0;_i<_allFeats.length;_i++){
+      const _p=_allFeats[_i].properties;
+      if(!_p)continue;
+      const _k=_p._layer;
+      if(!_k)continue;
+      (_byLayer[_k]||(_byLayer[_k]=[])).push(_allFeats[_i]);
+    }
     OV_LAYER_DEFS.forEach(def=>{
-      const features=OV_NETWORK_DATA.features.filter(f=>f.properties._layer===def.id);
+      const features=_byLayer[def.id]||[];
       if(!features.length)return;
       // HT feeder lines → ONE multi-polyline ant-path per BU (animated glowing dashes
       // flowing along geometry). Consolidating all features per BU into a single antPath
@@ -1466,9 +1476,14 @@ function initOverviewMap(){
           // Register each feature in search (lightweight polyline, NOT added to map)
           const p=f.properties||{};
           if(rings.length){
-            const searchLine=L.polyline(rings[0].map(function(c){return [c[1],c[0]]}),{});
+            // Lightweight shim with getLatLng() — avoids constructing a full
+            // L.polyline per feature at startup (saves ~325 allocations).
+            const firstRing=rings[0];
+            const mid=firstRing[Math.floor(firstRing.length/2)]||firstRing[0];
+            const ll=L.latLng(mid[1],mid[0]);
+            const shim={getLatLng:function(){return ll}};
             const searchStr=[p.name||'',p.BU||'',p.UT_NAME||'',p.FEEDER_NAME||p.Feeder_Nam||'',p._bu||'',def.name].join('|').toLowerCase();
-            ovSearchableFeatures.push({layer:searchLine,name:p.name||p.FEEDER_NAME||p.FED_NAME||'HT Feeder',detail:def.name,bu:p._bu||p.BU||'',color:def.color,search:searchStr});
+            ovSearchableFeatures.push({layer:shim,name:p.name||p.FEEDER_NAME||p.FED_NAME||'HT Feeder',detail:def.name,bu:p._bu||p.BU||'',color:def.color,search:searchStr});
           }
         });
         if(allLines.length){
@@ -1485,34 +1500,36 @@ function initOverviewMap(){
             interactive:false
           });
           grp.addLayer(ant);
-          // Per-feature transparent click targets — one polyline per HT feature
-          // with its own popup showing the Feeder Name (the animated antPath above
-          // is non-interactive so clicks pass through to these).
+          // Per-feature transparent click targets in ONE canvas-rendered L.geoJSON
+          // (avoids 300+ SVG nodes + individual listeners; antPath above stays non-
+          // interactive so clicks pass through to this hit layer).
           const buName=def.name.replace('HT Lines ','');
-          features.forEach(function(f){
-            if(!f.geometry)return;
-            const p=f.properties||{};
-            const feederName=p.FED_NAME||p.FEEDER_NAME||p.name||'Unknown Feeder';
-            const gt=f.geometry.type;
-            const rings=gt==='LineString'?[f.geometry.coordinates]:gt==='MultiLineString'?f.geometry.coordinates:[];
-            rings.forEach(function(line){
-              const latlngs=line.map(function(c){return [c[1],c[0]]});
-              if(latlngs.length<2)return;
-              const hit=L.polyline(latlngs,{color:def.color,weight:10,opacity:0.001,interactive:true,bubblingMouseEvents:false});
-              hit.bindPopup(
-                '<div style="min-width:240px">'+
-                '<div style="font-size:14px;font-weight:700;color:'+def.color+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:6px">⚡ HT Feeder Line</div>'+
+          const hitRenderer=L.canvas({padding:0.2});
+          const hitLayer=L.geoJSON({type:'FeatureCollection',features:features},{
+            renderer:hitRenderer,
+            style:function(){return {color:def.color,weight:12,opacity:0.001,interactive:true,bubblingMouseEvents:false}},
+            onEachFeature:function(feature,layer){
+              const p=feature.properties||{};
+              const feederShort=p.FED_NAME||p.FEEDER_NAME||p.name||'Unknown Feeder';
+              // Full nomenclature: <BU> 11KV <FEEDER> FEEDER
+              const fullName=buName.toUpperCase()+' 11KV '+String(feederShort).toUpperCase()+' FEEDER';
+              layer.bindPopup(
+                '<div style="min-width:260px">'+
+                '<div style="font-size:13px;font-weight:700;color:'+def.color+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:6px;word-break:break-word">&#9889; '+fullName+'</div>'+
                 '<table style="width:100%;font-size:11px;line-height:1.8;border-collapse:separate;border-spacing:0 2px">'+
-                '<tr><td style="color:#7a8a9e;width:110px;padding:3px 6px"><b>Feeder Name</b></td><td style="padding:3px 6px;color:#22d3ee;font-weight:600;word-break:break-word">'+feederName+'</td></tr>'+
-                '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>BU</b></td><td style="padding:3px 6px;color:#e2e8f0">'+buName+'</td></tr>'+
+                '<tr><td style="color:#7a8a9e;width:110px;padding:3px 6px;vertical-align:top"><b>Feeder Name</b></td><td style="padding:3px 6px;color:#22d3ee;font-weight:600;word-break:break-word;white-space:normal">'+fullName+'</td></tr>'+
+                '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>Short Name</b></td><td style="padding:3px 6px;color:#e2e8f0">'+feederShort+'</td></tr>'+
+                '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>Voltage</b></td><td style="padding:3px 6px;color:#e2e8f0">11 kV</td></tr>'+
+                '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>Business Unit</b></td><td style="padding:3px 6px;color:#e2e8f0">'+buName.toUpperCase()+'</td></tr>'+
                 '</table></div>',
-                {maxWidth:400}
+                {maxWidth:420,autoPanPadding:[20,20]}
               );
-              hit.on('mouseover',function(){this.setStyle({opacity:0.35})});
-              hit.on('mouseout',function(){this.setStyle({opacity:0.001})});
-              grp.addLayer(hit);
-            });
+            }
           });
+          // Group-level hover highlight (one listener instead of 300+)
+          hitLayer.on('mouseover',function(e){if(e.layer&&e.layer.setStyle)e.layer.setStyle({opacity:0.45,weight:6})});
+          hitLayer.on('mouseout', function(e){if(e.layer&&e.layer.setStyle)e.layer.setStyle({opacity:0.001,weight:12})});
+          grp.addLayer(hitLayer);
         }
         grp.addTo(ovMapInstance);
         try{grp.bringToFront()}catch(e){}
