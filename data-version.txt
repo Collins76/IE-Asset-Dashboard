@@ -1,4 +1,4 @@
-last_updated: 2026-04-05T06:00:10Z
+last_updated: 2026-04-05T06:03:10Z
 target: upriser
-trigger: manual:upriser
-run: 23995519082
+trigger: IE_Upriser_FeederPillar.geojson
+run: 23995565552
