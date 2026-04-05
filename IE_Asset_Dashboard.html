@@ -147,6 +147,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 @keyframes ht-flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-26}}
 .ht-flow{animation:ht-flow .6s linear infinite;stroke-dasharray:8 5!important}
 .leaflet-overlay-pane svg path.ht-flow{animation:ht-flow .6s linear infinite}
+@keyframes dt-pulse{0%,100%{opacity:.55;stroke-width:.8}50%{opacity:1;stroke-width:2.2}}
+.leaflet-overlay-pane svg path.dt-pulse{animation:dt-pulse 1.7s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
 .ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:10px!important;font-weight:700!important;color:rgba(255,255,255,.7)!important;text-shadow:0 0 4px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.7),1px 1px 2px rgba(0,0,0,.8)!important;letter-spacing:.5px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
 #ovSearchWrap{position:absolute;top:12px;left:55px;z-index:1000;display:flex;flex-direction:column}
 .ov-search-icon{position:absolute;top:11px;left:12px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
@@ -962,6 +964,7 @@ function renderMap(data){
     if(isNaN(lat)||isNaN(lng)||lat<1||lat>15||lng<0||lng>10)continue;
     const color=BU_CLR[r.bu]||'#94a3b8';
     const marker=L.circleMarker([lat,lng],{
+      className:'dt-pulse',
       radius:7,
       fillColor:color,
       fillOpacity:0.85,
@@ -1191,7 +1194,7 @@ function renderUfMap(data){
     const lat=r.la,lng=r.ln;
     if(!lat||!lng||lat<1||lat>15||lng<0||lng>10)continue;
     const c=UF_COND_CLR[r.fc]||'#64748b';
-    const mk=L.circleMarker([lat,lng],{radius:5,fillColor:c,fillOpacity:0.8,color:'#fff',weight:0.8,opacity:0.5,bubblingMouseEvents:false});
+    const mk=L.circleMarker([lat,lng],{className:'dt-pulse',radius:5,fillColor:c,fillOpacity:0.8,color:'#fff',weight:0.8,opacity:0.5,bubblingMouseEvents:false});
     mk.on('mouseover',function(){this.setStyle({radius:9,weight:2,fillOpacity:1})});
     mk.on('mouseout',function(){this.setStyle({radius:5,weight:0.8,fillOpacity:0.8})});
     // Photo thumbnail from Google Drive
