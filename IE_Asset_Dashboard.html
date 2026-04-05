@@ -239,37 +239,93 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 .ai-send:hover{transform:scale(1.05);box-shadow:0 4px 16px rgba(16,185,129,.5)}
 .ai-hints{font-size:9.5px;color:var(--text2);margin-top:5px;line-height:1.4}
 @media(max-width:1200px){.g3{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:768px){
+/* Tablet landscape (≤1024px) */
+@media(max-width:1024px){
+  .main{padding:0 14px 14px}
+  .kpi-grid{grid-template-columns:repeat(3,1fr)}
+  .g3{grid-template-columns:repeat(2,1fr)}
+  .filter-bar{padding:10px 14px 8px}
+  .navbar{padding:0 14px}
+  .logo{font-size:15px}
+  .logo-sub{font-size:9px}
+  .nav-tabs{margin-left:14px}
+  .nav-tab{font-size:11px;padding:6px 9px}
+  .ov-filter-panel{width:260px!important}
+  #mapContainer,#ovMapContainer,#ufMapContainer{height:60vh!important;min-height:360px!important}
+}
+/* Tablet portrait / large phone landscape (≤900px) */
+@media(max-width:900px){
+  .uf-grid{grid-template-columns:1fr!important}
   .g2,.g3{grid-template-columns:1fr}
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
-  .filter-row{gap:4px}
-  .navbar{padding:8px 12px!important}
-  .logo-icon{display:none}
-  .nav-tabs{flex-wrap:wrap!important;gap:4px!important;padding:4px 8px!important;overflow-x:auto}
-  .nav-tab{font-size:10px!important;padding:5px 8px!important;white-space:nowrap}
-  .filter-bar{padding:8px 12px!important}
-  .fb-item{font-size:10px}
-  .ms-btn{font-size:10px!important;padding:4px 18px 4px 6px!important}
-  .main{padding:8px!important}
-  .chart-box{padding:10px!important}
-  #mapContainer,#ovMapContainer,#ufMapContainer{height:50vh!important;min-height:300px!important}
-  #mapSearchWrap,#ovSearchWrap{left:10px!important}
-  #mapSearch,#ovSearch{width:200px!important;font-size:11px!important}
-  .powered-bar span{font-size:11px!important}
-  .btn{font-size:10px!important;padding:4px 8px!important}
-  .leaflet-popup-content-wrapper{max-width:90vw!important}
-  .data-table{font-size:10px}
-  .ov-filter-panel{width:240px!important}
+  .risk-grid{grid-template-columns:1fr}
+  .metrics-bar{grid-template-columns:repeat(2,1fr)}
+  .filter-row{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px 10px}
 }
-@media(max-width:900px){.uf-grid{grid-template-columns:1fr!important}}
+/* Phones (≤768px) */
+@media(max-width:768px){
+  html,body{-webkit-text-size-adjust:100%}
+  .main{padding:8px!important}
+  .navbar{padding:6px 10px!important;height:52px}
+  .logo{font-size:13px;gap:6px}
+  .logo-icon{width:28px;height:28px;flex-shrink:0}
+  .logo-sub{display:none}
+  .nav-tabs{flex-wrap:nowrap!important;gap:2px!important;padding:4px 6px!important;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-left:6px!important}
+  .nav-tabs::-webkit-scrollbar{display:none}
+  .nav-tab{font-size:10px!important;padding:5px 8px!important;white-space:nowrap;flex-shrink:0}
+  /* sticky tab row becomes full-width below navbar */
+  .powered-bar{margin-top:0!important}
+  .powered-bar span{font-size:10px!important}
+  .filter-bar{padding:8px 10px!important}
+  .filter-row{grid-template-columns:repeat(2,1fr)!important;gap:5px 8px}
+  .fb-item{font-size:10px}
+  .fb-item span:first-child{font-size:9.5px;min-width:auto}
+  .fb-count{grid-column:1/-1;justify-content:flex-start;font-size:11px}
+  .ms-btn{font-size:10px!important;padding:4px 16px 4px 6px!important;width:100%}
+  .ms-wrap{flex:1}
+  .ms-panel{width:100%;min-width:0!important;max-height:40vh}
+  .chart-box{padding:10px!important}
+  .chart-box h4{font-size:12px!important}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .kpi-card{padding:12px 10px 10px}
+  .metrics-bar{grid-template-columns:repeat(2,1fr);gap:8px}
+  .card{padding:12px}
+  #mapContainer,#ovMapContainer,#ufMapContainer{height:55vh!important;min-height:320px!important;max-height:560px}
+  #mapSearchWrap,#ovSearchWrap{left:52px!important;right:10px;top:8px!important}
+  #mapSearch,#ovSearch{width:calc(100vw - 130px)!important;max-width:260px;font-size:11px!important}
+  .btn{font-size:10px!important;padding:5px 8px!important}
+  /* Export buttons: icon-only on mobile (hide text labels after emoji) */
+  .nav-right .btn,.btn-csv,.btn-pdf,.btn-reset{font-size:0!important;padding:6px 10px!important}
+  .nav-right .btn::first-letter{font-size:14px}
+  .leaflet-popup-content-wrapper{max-width:85vw!important}
+  .leaflet-popup-content{font-size:11px!important;max-width:75vw!important}
+  .data-table{font-size:10px}
+  .data-table th,.data-table td{padding:6px 8px!important;max-width:140px}
+  .table-wrap,.table-controls{margin-left:-4px;margin-right:-4px}
+  .table-controls{flex-direction:column;align-items:stretch}
+  .table-controls input{min-width:0;width:100%}
+  .ov-filter-panel{width:calc(100vw - 24px)!important;max-width:320px;max-height:70vh;top:60px!important;left:12px!important}
+  .pagination{flex-direction:column;gap:8px;align-items:stretch}
+  .pagination .page-btns{justify-content:center;flex-wrap:wrap}
+}
+/* Small phones (≤480px) */
 @media(max-width:480px){
-  .kpi-grid{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:1fr;gap:8px}
+  .metrics-bar{grid-template-columns:1fr}
   .nav-tabs{gap:2px!important}
-  .nav-tab{font-size:9px!important;padding:4px 6px!important}
-  .filter-row{grid-template-columns:repeat(2,1fr)!important}
-  .fb-item span:first-child{font-size:9px}
-  #mapSearch,#ovSearch{width:160px!important}
+  .nav-tab{font-size:9.5px!important;padding:4px 7px!important}
+  .filter-row{grid-template-columns:1fr!important}
+  #mapSearch,#ovSearch{max-width:180px!important}
+  .chart-box{padding:8px!important}
   .chart-box h4{font-size:11px!important}
+  #mapContainer,#ovMapContainer,#ufMapContainer{height:50vh!important;min-height:280px!important}
+  .card{padding:10px}
+  .leaflet-popup-content-wrapper{max-width:92vw!important}
+}
+/* Prevent horizontal scroll from oversized children anywhere */
+@media(max-width:1024px){
+  .chart-box,.card{min-width:0;max-width:100%}
+  .js-plotly-plot,.plotly{max-width:100%!important}
 }
 .powered-bar{overflow:hidden;padding:3px 0;background:linear-gradient(90deg,transparent,rgba(245,158,11,.04),transparent)}
 .powered-bar span{display:inline-block;font-size:15px;font-weight:700;letter-spacing:2px;color:#fff;white-space:nowrap;animation:marquee-scroll 12s linear infinite,spark-flash 1.5s ease-in-out infinite}
