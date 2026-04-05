@@ -1481,13 +1481,41 @@ function initOverviewMap(){
             pulseColor:'#ffffff',
             paused:false,
             reverse:false,
-            hardwareAccelerated:true
+            hardwareAccelerated:true,
+            interactive:false
           });
-          const buName=def.name.replace('HT Lines ','');
-          ant.bindPopup('<div style="min-width:220px"><div style="font-size:14px;font-weight:700;color:'+def.color+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:6px">'+def.name+'</div><div style="font-size:11px;color:#94a3b8">BU: <b style="color:#e2e8f0">'+buName+'</b></div><div style="font-size:11px;color:#94a3b8">Segments: <b style="color:#e2e8f0">'+allLines.length+'</b></div></div>',{maxWidth:400});
           grp.addLayer(ant);
+          // Per-feature transparent click targets — one polyline per HT feature
+          // with its own popup showing the Feeder Name (the animated antPath above
+          // is non-interactive so clicks pass through to these).
+          const buName=def.name.replace('HT Lines ','');
+          features.forEach(function(f){
+            if(!f.geometry)return;
+            const p=f.properties||{};
+            const feederName=p.FED_NAME||p.FEEDER_NAME||p.name||'Unknown Feeder';
+            const gt=f.geometry.type;
+            const rings=gt==='LineString'?[f.geometry.coordinates]:gt==='MultiLineString'?f.geometry.coordinates:[];
+            rings.forEach(function(line){
+              const latlngs=line.map(function(c){return [c[1],c[0]]});
+              if(latlngs.length<2)return;
+              const hit=L.polyline(latlngs,{color:def.color,weight:10,opacity:0.001,interactive:true,bubblingMouseEvents:false});
+              hit.bindPopup(
+                '<div style="min-width:240px">'+
+                '<div style="font-size:14px;font-weight:700;color:'+def.color+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:6px">⚡ HT Feeder Line</div>'+
+                '<table style="width:100%;font-size:11px;line-height:1.8;border-collapse:separate;border-spacing:0 2px">'+
+                '<tr><td style="color:#7a8a9e;width:110px;padding:3px 6px"><b>Feeder Name</b></td><td style="padding:3px 6px;color:#22d3ee;font-weight:600;word-break:break-word">'+feederName+'</td></tr>'+
+                '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>BU</b></td><td style="padding:3px 6px;color:#e2e8f0">'+buName+'</td></tr>'+
+                '</table></div>',
+                {maxWidth:400}
+              );
+              hit.on('mouseover',function(){this.setStyle({opacity:0.35})});
+              hit.on('mouseout',function(){this.setStyle({opacity:0.001})});
+              grp.addLayer(hit);
+            });
+          });
         }
         grp.addTo(ovMapInstance);
+        try{grp.bringToFront()}catch(e){}
         OV_LAYERS[def.id]={layer:grp,count:features.length,visible:true};
         return;
       }
@@ -1561,8 +1589,8 @@ function initOverviewMap(){
             popup+=row('State',p.STATE);
             if(p.LAT&&p.LONG)popup+=row('Lat, Long',p.LAT+', '+p.LONG);
           } else if(isHT){
+            popup+=row('Feeder Name',p.FED_NAME||p.FEEDER_NAME||p.name,'#22d3ee');
             popup+=row('BU',p._bu||p.BU_NAME);
-            popup+=row('Feeder',p.FEEDER_NAME||p.FED_NAME);
           } else {
             const show=['BU_NAME','UT_NAME','FEEDER_NAME','FED_NAME','CAPACITY','OWNERSHIP','INSTALL_POS','METERING','METER_NO','CONNECTION','COMMISSION','MAINTENANCE','STATUS','ADDRESS','STATE','INJECTION','TOTAL_CAP','POWER_TX','VOLT_RATIO','NUM_FEEDER','OP_CAPACITY','LAT','LONG'];
             show.forEach(function(k){if(p[k])popup+=row(k.replace(/_/g,' '),p[k])});
@@ -1572,6 +1600,8 @@ function initOverviewMap(){
         }
       }).addTo(ovMapInstance);
       OV_LAYERS[def.id]={layer:layerGrp,count:features.length,visible:true};
+      // Keep HT lines above UT boundary fills so clicks reach the line, not the polygon
+      if(def.id.startsWith('ht_lines')){try{layerGrp.bringToFront()}catch(e){}}
     });
   }
   buildOvFilters();
