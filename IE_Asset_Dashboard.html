@@ -1497,42 +1497,62 @@ function initOverviewMap(){
             paused:false,
             reverse:false,
             hardwareAccelerated:true,
-            interactive:false
+            interactive:true
+          });
+          // Build a lightweight per-BU segment index used for nearest-feature lookup
+          // on click. No per-feature hit layer = no canvas hit-testing on every
+          // mousemove (that was the source of the sluggish cursor / delayed click).
+          const buName=def.name.replace('HT Lines ','');
+          const segIndex=[];
+          features.forEach(function(f){
+            if(!f.geometry)return;
+            const p=f.properties||{};
+            const feederShort=p.FED_NAME||p.FEEDER_NAME||p.name||'Unknown Feeder';
+            const gt=f.geometry.type;
+            const rings=gt==='LineString'?[f.geometry.coordinates]:gt==='MultiLineString'?f.geometry.coordinates:[];
+            rings.forEach(function(line){
+              for(let k=0;k<line.length-1;k++){
+                segIndex.push([line[k][1],line[k][0],line[k+1][1],line[k+1][0],feederShort]);
+              }
+            });
+          });
+          ant._htSegIndex=segIndex;
+          ant._htBuName=buName;
+          ant._htColor=def.color;
+          ant.on('click',function(e){
+            const map=ovMapInstance;
+            const pt=map.latLngToLayerPoint(e.latlng);
+            let best=Infinity,bestFeeder=null;
+            for(let s=0;s<segIndex.length;s++){
+              const seg=segIndex[s];
+              const a=map.latLngToLayerPoint(L.latLng(seg[0],seg[1]));
+              const b=map.latLngToLayerPoint(L.latLng(seg[2],seg[3]));
+              // point-to-segment distance in pixel space
+              const dx=b.x-a.x,dy=b.y-a.y;
+              const len2=dx*dx+dy*dy||1;
+              let t=((pt.x-a.x)*dx+(pt.y-a.y)*dy)/len2;
+              if(t<0)t=0;else if(t>1)t=1;
+              const qx=a.x+t*dx,qy=a.y+t*dy;
+              const ddx=pt.x-qx,ddy=pt.y-qy;
+              const d2=ddx*ddx+ddy*ddy;
+              if(d2<best){best=d2;bestFeeder=seg[4]}
+            }
+            if(bestFeeder==null)return;
+            const fullName=buName.toUpperCase()+' 11KV '+String(bestFeeder).toUpperCase()+' FEEDER';
+            const html='<div style="min-width:260px">'+
+              '<div style="font-size:13px;font-weight:700;color:'+def.color+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:6px;word-break:break-word">&#9889; '+fullName+'</div>'+
+              '<table style="width:100%;font-size:11px;line-height:1.8;border-collapse:separate;border-spacing:0 2px">'+
+              '<tr><td style="color:#7a8a9e;width:110px;padding:3px 6px;vertical-align:top"><b>Feeder Name</b></td><td style="padding:3px 6px;color:#22d3ee;font-weight:600;word-break:break-word;white-space:normal">'+fullName+'</td></tr>'+
+              '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>Short Name</b></td><td style="padding:3px 6px;color:#e2e8f0">'+bestFeeder+'</td></tr>'+
+              '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>Voltage</b></td><td style="padding:3px 6px;color:#e2e8f0">11 kV</td></tr>'+
+              '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>Business Unit</b></td><td style="padding:3px 6px;color:#e2e8f0">'+buName.toUpperCase()+'</td></tr>'+
+              '</table></div>';
+            L.popup({maxWidth:420,autoPanPadding:[20,20]}).setLatLng(e.latlng).setContent(html).openOn(map);
+            if(L.DomEvent&&e.originalEvent)L.DomEvent.stopPropagation(e.originalEvent);
           });
           grp.addLayer(ant);
-          // Per-feature transparent click targets in ONE canvas-rendered L.geoJSON
-          // (avoids 300+ SVG nodes + individual listeners; antPath above stays non-
-          // interactive so clicks pass through to this hit layer).
-          const buName=def.name.replace('HT Lines ','');
-          const hitRenderer=L.canvas({padding:0.2});
-          const hitLayer=L.geoJSON({type:'FeatureCollection',features:features},{
-            renderer:hitRenderer,
-            style:function(){return {color:def.color,weight:12,opacity:0.001,interactive:true,bubblingMouseEvents:false}},
-            onEachFeature:function(feature,layer){
-              const p=feature.properties||{};
-              const feederShort=p.FED_NAME||p.FEEDER_NAME||p.name||'Unknown Feeder';
-              // Full nomenclature: <BU> 11KV <FEEDER> FEEDER
-              const fullName=buName.toUpperCase()+' 11KV '+String(feederShort).toUpperCase()+' FEEDER';
-              layer.bindPopup(
-                '<div style="min-width:260px">'+
-                '<div style="font-size:13px;font-weight:700;color:'+def.color+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:6px;word-break:break-word">&#9889; '+fullName+'</div>'+
-                '<table style="width:100%;font-size:11px;line-height:1.8;border-collapse:separate;border-spacing:0 2px">'+
-                '<tr><td style="color:#7a8a9e;width:110px;padding:3px 6px;vertical-align:top"><b>Feeder Name</b></td><td style="padding:3px 6px;color:#22d3ee;font-weight:600;word-break:break-word;white-space:normal">'+fullName+'</td></tr>'+
-                '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>Short Name</b></td><td style="padding:3px 6px;color:#e2e8f0">'+feederShort+'</td></tr>'+
-                '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>Voltage</b></td><td style="padding:3px 6px;color:#e2e8f0">11 kV</td></tr>'+
-                '<tr><td style="color:#7a8a9e;padding:3px 6px"><b>Business Unit</b></td><td style="padding:3px 6px;color:#e2e8f0">'+buName.toUpperCase()+'</td></tr>'+
-                '</table></div>',
-                {maxWidth:420,autoPanPadding:[20,20]}
-              );
-            }
-          });
-          // Group-level hover highlight (one listener instead of 300+)
-          hitLayer.on('mouseover',function(e){if(e.layer&&e.layer.setStyle)e.layer.setStyle({opacity:0.45,weight:6})});
-          hitLayer.on('mouseout', function(e){if(e.layer&&e.layer.setStyle)e.layer.setStyle({opacity:0.001,weight:12})});
-          grp.addLayer(hitLayer);
         }
         grp.addTo(ovMapInstance);
-        try{grp.bringToFront()}catch(e){}
         OV_LAYERS[def.id]={layer:grp,count:features.length,visible:true};
         return;
       }
