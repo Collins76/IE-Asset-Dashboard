@@ -149,14 +149,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .leaflet-overlay-pane svg path.ht-flow{animation:ht-flow .6s linear infinite}
 @keyframes dt-pulse{0%,100%{transform:scale(.85);opacity:.65}50%{transform:scale(1.35);opacity:1}}
 .leaflet-overlay-pane svg path.dt-pulse,path.dt-pulse{transform-box:fill-box;transform-origin:center;animation:dt-pulse 1.6s ease-in-out infinite!important;-webkit-animation:dt-pulse 1.6s ease-in-out infinite!important}
-/* Radar-ping marker for Geospatial DT Map — solid dot + expanding ring */
-@keyframes dt-ping{0%{transform:scale(.4);opacity:.95}80%{transform:scale(2.8);opacity:0}100%{transform:scale(2.8);opacity:0}}
-@keyframes dt-ping-core{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.12);filter:brightness(1.25)}}
-.dt-ping{position:relative;width:16px;height:16px;display:block;transition:opacity .2s}
-.dt-ping .dt-ping-ring{position:absolute;top:0;left:0;width:16px;height:16px;border-radius:50%;border:2px solid currentColor;box-sizing:border-box;animation:dt-ping 1.8s cubic-bezier(0,0,.2,1) infinite;will-change:transform,opacity;pointer-events:none}
-.dt-ping .dt-ping-dot{position:absolute;top:4px;left:4px;width:8px;height:8px;border-radius:50%;background:currentColor;border:1.2px solid rgba(255,255,255,.9);box-shadow:0 0 6px currentColor,0 0 12px rgba(255,255,255,.35);animation:dt-ping-core 1.8s ease-in-out infinite;will-change:transform}
-.dt-ping.hl .dt-ping-dot{width:12px;height:12px;top:2px;left:2px;box-shadow:0 0 12px currentColor,0 0 24px currentColor}
-.dt-ping.hl .dt-ping-ring{border-width:3px}
+/* Radar-ping marker for Geospatial DT Map — solid dot + expanding stroke ring on a single SVG path */
+@keyframes dt-ping{0%{stroke-width:1;stroke-opacity:.95}85%{stroke-width:14;stroke-opacity:0}100%{stroke-width:14;stroke-opacity:0}}
+.leaflet-overlay-pane svg path.dt-ping-svg{animation:dt-ping 1.8s ease-out infinite!important;-webkit-animation:dt-ping 1.8s ease-out infinite!important}
 .ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:10px!important;font-weight:700!important;color:rgba(255,255,255,.7)!important;text-shadow:0 0 4px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.7),1px 1px 2px rgba(0,0,0,.8)!important;letter-spacing:.5px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
 #ovSearchWrap{position:absolute;top:12px;left:55px;z-index:1000;display:flex;flex-direction:column}
 .ov-search-icon{position:absolute;top:11px;left:12px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
@@ -971,28 +966,18 @@ function renderMap(data){
     const lat=parseFloat(r.lat);const lng=parseFloat(r.lng);
     if(isNaN(lat)||isNaN(lng)||lat<1||lat>15||lng<0||lng>10)continue;
     const color=BU_CLR[r.bu]||'#94a3b8';
-    const marker=L.marker([lat,lng],{
-      icon:L.divIcon({
-        className:'',
-        html:'<div class="dt-ping" style="color:'+color+'"><span class="dt-ping-ring"></span><span class="dt-ping-dot"></span></div>',
-        iconSize:[16,16],
-        iconAnchor:[8,8]
-      }),
-      bubblingMouseEvents:false,
-      riseOnHover:true
+    const marker=L.circleMarker([lat,lng],{
+      className:'dt-ping-svg',
+      radius:4,
+      fillColor:color,
+      fillOpacity:1,
+      color:color,
+      weight:1,
+      opacity:1,
+      bubblingMouseEvents:false
     });
-    // Shim setStyle so existing search dim/highlight code (which calls
-    // m.marker.setStyle({opacity:..})) still works with divIcon markers.
-    marker.setStyle=function(s){
-      const el=this.getElement&&this.getElement();
-      if(!el)return;
-      const inner=el.querySelector('.dt-ping');
-      if(s.opacity!==undefined){
-        (inner||el).style.opacity=s.opacity;
-      }
-    };
-    marker.on('mouseover',function(){const el=this.getElement&&this.getElement();if(el){const inner=el.querySelector('.dt-ping');if(inner)inner.classList.add('hl')}});
-    marker.on('mouseout',function(){const el=this.getElement&&this.getElement();if(el){const inner=el.querySelector('.dt-ping');if(inner)inner.classList.remove('hl')}});
+    marker.on('mouseover',function(){this.setStyle({radius:7,weight:2,fillOpacity:1})});
+    marker.on('mouseout',function(){this.setStyle({radius:4,weight:1,fillOpacity:1})});
     marker.bindPopup(`<div style="min-width:280px">
       <div style="font-size:14px;font-weight:700;color:${color};border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">${r.nom||'DT '+r.dt}</div>
       <table style="width:100%;font-size:11px;line-height:1.7">
