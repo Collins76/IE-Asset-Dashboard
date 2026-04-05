@@ -1,39 +1,181 @@
 name: Rebuild Dashboard Data
 
+# Triggered when Supabase Storage fires a repository_dispatch event after
+# a file is uploaded to the ie-asset-data bucket, or manually from the
+# Actions tab. Downloads the relevant source(s) from Supabase Storage,
+# runs the appropriate build script(s), uploads the derived .js bundles
+# back to Supabase dashboard-assets via the dashboard-upload edge
+# function, then bumps data-version.txt so Vercel auto-redeploys.
+
 on:
   repository_dispatch:
     types: [rebuild-data]
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Which builders to run'
+        required: false
+        default: 'all'
+        type: choice
+        options: [all, asset, network, upriser]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rebuild-data
+  cancel-in-progress: true
+
+env:
+  SUPABASE_URL: https://blxuwvxitbbjhzgucvhp.supabase.co
+  ASSET_BUCKET: ie-asset-data
+  FUNCTION_URL: ${{ secrets.SUPABASE_FUNCTION_URL }}
+  WEBHOOK_SECRET: ${{ secrets.REBUILD_WEBHOOK_SECRET }}
 
 jobs:
   rebuild:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download Excel from Supabase Storage
-        run: |
-          curl -L -o "IE Asset Data 2026.xlsx" \
-            "https://blxuwvxitbbjhzgucvhp.supabase.co/storage/v1/object/public/ie-asset-data/IE%20Asset%20Data%202026.xlsx"
-
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Generate dashboard_data.js
+      - name: Determine target
+        id: tgt
+        run: |
+          target="${{ github.event.inputs.target }}"
+          if [ -z "$target" ]; then
+            path="${{ github.event.client_payload.path }}"
+            case "$path" in
+              network/*)                          target=network ;;
+              IE_Upriser_FeederPillar.geojson)    target=upriser ;;
+              *.xlsx)                             target=asset ;;
+              *)                                  target=all ;;
+            esac
+          fi
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "Selected target: $target"
+
+      - name: Download asset source (xlsx)
+        if: steps.tgt.outputs.target == 'all' || steps.tgt.outputs.target == 'asset'
+        run: |
+          curl -fsSL -o "IE Asset Data 2026.xlsx" \
+            "${SUPABASE_URL}/storage/v1/object/public/${ASSET_BUCKET}/IE%20Asset%20Data%202026.xlsx"
+          ls -lh "IE Asset Data 2026.xlsx"
+
+      - name: Download network geojson sources
+        if: steps.tgt.outputs.target == 'all' || steps.tgt.outputs.target == 'network'
+        run: |
+          mkdir -p "_geojson_temp/GeoJSON Files"
+          files=(
+            "Abule Egba 11kv DSS.geojson"
+            "Abule Egba 33kv DSS.geojson"
+            "Abule Egba HT Feeder Lines.geojson"
+            "Akowonjo 11kv DSS.geojson"
+            "Akowonjo 33kv DSS.geojson"
+            "Akwonjo HT Feeder Lines.geojson"
+            "All 33kv Lines.geojson"
+            "Ikeja 11kv DSS.geojson"
+            "Ikeja 33kv DSS.geojson"
+            "Ikeja HT Feeder Lines.geojson"
+            "Ikorodu 11kv DSS.geojson"
+            "Ikorodu 33kv DSS.geojson"
+            "Ikorodu HT Feeder Lines.geojson"
+            "ISS.geojson"
+            "Lagos Boundary Lines.geojson"
+            "Oshodi 11kv DSS.geojson"
+            "Oshodi 33kv DSS.geojson"
+            "Oshodi HT Feeder Lines.geojson"
+            "Shomolu 11kv DSS.geojson"
+            "Shomolu 33kv DSS.geojson"
+            "Shomolu HT Feeder Lines.geojson"
+            "TCN.geojson"
+            "UT Boundary Lines.geojson"
+          )
+          for f in "${files[@]}"; do
+            enc=$(python -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$f")
+            curl -fsSL -o "_geojson_temp/GeoJSON Files/$f" \
+              "${SUPABASE_URL}/storage/v1/object/public/${ASSET_BUCKET}/network/${enc}"
+          done
+          ls -1 "_geojson_temp/GeoJSON Files/"
+
+      - name: Download upriser geojson source
+        if: steps.tgt.outputs.target == 'all' || steps.tgt.outputs.target == 'upriser'
+        run: |
+          curl -fsSL -o IE_Upriser_FeederPillar.geojson \
+            "${SUPABASE_URL}/storage/v1/object/public/${ASSET_BUCKET}/IE_Upriser_FeederPillar.geojson"
+          ls -lh IE_Upriser_FeederPillar.geojson
+
+      - name: Build dashboard_data.js
+        if: steps.tgt.outputs.target == 'all' || steps.tgt.outputs.target == 'asset'
         run: python build_data.py
 
-      - name: Commit and push updated data
+      - name: Build ie_network_overview.js
+        if: steps.tgt.outputs.target == 'all' || steps.tgt.outputs.target == 'network'
+        run: python _build_network.py
+
+      - name: Build upriser_feeder_pillar.js
+        if: steps.tgt.outputs.target == 'all' || steps.tgt.outputs.target == 'upriser'
+        run: python _build_upriser.py
+
+      - name: Upload bundles to Supabase dashboard-assets
         run: |
-          git config user.name "github-actions[bot]"
+          set -euo pipefail
+          upload() {
+            local file="$1"
+            local ctype="$2"
+            if [ ! -f "$file" ]; then
+              echo "skip $file (not built)"
+              return 0
+            fi
+            size=$(stat -c %s "$file")
+            echo "uploading $file ($size bytes)"
+            resp=$(curl -fsS -X POST "$FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -H "X-Webhook-Secret: $WEBHOOK_SECRET" \
+              -d "{\"path\":\"$file\"}")
+            signed=$(echo "$resp" | python -c "import json,sys;print(json.loads(sys.stdin.read())['signedUrl'])")
+            curl -fsS -X PUT "$signed" \
+              -H "Content-Type: $ctype" \
+              --data-binary "@$file" > /dev/null
+            echo "  uploaded $file"
+          }
+          upload dashboard_data.js        application/javascript
+          upload ie_network_overview.js   application/javascript
+          upload upriser_feeder_pillar.js application/javascript
+
+      - name: Bump data-version.txt
+        run: |
+          ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          target="${{ steps.tgt.outputs.target }}"
+          trigger="${{ github.event.client_payload.path }}"
+          [ -z "$trigger" ] && trigger="manual:${{ github.event.inputs.target }}"
+          {
+            echo "last_updated: $ts"
+            echo "target: $target"
+            echo "trigger: $trigger"
+            echo "run: ${{ github.run_id }}"
+          } > data-version.txt
+          cat data-version.txt
+
+      - name: Commit and push version bump
+        run: |
+          git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dashboard_data.js
+          git add data-version.txt
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Auto-update dashboard data from Supabase"
+            git commit -m "chore: auto-refresh data bundles (${{ steps.tgt.outputs.target }})"
             git push
           fi
