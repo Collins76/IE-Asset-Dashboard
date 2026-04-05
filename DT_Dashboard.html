@@ -74,6 +74,9 @@ table.dt-table tr:hover td{background:rgba(255,255,255,.025)}
 .chart-sub{font-size:11px;color:#475569;margin-bottom:14px}
 .map-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#94A3B8}
 input[type="file"]{display:none}
+/* HT line flowing dashed animation */
+@keyframes ht-flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-26}}
+.leaflet-overlay-pane svg path.ht-flow{animation:ht-flow .6s linear infinite;stroke-dasharray:8 5!important}
 /* Toast */
 .toast{position:fixed;top:20px;right:20px;z-index:99999;border-radius:10px;padding:12px 20px;color:white;font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:toastIn .3s ease}
 </style>
@@ -101,6 +104,8 @@ input[type="file"]{display:none}
 <!-- ⑤ Leaflet map -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<!-- ⑤b Network overlay data (HT lines, ISS, TCN) -->
+<script src="https://blxuwvxitbbjhzgucvhp.supabase.co/storage/v1/object/public/dashboard-assets/ie_network_overview.js"></script>
 <!-- ⑥ Utilities -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1505,6 +1510,30 @@ function MapSection({
         attribution: cfg.attr,
         maxZoom: 20
       }).addTo(mapInst.current);
+    }
+    // HT lines overlay (flowing dashed animation) — draw once per map instance
+    if (!mapInst.current._htAdded && typeof OV_NETWORK_DATA !== 'undefined' && OV_NETWORK_DATA && OV_NETWORK_DATA.features) {
+      const htFeatures = OV_NETWORK_DATA.features.filter(f => f.properties && typeof f.properties._layer === 'string' && f.properties._layer.indexOf('ht_lines_') === 0);
+      if (htFeatures.length) {
+        const HT_BU_COLORS = {
+          shomolu: '#fecdd3', oshodi: '#ddd6fe', ikorodu: '#a7f3d0',
+          ikeja: '#a5f3fc', akowonjo: '#fef08a', abule_egba: '#fed7aa'
+        };
+        L.geoJSON({ type: 'FeatureCollection', features: htFeatures }, {
+          style: function (feature) {
+            const lid = feature.properties._layer || '';
+            const bu = lid.replace('ht_lines_', '');
+            return { color: HT_BU_COLORS[bu] || '#22d3ee', weight: 3, opacity: 0.9, dashArray: '8 5', className: 'ht-flow' };
+          },
+          onEachFeature: function (feature, layer) {
+            const p = feature.properties || {};
+            const name = p.name || p.FEEDER_NAME || p.FED_NAME || 'HT Line';
+            const bu = (p._bu || p.BU_NAME || (p._layer || '').replace('ht_lines_', '').replace('_', ' ')).toString().toUpperCase();
+            layer.bindPopup('<div style="font-family:Inter,sans-serif;font-size:12px;min-width:200px;line-height:1.6"><b style="color:#22d3ee">' + name + '</b><br/><span style="color:#666">BU:</span> ' + bu + '<br/><span style="color:#666">Feeder:</span> ' + (p.FEEDER_NAME || p.FED_NAME || '—') + '</div>');
+          }
+        }).addTo(mapInst.current);
+        mapInst.current._htAdded = true;
+      }
     }
     if (clusterRef.current) mapInst.current.removeLayer(clusterRef.current);
     const cluster = L.markerClusterGroup({
