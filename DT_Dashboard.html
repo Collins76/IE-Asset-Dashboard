@@ -81,36 +81,86 @@ path.ht-flow,svg .ht-flow,.leaflet-overlay-pane path.ht-flow{stroke-dasharray:8 
 .toast{position:fixed;top:20px;right:20px;z-index:99999;border-radius:10px;padding:12px 20px;color:white;font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:toastIn .3s ease}
 /* Responsive — tablet + mobile */
 html,body{overflow-x:hidden;-webkit-text-size-adjust:100%}
+*{box-sizing:border-box}
+img{max-width:100%;height:auto}
+
+/* Tablet (≤1024px) */
 @media(max-width:1024px){
   .card{padding:16px}
   .kpi-card{padding:16px 14px}
   #dt-map{height:420px}
+  [style*="maxWidth: 1600"],[style*="max-width: 1600"],[style*="max-width:1600"]{max-width:100%!important}
+  [style*="repeat(4,1fr)"]{grid-template-columns:repeat(3,1fr)!important}
+  [style*="padding: 20px 24px"],[style*="padding:20px 24px"]{padding:16px 16px!important}
+  [style*="padding: 0 24px"],[style*="padding:0 24px"]{padding-left:14px!important;padding-right:14px!important}
+  [style*="padding: 0 24px 24px"],[style*="padding:0 24px 24px"]{padding:0 14px 14px!important}
 }
+
+/* Mobile landscape + tablet portrait (≤768px) */
 @media(max-width:768px){
+  body{font-size:13px}
   .card{padding:12px;border-radius:10px}
   .kpi-card{padding:14px 12px 12px;border-radius:12px}
   .kpi-card:hover{transform:none}
-  #dt-map{height:58vh;min-height:340px;max-height:540px}
+  #dt-map{height:60vh;min-height:320px;max-height:520px}
   .chart-title{font-size:13px}
   .chart-sub{font-size:10px}
   table.dt-table th,table.dt-table td{padding:7px 8px;font-size:11px}
-  .btn{font-size:11px;padding:6px 10px}
-  .search-input{font-size:12px;padding:7px 12px}
+  .btn{font-size:11px;padding:8px 12px;min-height:36px}
+  .search-input{font-size:13px;padding:9px 12px}
   .map-legend-item{font-size:11px}
   .leaflet-popup-content-wrapper{max-width:85vw!important}
   .leaflet-popup-content{font-size:11px!important;max-width:75vw!important}
+  .leaflet-control-zoom a{width:34px!important;height:34px!important;line-height:34px!important;font-size:18px!important}
+  /* Grid collapse */
   [style*="repeat(4,1fr)"]{grid-template-columns:repeat(2,1fr)!important}
   [style*="repeat(3,1fr)"]{grid-template-columns:repeat(2,1fr)!important}
+  /* Tighter page padding */
   [style*="padding: 0 24px"],[style*="padding:0 24px"]{padding-left:10px!important;padding-right:10px!important}
   [style*="padding: 0 24px 24px"],[style*="padding:0 24px 24px"]{padding:0 10px 10px!important}
+  [style*="padding: 13px 24px"],[style*="padding:13px 24px"]{padding:10px 12px!important}
+  [style*="padding: 10px 24px"],[style*="padding:10px 24px"]{padding:8px 10px!important}
+  [style*="padding: 20px 24px"],[style*="padding:20px 24px"]{padding:14px 12px!important}
+  /* Filter bar — horizontal scroll so dropdowns don't wrap into a massive block */
+  [style*="FILTERS"]{font-size:10px!important}
+  /* Hide the timestamp pill on small screens to free header width */
+  [style*="🕐"]{display:none!important}
 }
-@media(max-width:480px){
-  #dt-map{height:52vh;min-height:300px}
-  .card{padding:10px}
-  .kpi-card{padding:12px 10px 10px}
+
+/* Phone (≤600px) */
+@media(max-width:600px){
+  #dt-map{height:55vh;min-height:300px}
+  .card{padding:10px;border-radius:10px}
+  .kpi-card{padding:12px 10px 10px;border-radius:10px}
+  .btn{font-size:10px;padding:7px 10px}
+  /* Header title compressed */
+  [style*="fontSize: 16"][style*="fontWeight: 800"]{font-size:14px!important}
+  [style*="letterSpacing: '-.3px'"]{letter-spacing:0!important}
+  /* Collapse everything to single column */
   [style*="repeat(2,1fr)"]{grid-template-columns:1fr!important}
-  [style*="repeat(4,1fr)"]{grid-template-columns:1fr!important}
   [style*="repeat(3,1fr)"]{grid-template-columns:1fr!important}
+  [style*="repeat(4,1fr)"]{grid-template-columns:1fr!important}
+  [style*="repeat(5,1fr)"]{grid-template-columns:1fr!important}
+  [style*="repeat(6,1fr)"]{grid-template-columns:1fr!important}
+  /* Logo smaller */
+  [alt="IE Logo"]{width:32px!important;height:32px!important}
+}
+
+/* Very narrow (≤420px) */
+@media(max-width:420px){
+  body{font-size:12px}
+  .btn{font-size:10px;padding:6px 8px}
+  #dt-map{height:50vh;min-height:280px}
+  .card{padding:8px}
+  .kpi-card{padding:10px 8px 8px}
+  [style*="padding: 0 24px"],[style*="padding:0 24px"]{padding-left:6px!important;padding-right:6px!important}
+  [style*="padding: 0 24px 24px"],[style*="padding:0 24px 24px"]{padding:0 6px 6px!important}
+}
+
+/* Touch targets — ensure buttons / selects are at least 40px tall on coarse pointers */
+@media(hover:none) and (pointer:coarse){
+  .btn{min-height:40px;padding:9px 14px}
+  input,select,textarea{min-height:40px;font-size:16px} /* 16px prevents iOS zoom on focus */
 }
 </style>
 </head>
