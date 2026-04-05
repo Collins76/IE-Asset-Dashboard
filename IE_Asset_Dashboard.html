@@ -1436,43 +1436,44 @@ function initOverviewMap(){
     OV_LAYER_DEFS.forEach(def=>{
       const features=OV_NETWORK_DATA.features.filter(f=>f.properties._layer===def.id);
       if(!features.length)return;
-      // HT feeder lines → animated ant-path (glowing dashes flowing along geometry)
+      // HT feeder lines → ONE multi-polyline ant-path per BU (animated glowing dashes
+      // flowing along geometry). Consolidating all features per BU into a single antPath
+      // avoids running hundreds of concurrent SVG animations (which freezes the page).
       if(def.id.startsWith('ht_lines')&&L.polyline&&L.polyline.antPath){
         const grp=L.featureGroup();
+        const allLines=[];
         features.forEach(function(f){
           if(!f.geometry)return;
           const gt=f.geometry.type;
           const rings=gt==='LineString'?[f.geometry.coordinates]:gt==='MultiLineString'?f.geometry.coordinates:[];
           rings.forEach(function(line){
             const latlngs=line.map(function(c){return [c[1],c[0]]});
-            if(latlngs.length<2)return;
-            const p=f.properties||{};
-            const ant=L.polyline.antPath(latlngs,{
-              color:def.color,
-              weight:3,
-              opacity:0.95,
-              delay:900,
-              dashArray:[12,24],
-              pulseColor:'#ffffff',
-              paused:false,
-              reverse:false,
-              hardwareAccelerated:true
-            });
-            // Popup (same fields as the non-HT branch further below)
-            let popup='<div style="min-width:280px"><div style="font-size:14px;font-weight:700;color:'+def.color+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(p.name||'HT Feeder')+'</div>';
-            popup+='<div style="font-size:10px;color:#475569;margin-bottom:6px">'+def.name+'</div>';
-            popup+='<table style="width:100%;font-size:11px;line-height:1.8;border-collapse:separate;border-spacing:0 2px">';
-            const row=function(lbl,val){if(!val||val==='<Null>'||val==='&lt;Null&gt;'||val==='--')return '';return '<tr><td style="color:#7a8a9e;width:110px;padding:3px 6px"><b>'+lbl+'</b></td><td style="padding:3px 6px;word-break:break-word">'+val+'</td></tr>'};
-            popup+=row('BU',p._bu||p.BU_NAME);
-            popup+=row('Feeder',p.FEEDER_NAME||p.FED_NAME);
-            popup+='</table></div>';
-            ant.bindPopup(popup,{maxWidth:600,autoPanPadding:[20,20]});
-            // Search registration
-            const searchStr=[p.name||'',p.BU||'',p.UT_NAME||'',p.FEEDER_NAME||p.Feeder_Nam||'',p._bu||'',def.name].join('|').toLowerCase();
-            ovSearchableFeatures.push({layer:ant,name:p.name||'',detail:def.name,bu:p._bu||p.BU||'',color:def.color,search:searchStr});
-            grp.addLayer(ant);
+            if(latlngs.length>=2)allLines.push(latlngs);
           });
+          // Register each feature in search (lightweight polyline, NOT added to map)
+          const p=f.properties||{};
+          if(rings.length){
+            const searchLine=L.polyline(rings[0].map(function(c){return [c[1],c[0]]}),{});
+            const searchStr=[p.name||'',p.BU||'',p.UT_NAME||'',p.FEEDER_NAME||p.Feeder_Nam||'',p._bu||'',def.name].join('|').toLowerCase();
+            ovSearchableFeatures.push({layer:searchLine,name:p.name||p.FEEDER_NAME||p.FED_NAME||'HT Feeder',detail:def.name,bu:p._bu||p.BU||'',color:def.color,search:searchStr});
+          }
         });
+        if(allLines.length){
+          const ant=L.polyline.antPath(allLines,{
+            color:def.color,
+            weight:3,
+            opacity:0.95,
+            delay:900,
+            dashArray:[12,24],
+            pulseColor:'#ffffff',
+            paused:false,
+            reverse:false,
+            hardwareAccelerated:true
+          });
+          const buName=def.name.replace('HT Lines ','');
+          ant.bindPopup('<div style="min-width:220px"><div style="font-size:14px;font-weight:700;color:'+def.color+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:6px">'+def.name+'</div><div style="font-size:11px;color:#94a3b8">BU: <b style="color:#e2e8f0">'+buName+'</b></div><div style="font-size:11px;color:#94a3b8">Segments: <b style="color:#e2e8f0">'+allLines.length+'</b></div></div>',{maxWidth:400});
+          grp.addLayer(ant);
+        }
         grp.addTo(ovMapInstance);
         OV_LAYERS[def.id]={layer:grp,count:features.length,visible:true};
         return;
