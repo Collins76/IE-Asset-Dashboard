@@ -143,6 +143,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ov-count{margin-left:auto;font-size:10px;color:#475569;font-weight:600}
 .ov-select-all{font-size:11px;color:#10b981;cursor:pointer;margin-left:auto;font-weight:600}
 .ov-select-all:hover{text-decoration:underline}
+@keyframes ht-flow{to{stroke-dashoffset:-26}}
+.ht-flow{animation:ht-flow 1s linear infinite}
 .ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:10px!important;font-weight:700!important;color:rgba(255,255,255,.7)!important;text-shadow:0 0 4px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.7),1px 1px 2px rgba(0,0,0,.8)!important;letter-spacing:.5px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
 #ovSearchWrap{position:absolute;top:12px;left:55px;z-index:1000;display:flex;flex-direction:column}
 .ov-search-icon{position:absolute;top:11px;left:12px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
@@ -1464,7 +1466,7 @@ function initOverviewMap(){
           if(isUT){c=getUtColor(feature.properties.name||'');feature.properties._color=c}
           if(gt==='LineString'||gt==='MultiLineString'){
             const isHT=lid.startsWith('ht_lines');
-            return {color:c,weight:isHT?3:2,opacity:0.8,dashArray:isHT?'8 5':''};
+            return {color:c,weight:isHT?3:2,opacity:0.8,dashArray:isHT?'8 5':'',className:isHT?'ht-flow':''};
           }
           if(gt==='Polygon'||gt==='MultiPolygon')return {color:c,weight:isLagos?4:isUT?3:2,fillColor:c,fillOpacity:isLagos?0.12:isUT?0.15:0.06,dashArray:isLagos?'':isUT?'':'6 4'};
           return {color:c,weight:2};
