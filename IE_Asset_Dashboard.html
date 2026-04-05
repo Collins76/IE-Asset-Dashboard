@@ -1098,7 +1098,7 @@ function highlightMapSug(){
 }
 
 // ============ PAGE 5B: UPRISER & FEEDER PILLAR ============
-let ufMapInstance=null,ufMapInitialized=false,ufLayerGroup=null,ufPage=0;
+let ufMapInstance=null,ufMapInitialized=false,ufLayerGroup=null,ufSvgRenderer=null,ufPage=0;
 const UF_COND_CLR={'Excellent':'#10b981','Good':'#22d3ee','Poor':'#f59e0b','Critical':'#ef4444','No':'#64748b'};
 // Build DT->State lookup from ASSET_DATA
 let _ufStateMap=null;
@@ -1159,6 +1159,8 @@ function initUfMap(){
   const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'OSM'});
   ufMapInstance=L.map('ufMapContainer',{zoomControl:true,layers:[osm],preferCanvas:true}).setView([6.55,3.38],11);
   ufLayerGroup=L.featureGroup().addTo(ufMapInstance);
+  // Dedicated SVG renderer so UF markers are real <path> elements that CSS can animate
+  ufSvgRenderer=L.svg({padding:0.5}).addTo(ufMapInstance);
   // Add UT and Lagos boundaries from network overview data
   if(typeof OV_NETWORK_DATA!=='undefined'){
     const utFeatures=OV_NETWORK_DATA.features.filter(f=>f.properties._layer==='ut_boundary');
@@ -1202,16 +1204,14 @@ function renderUfMap(data){
     const lat=r.la,lng=r.ln;
     if(!lat||!lng||lat<1||lat>15||lng<0||lng>10)continue;
     const c=UF_COND_CLR[r.fc]||'#64748b';
-    const mk=L.circleMarker([lat,lng],{className:'dt-pulse',radius:5,fillColor:c,fillOpacity:0.8,color:'#fff',weight:0.8,opacity:0.5,bubblingMouseEvents:false});
-    mk.on('mouseover',function(){this.setStyle({radius:9,weight:2,fillOpacity:1})});
-    mk.on('mouseout',function(){this.setStyle({radius:5,weight:0.8,fillOpacity:0.8})});
+    const mk=L.circleMarker([lat,lng],{renderer:ufSvgRenderer,className:'dt-ping-svg',radius:4,fillColor:c,fillOpacity:1,color:c,weight:1,opacity:1,bubblingMouseEvents:false});
+    mk.on('mouseover',function(){this.setStyle({radius:7,weight:2,fillOpacity:1})});
+    mk.on('mouseout',function(){this.setStyle({radius:4,weight:1,fillOpacity:1})});
     // Photo thumbnail from Google Drive
     const photos=Array.isArray(r.ph)?r.ph:(r.ph?[r.ph]:[]);
     const photoHTML=photos.length?'<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">'+photos.map((id,i)=>'<a href="https://drive.google.com/file/d/'+id+'/view" target="_blank" title="Photo '+(i+1)+'"><img src="https://lh3.googleusercontent.com/d/'+id+'=w150" style="width:'+(photos.length===1?'200':'90')+'px;height:'+(photos.length===1?'auto':'70')+'px;object-fit:cover;border-radius:6px;border:1px solid #1a2535" onerror="this.parentElement.innerHTML=\'&#128247; Photo '+(i+1)+'\'"></a>').join('')+'</div>':'';
     mk.bindPopup('<div style="min-width:250px"><div style="font-size:13px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(r.dt||'Unknown DT')+'</div><table style="width:100%;font-size:11px;line-height:1.7"><tr><td style="color:#7a8a9e;width:110px"><b>BU</b></td><td style="color:'+c+';font-weight:600">'+r.bu+'</td></tr><tr><td style="color:#7a8a9e"><b>Undertaking</b></td><td>'+r.ut+'</td></tr><tr><td style="color:#7a8a9e"><b>Good Uprisers</b></td><td style="color:#10b981;font-weight:600">'+r.gd+'</td></tr><tr><td style="color:#7a8a9e"><b>Bad Uprisers</b></td><td style="color:#ef4444;font-weight:600">'+r.bd+'</td></tr><tr><td style="color:#7a8a9e"><b>Total Uprisers</b></td><td>'+r.tt+'</td></tr><tr><td style="color:#7a8a9e"><b>FP Condition</b></td><td style="color:'+c+';font-weight:600">'+r.fc+'</td></tr><tr><td style="color:#7a8a9e"><b>FP Type</b></td><td>'+(r.ft||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Validation</b></td><td>'+(r.vl==='Valid'?'<span style="color:#10b981">Valid</span>':'<span style="color:#ef4444">Invalid</span>')+'</td></tr><tr><td style="color:#7a8a9e"><b>Address</b></td><td style="word-break:break-word">'+(r.addr||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Field Officer</b></td><td>'+(r.fo||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>Role Position</b></td><td style="word-break:break-word">'+(r.rp||'-')+'</td></tr><tr><td style="color:#7a8a9e"><b>State</b></td><td>'+getUfState(r.dt)+'</td></tr><tr><td style="color:#7a8a9e"><b>Timestamp</b></td><td>'+(r.ts||'-')+'</td></tr></table>'+photoHTML+'</div>',{maxWidth:600});
     mk.addTo(ufLayerGroup);
-    const _uel=mk.getElement&&mk.getElement();
-    if(_uel){_uel.classList.add('dt-pulse');_uel.style.transformBox='fill-box';_uel.style.transformOrigin='center';_uel.style.animation='dt-pulse 1.6s ease-in-out infinite';_uel.style.webkitAnimation='dt-pulse 1.6s ease-in-out infinite'}
     count++;
   }
   if(count>0){try{ufMapInstance.fitBounds(ufLayerGroup.getBounds(),{padding:[30,30],maxZoom:14})}catch(e){}}
