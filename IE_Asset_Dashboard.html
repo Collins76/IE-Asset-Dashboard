@@ -181,6 +181,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ovf-drop::-webkit-scrollbar-thumb{background:#1a3540;border-radius:3px}
 .ovf-reset{padding:5px 10px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:8px;color:#ef4444;font-size:10px;font-weight:600;cursor:pointer;backdrop-filter:blur(12px);transition:all .15s;white-space:nowrap}
 .ovf-reset:hover{background:rgba(239,68,68,.25);border-color:#ef4444}
+.ovf-map-label{background:rgba(11,18,26,.88)!important;border:2px solid rgba(16,185,129,.6)!important;border-radius:8px!important;padding:6px 14px!important;color:#10b981!important;font-size:15px!important;font-weight:800!important;letter-spacing:.5px;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,.6),0 0 12px rgba(16,185,129,.3)!important;text-shadow:0 1px 4px rgba(0,0,0,.7);white-space:nowrap;pointer-events:none}
+.ovf-map-label-sm{background:rgba(11,18,26,.85)!important;border:1.5px solid rgba(34,211,238,.5)!important;border-radius:6px!important;padding:4px 10px!important;color:#22d3ee!important;font-size:11px!important;font-weight:700!important;box-shadow:0 3px 14px rgba(0,0,0,.5)!important;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .ov-search-icon{position:absolute;top:11px;left:12px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
 #ovSearch{width:320px;padding:10px 14px 10px 34px;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.4);border-radius:10px;color:#e2e8f0;font-size:13px;font-weight:500;outline:none;backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(0,0,0,.6);transition:border-color .15s,box-shadow .15s}
 #ovSearch:focus{border-color:#10b981;box-shadow:0 0 12px rgba(16,185,129,.4)}
@@ -2008,18 +2010,47 @@ function ovfSearchDrop(input){
   });
 }
 
+// Track map labels so we can remove them on reset/change
+var _ovfMapLabels=[];
+
+function _ovfClearLabels(){
+  _ovfMapLabels.forEach(function(lbl){
+    if(ovMapInstance&&ovMapInstance.hasLayer(lbl))ovMapInstance.removeLayer(lbl);
+  });
+  _ovfMapLabels=[];
+}
+
+function _ovfAddLabel(lat,lng,text,cssClass){
+  if(!ovMapInstance)return;
+  var lbl=L.marker([lat,lng],{
+    icon:L.divIcon({className:cssClass||'ovf-map-label',html:text,iconSize:null,iconAnchor:null}),
+    interactive:false,
+    zIndexOffset:9000
+  }).addTo(ovMapInstance);
+  _ovfMapLabels.push(lbl);
+}
+
 function ovfResetAll(){
+  // Clear all checkbox selections
   ['ovfBU','ovfUT','ovfFeeder','ovfDT'].forEach(function(id){
     var wrap=document.getElementById(id);if(!wrap)return;
     var allCb=wrap.querySelector('.ovf-all-cb');if(allCb)allCb.checked=true;
     wrap.querySelectorAll('.ovf-drop input[type="checkbox"]:not(.ovf-all-cb)').forEach(function(c){c.checked=false});
   });
+  // Remove map labels
+  _ovfClearLabels();
+  // Repopulate dropdowns (full options)
   _ovfPopulate();
-  if(ovMapInstance)ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
+  // Close any open dropdown
+  document.querySelectorAll('.ovf-wrap.open').forEach(function(w){w.classList.remove('open')});
+  // Zoom back to default view
+  if(ovMapInstance){
+    ovMapInstance.closePopup();
+    ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
+  }
 }
 
 function _ovfOnChange(){
-  // Debounce for fast interaction
   if(_ovfTimer)clearTimeout(_ovfTimer);
   _ovfTimer=setTimeout(function(){
     _ovfPopulate();
@@ -2029,16 +2060,21 @@ function _ovfOnChange(){
 
 function _ovfZoom(){
   if(!ovMapInstance)return;
+  // Clear previous labels
+  _ovfClearLabels();
+
   var sBU=_ovfGetSel('ovfBU'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
   var noFilter=!sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length;
   if(noFilter){
     ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
     return;
   }
+
   // BU-only: zoom to entire BU boundary (include HT lines extent)
   var bounds=L.latLngBounds([]);
   if(sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length){
     // Collect all layer bounds for selected BUs (DSS + HT)
+    var buBoundsMap={};
     Object.keys(OV_LAYERS).forEach(function(lid){
       var isDSS=lid.includes('_dss_');
       var isHT=lid.startsWith('ht_lines_');
@@ -2048,45 +2084,84 @@ function _ovfZoom(){
       if(isHT)layerBU=lid.replace(/^ht_lines_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
       if(sBU.indexOf(layerBU)===-1)return;
       var info=OV_LAYERS[lid];if(!info)return;
-      if(info.bounds)bounds.extend(info.bounds);
-      else{try{bounds.extend(info.layer.getBounds())}catch(e){}}
+      if(!buBoundsMap[layerBU])buBoundsMap[layerBU]=L.latLngBounds([]);
+      if(info.bounds)buBoundsMap[layerBU].extend(info.bounds);
+      else{try{buBoundsMap[layerBU].extend(info.layer.getBounds())}catch(e){}}
     });
-    // Also try UT boundary layer for BU extent
-    var utInfo=OV_LAYERS['ut_boundary'];
-    if(utInfo){
-      utInfo.layer.eachLayer(function(sl){
-        // UT boundaries don't have BU, so skip — rely on DSS+HT bounds
-      });
-    }
+    // Extend total bounds and add BU labels at center
+    Object.keys(buBoundsMap).forEach(function(buName){
+      var b=buBoundsMap[buName];
+      if(b.isValid()){
+        bounds.extend(b);
+        var c=b.getCenter();
+        _ovfAddLabel(c.lat,c.lng,buName+' BU','ovf-map-label');
+      }
+    });
     if(bounds.isValid()){
       ovMapInstance.flyToBounds(bounds,{padding:[40,40],maxZoom:14,duration:0.8});
     }
     return;
   }
+
   // Specific filters: find matching features
   var matched=_ovfFiltered();
   var matchedMarkers=[];
   matched.forEach(function(r){
     if(r.lat&&r.lng&&r.lat>1&&r.lat<15){
       bounds.extend([r.lat,r.lng]);
-      matchedMarkers.push({marker:r.layer,lat:r.lat,lng:r.lng});
+      matchedMarkers.push({marker:r.layer,lat:r.lat,lng:r.lng,dt:r.dt,feeder:r.feeder,bu:r.bu});
     }
   });
-  if(bounds.isValid()){
-    var maxZ=sDT.length?17:(sFeed.length?16:(sUT.length?16:14));
-    ovMapInstance.flyToBounds(bounds,{padding:[50,50],maxZoom:maxZ,duration:0.8});
-    // Pulse markers (up to 50)
-    if(matchedMarkers.length>0&&matchedMarkers.length<=50){
-      ovMapInstance.once('moveend',function(){
-        _pulseMarkers(ovMapInstance,matchedMarkers);
-      });
-    }
-    // Open popup for single DT
-    if(sDT.length&&matchedMarkers.length===1){
-      ovMapInstance.once('moveend',function(){
-        try{matchedMarkers[0].marker.openPopup()}catch(e){}
-      });
-    }
+  if(!bounds.isValid())return;
+
+  var maxZ=sDT.length?17:(sFeed.length?16:(sUT.length?16:14));
+  ovMapInstance.flyToBounds(bounds,{padding:[50,50],maxZoom:maxZ,duration:0.8});
+
+  // Add labels for selected DT Names
+  if(sDT.length){
+    matchedMarkers.forEach(function(m){
+      _ovfAddLabel(m.lat,m.lng+0.0003,m.dt,'ovf-map-label-sm');
+    });
+  }
+  // Add labels for selected Feeders (one per feeder at centroid)
+  else if(sFeed.length){
+    var feederGroups={};
+    matchedMarkers.forEach(function(m){
+      var fn=m.feeder;
+      if(!feederGroups[fn])feederGroups[fn]={lats:[],lngs:[]};
+      feederGroups[fn].lats.push(m.lat);
+      feederGroups[fn].lngs.push(m.lng);
+    });
+    Object.keys(feederGroups).forEach(function(fn){
+      var g=feederGroups[fn];
+      var cLat=g.lats.reduce(function(a,b){return a+b},0)/g.lats.length;
+      var cLng=g.lngs.reduce(function(a,b){return a+b},0)/g.lngs.length;
+      _ovfAddLabel(cLat,cLng,fn,'ovf-map-label-sm');
+    });
+  }
+  // Add BU label if BU is selected alongside UT
+  if(sBU.length&&sUT.length){
+    sBU.forEach(function(buName){
+      // Find center of filtered features for this BU
+      var buFeats=matchedMarkers.filter(function(m){return m.bu===buName});
+      if(!buFeats.length)return;
+      var cLat=buFeats.reduce(function(a,m){return a+m.lat},0)/buFeats.length;
+      var cLng=buFeats.reduce(function(a,m){return a+m.lng},0)/buFeats.length;
+      _ovfAddLabel(cLat+0.008,cLng,buName+' BU','ovf-map-label');
+    });
+  }
+
+  // Pulse markers (up to 50)
+  if(matchedMarkers.length>0&&matchedMarkers.length<=50){
+    ovMapInstance.once('moveend',function(){
+      _pulseMarkers(ovMapInstance,matchedMarkers);
+    });
+  }
+  // Open popup for single DT
+  if(sDT.length&&matchedMarkers.length===1){
+    ovMapInstance.once('moveend',function(){
+      try{matchedMarkers[0].marker.openPopup()}catch(e){}
+    });
   }
 }
 
