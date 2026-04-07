@@ -1907,11 +1907,24 @@ var _ovfHTTempLayers=[];
 // double-spaces, and fix known typos into one canonical form.
 function _normUT_OV(raw){
   var s=raw.toUpperCase().replace(/[\s_-]+/g,' ').trim();
-  // Typo corrections
   if(s==='ABOUR')s='ABORU';
   if(s==='ODONGUNYAN')s='ODOGUNYAN';
   if(s==='GOWON')s='GOWON ESTATE';
   return s;
+}
+// Normalize feeder names: canonical case + collapse separators.
+// Keeps the structure (e.g. "11-OgbaINJ-T1-Ijaye") but merges case
+// and spacing variants into a single canonical form.
+function _normFeeder_OV(raw){
+  if(!raw)return '';
+  // Collapse multiple spaces, trim
+  var s=raw.replace(/\s+/g,' ').trim();
+  // Build a canonical key for dedup: uppercase + collapse separators
+  var key=s.toUpperCase().replace(/[\s_-]+/g,' ');
+  // Use a lookup to return the first-seen form for this key
+  if(!_normFeeder_OV._map)_normFeeder_OV._map={};
+  if(!_normFeeder_OV._map[key])_normFeeder_OV._map[key]=s;
+  return _normFeeder_OV._map[key];
 }
 function buildOvDropdownFilters(){
   _ovfData=[];
@@ -1924,7 +1937,7 @@ function buildOvDropdownFilters(){
       _ovfData.push({
         bu:layerBU,
         ut:_normUT_OV(p.UT_NAME||''),
-        feeder:p.FEEDER_NAME||p.FED_NAME||'',
+        feeder:_normFeeder_OV(p.FEEDER_NAME||p.FED_NAME||''),
         dt:p.name||'',
         lat:sl.getLatLng?sl.getLatLng().lat:0,
         lng:sl.getLatLng?sl.getLatLng().lng:0,
@@ -2098,6 +2111,8 @@ function ovfResetAll(){
       });
     }catch(e){}
     document.querySelectorAll('#ovFilterPanel input[data-layer]').forEach(function(cb){cb.checked=true});
+    // Repopulate dropdowns with all options (no filters active)
+    try{_ovfPopulate()}catch(e){}
     // Fly back to default view
     if(ovMapInstance)ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
   }catch(e){window.location.reload()}
