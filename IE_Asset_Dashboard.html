@@ -544,7 +544,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <div class="ovf-wrap" id="ovfUT"><button class="ovf-btn" onclick="ovfToggle('ovfUT')">UT &#9662;</button><div class="ovf-drop"></div></div>
     <div class="ovf-wrap" id="ovfFeeder"><button class="ovf-btn" onclick="ovfToggle('ovfFeeder')">Feeder &#9662;</button><div class="ovf-drop"></div></div>
     <div class="ovf-wrap" id="ovfDT"><button class="ovf-btn" onclick="ovfToggle('ovfDT')">DT Name &#9662;</button><div class="ovf-drop"></div></div>
-    <button class="ovf-reset" onclick="ovfResetAll()">Reset</button>
+    <button class="ovf-reset" id="ovfResetBtn" type="button" onclick="ovfResetAll(event)">Reset</button>
   </div>
   <div id="ovMapContainer"></div>
   <button type="button" class="zoom-lens-btn" id="ovLensBtn" style="right:150px" title="Toggle Zoom Lens" onclick="toggleZoomLens('ov')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
@@ -2030,27 +2030,41 @@ function _ovfAddLabel(lat,lng,text,cssClass){
   _ovfMapLabels.push(lbl);
 }
 
-function ovfResetAll(){
-  // Clear all checkbox selections
-  ['ovfBU','ovfUT','ovfFeeder','ovfDT'].forEach(function(id){
-    var wrap=document.getElementById(id);if(!wrap)return;
-    var allCb=wrap.querySelector('.ovf-all-cb');if(allCb)allCb.checked=true;
-    wrap.querySelectorAll('.ovf-drop input[type="checkbox"]:not(.ovf-all-cb)').forEach(function(c){c.checked=false});
-  });
-  // Remove map labels
-  _ovfClearLabels();
-  // Restore all feature visibility and original styles
-  _ovfRestoreAll();
-  // Repopulate dropdowns (full options)
-  _ovfPopulate();
-  // Close any open dropdown
-  document.querySelectorAll('.ovf-wrap.open').forEach(function(w){w.classList.remove('open')});
-  // Zoom back to default view
-  if(ovMapInstance){
-    ovMapInstance.closePopup();
-    ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
-  }
+function ovfResetAll(e){
+  if(e){e.stopPropagation();e.preventDefault();}
+  try{
+    // Clear all checkbox selections
+    ['ovfBU','ovfUT','ovfFeeder','ovfDT'].forEach(function(id){
+      var wrap=document.getElementById(id);if(!wrap)return;
+      var allCb=wrap.querySelector('.ovf-all-cb');if(allCb)allCb.checked=true;
+      var cbs=wrap.querySelectorAll('.ovf-drop input[type="checkbox"]:not(.ovf-all-cb)');
+      for(var i=0;i<cbs.length;i++){cbs[i].checked=false;}
+    });
+    // Remove map labels
+    _ovfClearLabels();
+    // Restore all feature visibility and original styles
+    _ovfRestoreAll();
+    // Repopulate dropdowns (full options)
+    _ovfPopulate();
+    // Close any open dropdown
+    var openWraps=document.querySelectorAll('.ovf-wrap.open');
+    for(var j=0;j<openWraps.length;j++){openWraps[j].classList.remove('open');}
+    // Zoom back to default view
+    if(ovMapInstance){
+      ovMapInstance.closePopup();
+      ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
+    }
+  }catch(err){console.error('Reset error:',err);}
 }
+// Attach reset — button already exists in DOM above this script
+(function(){
+  var rb=document.getElementById('ovfResetBtn');
+  if(rb){
+    rb.addEventListener('click',function(e){ovfResetAll(e);});
+    rb.addEventListener('mousedown',function(e){e.stopPropagation();});
+    rb.addEventListener('pointerdown',function(e){e.stopPropagation();});
+  }
+})();
 
 function _ovfRestoreAll(){
   if(!ovMapInstance)return;
