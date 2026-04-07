@@ -1859,6 +1859,9 @@ function buildOvFilters(){
 var _ovfData=[];
 var _ovfLabels={ovfBU:'BU',ovfUT:'UT',ovfFeeder:'Feeder',ovfDT:'DT Name'};
 var _ovfTimer=null;
+// Per-feeder HT line data: {feederName: {bu, color, lines: [[[lat,lng],...]]}}
+var _ovfHTIndex={};
+var _ovfHTTempLayers=[];
 
 function buildOvDropdownFilters(){
   _ovfData=[];
@@ -1879,6 +1882,28 @@ function buildOvDropdownFilters(){
       });
     });
   });
+  // Build per-feeder HT line index from raw GeoJSON
+  _ovfHTIndex={};
+  if(typeof OV_NETWORK_DATA!=='undefined'){
+    OV_NETWORK_DATA.features.forEach(function(f){
+      var p=f.properties||{};
+      if(!p._layer||!p._layer.startsWith('ht_lines'))return;
+      if(!f.geometry)return;
+      var feederName=p.FED_NAME||p.name||'';
+      if(!feederName)return;
+      var bu=(p._bu||'').toUpperCase();
+      var defColor='#10b981';
+      OV_LAYER_DEFS.forEach(function(d){if(d.id===p._layer)defColor=d.color});
+      if(!_ovfHTIndex[feederName])_ovfHTIndex[feederName]={bu:bu,color:defColor,lines:[]};
+      var gt=f.geometry.type;
+      var rings=gt==='LineString'?[f.geometry.coordinates]:gt==='MultiLineString'?f.geometry.coordinates:[];
+      rings.forEach(function(line){
+        var latlngs=[];
+        for(var i=0;i<line.length;i++){latlngs.push([line[i][1],line[i][0]])}
+        if(latlngs.length>=2)_ovfHTIndex[feederName].lines.push(latlngs);
+      });
+    });
+  }
   _ovfPopulate();
 }
 
@@ -2032,42 +2057,71 @@ function _ovfAddLabel(lat,lng,text,cssClass){
 
 function ovfResetAll(e){
   if(e){e.stopPropagation();e.preventDefault();}
-  try{
-    // Clear all checkbox selections
-    ['ovfBU','ovfUT','ovfFeeder','ovfDT'].forEach(function(id){
-      var wrap=document.getElementById(id);if(!wrap)return;
-      var allCb=wrap.querySelector('.ovf-all-cb');if(allCb)allCb.checked=true;
-      var cbs=wrap.querySelectorAll('.ovf-drop input[type="checkbox"]:not(.ovf-all-cb)');
-      for(var i=0;i<cbs.length;i++){cbs[i].checked=false;}
-    });
-    // Remove map labels
-    _ovfClearLabels();
-    // Restore all feature visibility and original styles
-    _ovfRestoreAll();
-    // Repopulate dropdowns (full options)
-    _ovfPopulate();
-    // Close any open dropdown
-    var openWraps=document.querySelectorAll('.ovf-wrap.open');
-    for(var j=0;j<openWraps.length;j++){openWraps[j].classList.remove('open');}
-    // Zoom back to default view
-    if(ovMapInstance){
-      ovMapInstance.closePopup();
-      ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
-    }
-  }catch(err){console.error('Reset error:',err);}
+  // Full page reload — guaranteed clean state
+  window.location.reload();
 }
-// Attach reset — button already exists in DOM above this script
-(function(){
-  var rb=document.getElementById('ovfResetBtn');
-  if(rb){
-    rb.addEventListener('click',function(e){ovfResetAll(e);});
-    rb.addEventListener('mousedown',function(e){e.stopPropagation();});
-    rb.addEventListener('pointerdown',function(e){e.stopPropagation();});
-  }
-})();
+
+function _ovfClearHTTemp(){
+  _ovfHTTempLayers.forEach(function(l){
+    if(ovMapInstance&&ovMapInstance.hasLayer(l))ovMapInstance.removeLayer(l);
+  });
+  _ovfHTTempLayers=[];
+}
+
+function _ovfDrawHTFeeders(feederNames,sBU){
+  _ovfClearHTTemp();
+  if(!ovMapInstance||!feederNames.length)return;
+
+  // Build a set of short feeder names (FED_NAME) from the full FEEDER_NAMEs
+  // Full: "11-Ago OkotaINJ-T1-Fasheun" → short: "FASHEUN"
+  // Also collect the FED_NAME directly from _ovfData
+  var shortNames=new Set();
+  feederNames.forEach(function(fn){
+    // Extract last segment after last dash
+    var parts=fn.split('-');
+    var last=parts[parts.length-1].trim().toUpperCase();
+    if(last)shortNames.add(last);
+    // Also try the full name as-is (in case it's already a short name)
+    shortNames.add(fn.toUpperCase().trim());
+  });
+  // Also get FED_NAME values from matched DSS features
+  _ovfFiltered().forEach(function(r){
+    if(r.layer&&r.layer.feature){
+      var p=r.layer.feature.properties||{};
+      if(p.FED_NAME)shortNames.add(p.FED_NAME.toUpperCase().trim());
+    }
+  });
+
+  // Match against HT index
+  var drawn=new Set();
+  Object.keys(_ovfHTIndex).forEach(function(htKey){
+    var htData=_ovfHTIndex[htKey];
+    // BU filter
+    if(sBU.length&&sBU.indexOf(htData.bu)===-1)return;
+    // Match if the HT key matches any short name
+    if(!shortNames.has(htKey.toUpperCase().trim()))return;
+    if(drawn.has(htKey))return;
+    drawn.add(htKey);
+
+    // Draw each line segment as a bright yellow polyline
+    htData.lines.forEach(function(latlngs){
+      var pl=L.polyline(latlngs,{
+        color:'#facc15',weight:5,opacity:1
+      }).addTo(ovMapInstance);
+      _ovfHTTempLayers.push(pl);
+      // Add feeder label at midpoint
+      if(latlngs.length>=2){
+        var midIdx=Math.floor(latlngs.length/2);
+        var midPt=latlngs[midIdx];
+        _ovfAddLabel(midPt[0],midPt[1],htKey+' FEEDER','ovf-map-label-sm');
+      }
+    });
+  });
+}
 
 function _ovfRestoreAll(){
   if(!ovMapInstance)return;
+  _ovfClearHTTemp();
   Object.keys(OV_LAYERS).forEach(function(lid){
     var info=OV_LAYERS[lid];if(!info)return;
     // Re-add layer if removed
@@ -2112,6 +2166,9 @@ function _ovfGetLayerBU(lid){
 function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
   var noFilter=!sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length;
 
+  // Always clear previous temp HT lines
+  _ovfClearHTTemp();
+
   if(noFilter){
     _ovfRestoreAll();
     return;
@@ -2120,6 +2177,8 @@ function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
   // Build a set of matched layer references for fast lookup
   var matchedSet=new Set();
   _ovfFiltered().forEach(function(r){matchedSet.add(r.layer)});
+
+  var hasSubFilter=sUT.length||sFeed.length||sDT.length;
 
   Object.keys(OV_LAYERS).forEach(function(lid){
     var info=OV_LAYERS[lid];if(!info)return;
@@ -2131,11 +2190,16 @@ function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
 
     var layerBU=_ovfGetLayerBU(lid);
 
-    // HT layers: show only matching BU's HT, hide the rest
+    // HT layers
     if(isHT){
       if(sBU.length&&sBU.indexOf(layerBU)===-1){
+        // BU not selected — hide
+        if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
+      } else if(hasSubFilter){
+        // Sub-filter active — hide consolidated antPath (we'll draw individual feeders)
         if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
       } else {
+        // BU-only filter — show consolidated antPath
         if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
       }
       return;
@@ -2152,21 +2216,19 @@ function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
     // Style individual features: highlight matched, dim non-matched
     info.layer.eachLayer(function(sl){
       var isMatch=matchedSet.has(sl);
-      // 11kV circleMarkers — use setStyle (works on canvas)
       if(is11kv&&sl.setStyle){
         if(isMatch){
           sl.setStyle({fillColor:'#facc15',fillOpacity:1,opacity:1,color:'#000',weight:2,radius:7});
-          sl.bringToFront&&sl.bringToFront();
+          try{sl.bringToFront()}catch(e){}
         } else {
           sl.setStyle({fillOpacity:0.06,opacity:0.06,radius:3});
         }
       }
-      // 33kV divIcon markers
       if(sl._icon){
         if(isMatch){
           sl._icon.style.opacity='1';
           sl._icon.style.filter='drop-shadow(0 0 6px #facc15) brightness(2)';
-          sl.setZIndexOffset&&sl.setZIndexOffset(9000);
+          try{sl.setZIndexOffset(9000)}catch(e){}
         } else {
           sl._icon.style.opacity='0.08';
           sl._icon.style.filter='';
@@ -2174,6 +2236,18 @@ function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
       }
     });
   });
+
+  // Draw individual HT feeder lines for selected feeders
+  if(hasSubFilter){
+    // Get unique feeder short names from matched data
+    var matched=_ovfFiltered();
+    var feederNames=[];
+    var seen={};
+    matched.forEach(function(r){
+      if(r.feeder&&!seen[r.feeder]){seen[r.feeder]=true;feederNames.push(r.feeder)}
+    });
+    if(feederNames.length)_ovfDrawHTFeeders(feederNames,sBU);
+  }
 }
 
 function _ovfZoom(){
@@ -2230,6 +2304,11 @@ function _ovfZoom(){
       matchedMarkers.push({marker:r.layer,lat:r.lat,lng:r.lng,dt:r.dt,feeder:r.feeder,bu:r.bu});
     }
   });
+  // Also include HT temp line bounds
+  _ovfHTTempLayers.forEach(function(pl){
+    try{bounds.extend(pl.getBounds())}catch(e){}
+  });
+
   if(!bounds.isValid())return;
 
   var maxZ=sDT.length?17:(sFeed.length?16:(sUT.length?16:14));
