@@ -162,8 +162,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 /* Radar-ping marker for Geospatial DT Map — solid dot + expanding stroke ring on a single SVG path */
 @keyframes dt-ping{0%{stroke-width:1;stroke-opacity:.95}85%{stroke-width:14;stroke-opacity:0}100%{stroke-width:14;stroke-opacity:0}}
 .leaflet-overlay-pane svg path.dt-ping-svg{animation:dt-ping 1.8s ease-out infinite!important;-webkit-animation:dt-ping 1.8s ease-out infinite!important}
-.ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:10px!important;font-weight:700!important;color:rgba(255,255,255,.7)!important;text-shadow:0 0 4px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.7),1px 1px 2px rgba(0,0,0,.8)!important;letter-spacing:.5px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
-#ovTopBar{position:absolute;top:12px;left:12px;right:12px;z-index:1001;display:flex;align-items:flex-start;gap:8px;flex-wrap:nowrap}
+.ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:12px!important;font-weight:800!important;color:rgba(255,255,255,.85)!important;text-shadow:0 0 5px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.8),1px 1px 3px rgba(0,0,0,.9)!important;letter-spacing:.6px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
+#ovTopBar{position:absolute;top:12px;left:55px;right:12px;z-index:1001;display:flex;align-items:flex-start;gap:8px;flex-wrap:nowrap}
 #ovSearchWrap{position:relative;top:auto;left:auto;z-index:1000;display:flex;flex-direction:column;flex-shrink:0}
 #ovFilterBar{position:relative;top:auto;left:auto;z-index:1001;display:flex;gap:6px;flex-wrap:nowrap;align-items:center}
 .ovf-wrap{position:relative;display:inline-block}
@@ -182,9 +182,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ovf-drop::-webkit-scrollbar-thumb{background:#1a3540;border-radius:3px}
 .ovf-reset{padding:7px 14px;background:rgba(239,68,68,.18);border:1.5px solid rgba(239,68,68,.5);border-radius:8px;color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;backdrop-filter:blur(12px);transition:all .15s;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.4)}
 .ovf-reset:hover{background:rgba(239,68,68,.35);border-color:#ef4444;box-shadow:0 0 12px rgba(239,68,68,.3)}
-.ovf-map-label{background:rgba(11,18,26,.88)!important;border:2px solid rgba(16,185,129,.6)!important;border-radius:8px!important;padding:6px 14px!important;color:#10b981!important;font-size:15px!important;font-weight:800!important;letter-spacing:.5px;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,.6),0 0 12px rgba(16,185,129,.3)!important;text-shadow:0 1px 4px rgba(0,0,0,.7);white-space:nowrap;pointer-events:none}
-.ovf-map-label-sm{background:rgba(11,18,26,.85)!important;border:1.5px solid rgba(34,211,238,.5)!important;border-radius:6px!important;padding:4px 10px!important;color:#22d3ee!important;font-size:11px!important;font-weight:700!important;box-shadow:0 3px 14px rgba(0,0,0,.5)!important;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
-.ovf-dt-label{background:none!important;border:none!important;border-radius:0!important;padding:0 2px!important;color:#ffffff!important;font-size:7px!important;font-weight:600!important;box-shadow:none!important;white-space:nowrap;pointer-events:none;letter-spacing:.2px;text-shadow:0 0 3px rgba(0,0,0,.9),0 0 6px rgba(0,0,0,.7)}
+.ovf-map-label{background:rgba(11,18,26,.92)!important;border:2px solid rgba(16,185,129,.7)!important;border-radius:8px!important;padding:8px 16px!important;color:#10b981!important;font-size:17px!important;font-weight:800!important;letter-spacing:.6px;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,.7),0 0 14px rgba(16,185,129,.4)!important;text-shadow:0 1px 4px rgba(0,0,0,.8);white-space:nowrap;pointer-events:none}
+.ovf-map-label-sm{background:rgba(11,18,26,.9)!important;border:1.5px solid rgba(34,211,238,.6)!important;border-radius:6px!important;padding:5px 12px!important;color:#22d3ee!important;font-size:13px!important;font-weight:700!important;box-shadow:0 3px 14px rgba(0,0,0,.6)!important;white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.ovf-dt-label{background:none!important;border:none!important;border-radius:0!important;padding:0 2px!important;color:#ffffff!important;font-size:9px!important;font-weight:700!important;box-shadow:none!important;white-space:nowrap;pointer-events:none;letter-spacing:.3px;text-shadow:0 0 4px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.8)}
 .ov-search-icon{position:absolute;top:11px;left:10px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
 #ovSearch{width:260px;padding:10px 14px 10px 30px;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.4);border-radius:10px;color:#e2e8f0;font-size:13px;font-weight:500;outline:none;backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(0,0,0,.6);transition:border-color .15s,box-shadow .15s}
 #ovSearch:focus{border-color:#10b981;box-shadow:0 0 12px rgba(16,185,129,.4)}
@@ -2068,16 +2068,6 @@ function ovfResetAll(){
       document.querySelectorAll('#ovFilterPanel input[data-layer]').forEach(function(cb){cb.checked=true});
       ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
     }
-    // Also reset main dashboard filters and trigger re-render
-    document.querySelectorAll('.ms-panel').forEach(function(panel){
-      panel.querySelectorAll('input[type="checkbox"]').forEach(function(cb){cb.checked=cb.value===''});
-      panel.querySelectorAll('label').forEach(function(l){l.style.display='';l.style.opacity='1'});
-    });
-    document.querySelectorAll('.ms-btn').forEach(function(btn){btn.textContent='All'});
-    filteredData=[...ASSET_DATA];
-    document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
-    Object.keys(_pagesDirty).forEach(function(k){_pagesDirty[k]=true});
-    renderActivePage();
   }catch(e){window.location.reload()}
 }
 function ovfToggle(wrapId){
