@@ -164,10 +164,23 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .leaflet-overlay-pane svg path.dt-ping-svg{animation:dt-ping 1.8s ease-out infinite!important;-webkit-animation:dt-ping 1.8s ease-out infinite!important}
 .ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:10px!important;font-weight:700!important;color:rgba(255,255,255,.7)!important;text-shadow:0 0 4px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.7),1px 1px 2px rgba(0,0,0,.8)!important;letter-spacing:.5px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
 #ovSearchWrap{position:absolute;top:12px;left:55px;z-index:1000;display:flex;flex-direction:column}
-#ovFilterBar{position:absolute;top:55px;left:12px;z-index:1000;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100vw - 180px)}
-#ovFilterBar select{padding:7px 10px;background:rgba(11,18,26,.96);border:1.5px solid rgba(16,185,129,.4);border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:500;outline:none;backdrop-filter:blur(12px);box-shadow:0 2px 12px rgba(0,0,0,.5);cursor:pointer;max-width:200px;appearance:auto}
-#ovFilterBar select:focus{border-color:#10b981;box-shadow:0 0 8px rgba(16,185,129,.4)}
-#ovFilterBar select option{background:#0b121a;color:#e2e8f0}
+#ovFilterBar{position:absolute;top:55px;left:12px;z-index:1001;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100vw - 180px);align-items:flex-start}
+.ovf-wrap{position:relative;display:inline-block}
+.ovf-btn{padding:7px 12px;background:rgba(11,18,26,.96);border:1.5px solid rgba(16,185,129,.4);border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;backdrop-filter:blur(12px);box-shadow:0 2px 12px rgba(0,0,0,.5);white-space:nowrap;min-width:70px;text-align:left;transition:all .15s;user-select:none}
+.ovf-btn:hover,.ovf-wrap.open .ovf-btn{border-color:#10b981;background:rgba(16,185,129,.1)}
+.ovf-btn.has-sel{border-color:#10b981;color:#10b981}
+.ovf-drop{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:220px;max-height:260px;overflow-y:auto;background:rgba(11,18,26,.97);border:1.5px solid rgba(16,185,129,.35);border-radius:8px;padding:6px 0;backdrop-filter:blur(14px);box-shadow:0 8px 32px rgba(0,0,0,.7);z-index:1002}
+.ovf-wrap.open .ovf-drop{display:block}
+.ovf-drop .ovf-search{width:calc(100% - 16px);margin:0 8px 6px;padding:6px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:#e2e8f0;font-size:11px;outline:none}
+.ovf-drop .ovf-search:focus{border-color:rgba(16,185,129,.5)}
+.ovf-drop label{display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:11.5px;color:#cbd5e1;cursor:pointer;transition:background .08s}
+.ovf-drop label:hover{background:rgba(16,185,129,.12)}
+.ovf-drop label.ovf-all{border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:2px;padding-bottom:6px;color:#10b981;font-weight:600}
+.ovf-drop input[type="checkbox"]{accent-color:#10b981;width:13px;height:13px;cursor:pointer;flex-shrink:0}
+.ovf-drop::-webkit-scrollbar{width:4px}
+.ovf-drop::-webkit-scrollbar-thumb{background:#1a3540;border-radius:3px}
+.ovf-reset{padding:5px 10px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:8px;color:#ef4444;font-size:10px;font-weight:600;cursor:pointer;backdrop-filter:blur(12px);transition:all .15s;white-space:nowrap}
+.ovf-reset:hover{background:rgba(239,68,68,.25);border-color:#ef4444}
 .ov-search-icon{position:absolute;top:11px;left:12px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
 #ovSearch{width:320px;padding:10px 14px 10px 34px;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.4);border-radius:10px;color:#e2e8f0;font-size:13px;font-weight:500;outline:none;backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(0,0,0,.6);transition:border-color .15s,box-shadow .15s}
 #ovSearch:focus{border-color:#10b981;box-shadow:0 0 12px rgba(16,185,129,.4)}
@@ -308,7 +321,8 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
   #mapSearchWrap,#ovSearchWrap{left:52px!important;right:10px;top:8px!important}
   #mapSearch,#ovSearch{width:calc(100vw - 130px)!important;max-width:260px;font-size:11px!important}
   #ovFilterBar{top:48px;left:8px;max-width:calc(100vw - 24px)}
-  #ovFilterBar select{font-size:10px;padding:5px 6px;max-width:140px}
+  .ovf-btn{font-size:10px;padding:5px 8px;min-width:55px}
+  .ovf-drop{min-width:180px;max-height:200px}
   .btn{font-size:10px!important;padding:5px 8px!important}
   /* Export buttons: icon-only on mobile (hide text labels after emoji) */
   .nav-right .btn,.btn-csv,.btn-pdf,.btn-reset{font-size:0!important;padding:6px 10px!important}
@@ -524,10 +538,11 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 <div class="page" id="page-overview" style="position:relative">
   <div id="ovSearchWrap"><span class="ov-search-icon">&#128269;</span><input type="text" id="ovSearch" placeholder="Search network features..." oninput="ovSearchDebounced()" onkeydown="ovSugNav(event)" autocomplete="off"><div id="ovSuggestions"></div></div>
   <div id="ovFilterBar">
-    <select id="ovFiltBU" onchange="ovFilterZoom()"><option value="">-- BU --</option></select>
-    <select id="ovFiltUT" onchange="ovFilterZoom()"><option value="">-- UT --</option></select>
-    <select id="ovFiltFeeder" onchange="ovFilterZoom()"><option value="">-- Feeder --</option></select>
-    <select id="ovFiltDT" onchange="ovFilterZoom()"><option value="">-- DT Name --</option></select>
+    <div class="ovf-wrap" id="ovfBU"><button class="ovf-btn" onclick="ovfToggle('ovfBU')">BU &#9662;</button><div class="ovf-drop"></div></div>
+    <div class="ovf-wrap" id="ovfUT"><button class="ovf-btn" onclick="ovfToggle('ovfUT')">UT &#9662;</button><div class="ovf-drop"></div></div>
+    <div class="ovf-wrap" id="ovfFeeder"><button class="ovf-btn" onclick="ovfToggle('ovfFeeder')">Feeder &#9662;</button><div class="ovf-drop"></div></div>
+    <div class="ovf-wrap" id="ovfDT"><button class="ovf-btn" onclick="ovfToggle('ovfDT')">DT Name &#9662;</button><div class="ovf-drop"></div></div>
+    <button class="ovf-reset" onclick="ovfResetAll()">Reset</button>
   </div>
   <div id="ovMapContainer"></div>
   <button type="button" class="zoom-lens-btn" id="ovLensBtn" style="right:150px" title="Toggle Zoom Lens" onclick="toggleZoomLens('ov')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
@@ -1837,122 +1852,250 @@ function buildOvFilters(){
   panel.innerHTML=html;
 }
 
+// ===== Overview Map Filter Dropdowns (multi-select, cascading) =====
+// Master data: array of {bu, ut, feeder, dt, lat, lng, layer(leaflet)}
+var _ovfData=[];
+var _ovfLabels={ovfBU:'BU',ovfUT:'UT',ovfFeeder:'Feeder',ovfDT:'DT Name'};
+var _ovfTimer=null;
+
 function buildOvDropdownFilters(){
-  // Collect unique BU, UT, Feeder, DT Name values from overview searchable features
-  var bus=new Set(),uts=new Set(),feeders=new Set(),dts=new Set();
-  ovSearchableFeatures.forEach(function(sf){
-    if(sf.bu)bus.add(sf.bu.toUpperCase());
-  });
-  // Also scan layer features for UT and Feeder values
+  _ovfData=[];
   Object.keys(OV_LAYERS).forEach(function(lid){
     if(!lid.includes('_dss_'))return;
-    var info=OV_LAYERS[lid];
-    if(!info)return;
+    var info=OV_LAYERS[lid];if(!info)return;
+    var layerBU=lid.replace(/^(11kv|33kv)_dss_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
     info.layer.eachLayer(function(sl){
       var p=sl.feature?sl.feature.properties:{};
-      if(p.UT_NAME)uts.add(p.UT_NAME.toUpperCase().trim());
-      var fn=p.FEEDER_NAME||p.FED_NAME||'';
-      if(fn)feeders.add(fn);
-      if(p.name)dts.add(p.name);
+      _ovfData.push({
+        bu:layerBU,
+        ut:(p.UT_NAME||'').toUpperCase().trim(),
+        feeder:p.FEEDER_NAME||p.FED_NAME||'',
+        dt:p.name||'',
+        lat:sl.getLatLng?sl.getLatLng().lat:0,
+        lng:sl.getLatLng?sl.getLatLng().lng:0,
+        layer:sl
+      });
     });
   });
-  var selBU=document.getElementById('ovFiltBU');
-  var selUT=document.getElementById('ovFiltUT');
-  var selFeed=document.getElementById('ovFiltFeeder');
-  var selDT=document.getElementById('ovFiltDT');
-  // Sort and populate
-  [].concat(Array.from(bus)).sort().forEach(function(v){
-    selBU.appendChild(new Option(v,v));
-  });
-  [].concat(Array.from(uts)).sort().forEach(function(v){
-    selUT.appendChild(new Option(v,v));
-  });
-  [].concat(Array.from(feeders)).sort().forEach(function(v){
-    selFeed.appendChild(new Option(v,v));
-  });
-  [].concat(Array.from(dts)).sort().forEach(function(v){
-    selDT.appendChild(new Option(v,v));
+  _ovfPopulate();
+}
+
+function _ovfGetSel(wrapId){
+  var wrap=document.getElementById(wrapId);if(!wrap)return[];
+  var cbs=wrap.querySelectorAll('.ovf-drop input[type="checkbox"]:not(.ovf-all-cb)');
+  var allCb=wrap.querySelector('.ovf-all-cb');
+  if(allCb&&allCb.checked)return[];
+  var sel=[];
+  cbs.forEach(function(cb){if(cb.checked)sel.push(cb.value)});
+  return sel;
+}
+
+function _ovfFiltered(){
+  var sBU=_ovfGetSel('ovfBU'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
+  return _ovfData.filter(function(r){
+    if(sBU.length&&sBU.indexOf(r.bu)===-1)return false;
+    if(sUT.length&&sUT.indexOf(r.ut)===-1)return false;
+    if(sFeed.length&&sFeed.indexOf(r.feeder)===-1)return false;
+    if(sDT.length&&sDT.indexOf(r.dt)===-1)return false;
+    return true;
   });
 }
 
-function ovFilterZoom(){
+function _ovfPopulate(){
+  var sBU=_ovfGetSel('ovfBU'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
+  // Compute available options based on other filters (cascading)
+  var forBU=_ovfData.filter(function(r){
+    if(sUT.length&&sUT.indexOf(r.ut)===-1)return false;
+    if(sFeed.length&&sFeed.indexOf(r.feeder)===-1)return false;
+    if(sDT.length&&sDT.indexOf(r.dt)===-1)return false;
+    return true;
+  });
+  var forUT=_ovfData.filter(function(r){
+    if(sBU.length&&sBU.indexOf(r.bu)===-1)return false;
+    if(sFeed.length&&sFeed.indexOf(r.feeder)===-1)return false;
+    if(sDT.length&&sDT.indexOf(r.dt)===-1)return false;
+    return true;
+  });
+  var forFeed=_ovfData.filter(function(r){
+    if(sBU.length&&sBU.indexOf(r.bu)===-1)return false;
+    if(sUT.length&&sUT.indexOf(r.ut)===-1)return false;
+    if(sDT.length&&sDT.indexOf(r.dt)===-1)return false;
+    return true;
+  });
+  var forDT=_ovfData.filter(function(r){
+    if(sBU.length&&sBU.indexOf(r.bu)===-1)return false;
+    if(sUT.length&&sUT.indexOf(r.ut)===-1)return false;
+    if(sFeed.length&&sFeed.indexOf(r.feeder)===-1)return false;
+    return true;
+  });
+  _ovfRenderDrop('ovfBU','bu',forBU,sBU);
+  _ovfRenderDrop('ovfUT','ut',forUT,sUT);
+  _ovfRenderDrop('ovfFeeder','feeder',forFeed,sFeed);
+  _ovfRenderDrop('ovfDT','dt',forDT,sDT);
+  // Update button labels
+  _ovfBtnLabel('ovfBU',sBU);
+  _ovfBtnLabel('ovfUT',sUT);
+  _ovfBtnLabel('ovfFeeder',sFeed);
+  _ovfBtnLabel('ovfDT',sDT);
+}
+
+function _ovfRenderDrop(wrapId,key,dataSubset,selected){
+  var wrap=document.getElementById(wrapId);if(!wrap)return;
+  var drop=wrap.querySelector('.ovf-drop');
+  var vals=new Set();
+  dataSubset.forEach(function(r){if(r[key])vals.add(r[key])});
+  var sorted=Array.from(vals).sort();
+  var hasSearch=sorted.length>10;
+  var html='';
+  if(hasSearch)html+='<input type="text" class="ovf-search" placeholder="Search..." oninput="ovfSearchDrop(this)" onclick="event.stopPropagation()">';
+  html+='<label class="ovf-all"><input type="checkbox" class="ovf-all-cb" '+(selected.length?'':'checked')+' onchange="ovfAllCheck(this,\''+wrapId+'\')"> All</label>';
+  sorted.forEach(function(v){
+    var ck=selected.indexOf(v)!==-1?' checked':'';
+    var display=v.length>35?v.substring(0,33)+'..':v;
+    html+='<label title="'+v.replace(/"/g,'&quot;')+'"><input type="checkbox" value="'+v.replace(/"/g,'&quot;')+'"'+ck+' onchange="ovfCheck(this,\''+wrapId+'\')"> '+display+'</label>';
+  });
+  drop.innerHTML=html;
+}
+
+function _ovfBtnLabel(wrapId,sel){
+  var wrap=document.getElementById(wrapId);if(!wrap)return;
+  var btn=wrap.querySelector('.ovf-btn');
+  var label=_ovfLabels[wrapId]||'Filter';
+  if(!sel.length){
+    btn.textContent=label+' \u25BE';
+    btn.classList.remove('has-sel');
+  } else if(sel.length===1){
+    var txt=sel[0].length>14?sel[0].substring(0,12)+'..':sel[0];
+    btn.textContent=txt+' \u25BE';
+    btn.classList.add('has-sel');
+  } else {
+    btn.textContent=sel.length+' '+label+' \u25BE';
+    btn.classList.add('has-sel');
+  }
+}
+
+function ovfToggle(wrapId){
+  var wrap=document.getElementById(wrapId);
+  var wasOpen=wrap.classList.contains('open');
+  // Close all other dropdowns
+  document.querySelectorAll('.ovf-wrap.open').forEach(function(w){w.classList.remove('open')});
+  if(!wasOpen)wrap.classList.add('open');
+}
+
+function ovfAllCheck(cb,wrapId){
+  var wrap=document.getElementById(wrapId);
+  var cbs=wrap.querySelectorAll('.ovf-drop input[type="checkbox"]:not(.ovf-all-cb)');
+  cbs.forEach(function(c){c.checked=false});
+  cb.checked=true;
+  _ovfOnChange();
+}
+
+function ovfCheck(cb,wrapId){
+  var wrap=document.getElementById(wrapId);
+  var allCb=wrap.querySelector('.ovf-all-cb');
+  var cbs=wrap.querySelectorAll('.ovf-drop input[type="checkbox"]:not(.ovf-all-cb)');
+  var anyChecked=false;
+  cbs.forEach(function(c){if(c.checked)anyChecked=true});
+  allCb.checked=!anyChecked;
+  _ovfOnChange();
+}
+
+function ovfSearchDrop(input){
+  var q=input.value.toLowerCase();
+  var labels=input.parentNode.querySelectorAll('label:not(.ovf-all)');
+  labels.forEach(function(l){
+    l.style.display=l.textContent.toLowerCase().includes(q)?'':'none';
+  });
+}
+
+function ovfResetAll(){
+  ['ovfBU','ovfUT','ovfFeeder','ovfDT'].forEach(function(id){
+    var wrap=document.getElementById(id);if(!wrap)return;
+    var allCb=wrap.querySelector('.ovf-all-cb');if(allCb)allCb.checked=true;
+    wrap.querySelectorAll('.ovf-drop input[type="checkbox"]:not(.ovf-all-cb)').forEach(function(c){c.checked=false});
+  });
+  _ovfPopulate();
+  if(ovMapInstance)ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
+}
+
+function _ovfOnChange(){
+  // Debounce for fast interaction
+  if(_ovfTimer)clearTimeout(_ovfTimer);
+  _ovfTimer=setTimeout(function(){
+    _ovfPopulate();
+    _ovfZoom();
+  },60);
+}
+
+function _ovfZoom(){
   if(!ovMapInstance)return;
-  var selBU=document.getElementById('ovFiltBU').value;
-  var selUT=document.getElementById('ovFiltUT').value;
-  var selFeed=document.getElementById('ovFiltFeeder').value;
-  var selDT=document.getElementById('ovFiltDT').value;
-  if(!selBU&&!selUT&&!selFeed&&!selDT){
+  var sBU=_ovfGetSel('ovfBU'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
+  var noFilter=!sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length;
+  if(noFilter){
     ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
     return;
   }
-  // Search all overview features for matches
+  // BU-only: zoom to entire BU boundary (include HT lines extent)
   var bounds=L.latLngBounds([]);
-  var matchedMarkers=[];
-  // Scan DSS layer features for precise matching
-  Object.keys(OV_LAYERS).forEach(function(lid){
-    var isDSS=lid.includes('_dss_');
-    var isHT=lid.startsWith('ht_lines_');
-    if(!isDSS&&!isHT)return;
-    var info=OV_LAYERS[lid];
-    if(!info)return;
-    // BU filter: check layer-level BU
-    if(selBU){
+  if(sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length){
+    // Collect all layer bounds for selected BUs (DSS + HT)
+    Object.keys(OV_LAYERS).forEach(function(lid){
+      var isDSS=lid.includes('_dss_');
+      var isHT=lid.startsWith('ht_lines_');
+      if(!isDSS&&!isHT)return;
       var layerBU='';
       if(isDSS)layerBU=lid.replace(/^(11kv|33kv)_dss_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
       if(isHT)layerBU=lid.replace(/^ht_lines_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
-      if(layerBU&&layerBU!==selBU.toUpperCase())return;
-    }
-    // For HT layers, just use precomputed bounds if BU matches
-    if(isHT){
-      if(selBU&&info.bounds)bounds.extend(info.bounds);
-      return;
-    }
-    // For DSS layers, check individual features
-    info.layer.eachLayer(function(sl){
-      var p=sl.feature?sl.feature.properties:{};
-      // UT match
-      if(selUT){
-        var fUT=(p.UT_NAME||'').toUpperCase().trim();
-        if(fUT!==selUT.toUpperCase())return;
-      }
-      // Feeder match
-      if(selFeed){
-        var fFN=p.FEEDER_NAME||p.FED_NAME||'';
-        if(fFN!==selFeed)return;
-      }
-      // DT Name match
-      if(selDT){
-        var fName=p.name||'';
-        if(fName!==selDT)return;
-      }
-      // Feature matches all selected filters
-      var ll=null;
-      if(sl.getLatLng)ll=sl.getLatLng();
-      else if(sl.getBounds)try{ll=sl.getBounds().getCenter()}catch(e){}
-      if(ll){
-        bounds.extend(ll);
-        matchedMarkers.push({marker:sl,lat:ll.lat,lng:ll.lng});
-      }
+      if(sBU.indexOf(layerBU)===-1)return;
+      var info=OV_LAYERS[lid];if(!info)return;
+      if(info.bounds)bounds.extend(info.bounds);
+      else{try{bounds.extend(info.layer.getBounds())}catch(e){}}
     });
+    // Also try UT boundary layer for BU extent
+    var utInfo=OV_LAYERS['ut_boundary'];
+    if(utInfo){
+      utInfo.layer.eachLayer(function(sl){
+        // UT boundaries don't have BU, so skip — rely on DSS+HT bounds
+      });
+    }
+    if(bounds.isValid()){
+      ovMapInstance.flyToBounds(bounds,{padding:[40,40],maxZoom:14,duration:0.8});
+    }
+    return;
+  }
+  // Specific filters: find matching features
+  var matched=_ovfFiltered();
+  var matchedMarkers=[];
+  matched.forEach(function(r){
+    if(r.lat&&r.lng&&r.lat>1&&r.lat<15){
+      bounds.extend([r.lat,r.lng]);
+      matchedMarkers.push({marker:r.layer,lat:r.lat,lng:r.lng});
+    }
   });
   if(bounds.isValid()){
-    var zoomLevel=selDT?17:(selFeed?16:(selUT?15:14));
-    ovMapInstance.flyToBounds(bounds,{padding:[60,60],maxZoom:zoomLevel,duration:0.8});
-    // Pulse matched markers after zoom completes
+    var maxZ=sDT.length?17:(sFeed.length?16:(sUT.length?16:14));
+    ovMapInstance.flyToBounds(bounds,{padding:[50,50],maxZoom:maxZ,duration:0.8});
+    // Pulse markers (up to 50)
     if(matchedMarkers.length>0&&matchedMarkers.length<=50){
       ovMapInstance.once('moveend',function(){
         _pulseMarkers(ovMapInstance,matchedMarkers);
       });
     }
-    // Open popup for single DT match
-    if(selDT&&matchedMarkers.length===1){
-      var mk=matchedMarkers[0].marker;
+    // Open popup for single DT
+    if(sDT.length&&matchedMarkers.length===1){
       ovMapInstance.once('moveend',function(){
-        try{mk.openPopup()}catch(e){}
+        try{matchedMarkers[0].marker.openPopup()}catch(e){}
       });
     }
   }
 }
+
+// Close dropdowns when clicking outside
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.ovf-wrap')&&!e.target.closest('.ovf-btn')){
+    document.querySelectorAll('.ovf-wrap.open').forEach(function(w){w.classList.remove('open')});
+  }
+});
 
 function toggleOvLayer(cb){
   const id=cb.dataset.layer;
