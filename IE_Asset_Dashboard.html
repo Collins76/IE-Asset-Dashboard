@@ -844,45 +844,59 @@ function zoomToNomFilterOv(){
 }
 
 function resetDashboardFast(btnEl){
-  const icon=btnEl?btnEl.querySelector('.reset-icon'):null;
-  if(icon){icon.style.display='inline-block';icon.style.animation='spin-reset .5s ease'}
-  if(btnEl)btnEl.style.animation='btn-pulse .4s ease';
-  // Reset all filters instantly (batch DOM writes)
-  const panels=document.querySelectorAll('.ms-panel');
-  panels.forEach(panel=>{
-    const cbs=panel.querySelectorAll('input[type="checkbox"]');
-    cbs.forEach(cb=>{cb.checked=cb.value===''});
-    panel.querySelectorAll('label').forEach(l=>{l.style.display='';l.style.opacity='1'});
-    const search=panel.querySelector('.ms-search');
-    if(search)search.value='';
-  });
-  document.querySelectorAll('.ms-btn').forEach(btn=>{btn.textContent='All'});
-  filteredData=[...ASSET_DATA];
-  document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
-  // Reset Overview map layers to default visible + zoom
-  if(ovMapInstance&&Object.keys(OV_LAYERS).length){
-    Object.keys(OV_LAYERS).forEach(lid=>{
-      const info=OV_LAYERS[lid];
-      if(!info)return;
-      if(!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
-      info.visible=true;
-      // Un-hide any individually hidden features
-      info.layer.eachLayer(function(sl){
-        if(sl._icon)sl._icon.style.display='';
-        if(sl._path)sl._path.style.display='';
-      });
+  try{
+    var icon=btnEl?btnEl.querySelector('.reset-icon'):null;
+    if(icon){icon.style.display='inline-block';icon.style.animation='spin-reset .5s ease'}
+    if(btnEl)btnEl.style.animation='btn-pulse .4s ease';
+    // Reset all filters instantly (batch DOM writes)
+    document.querySelectorAll('.ms-panel').forEach(function(panel){
+      panel.querySelectorAll('input[type="checkbox"]').forEach(function(cb){cb.checked=cb.value===''});
+      panel.querySelectorAll('label').forEach(function(l){l.style.display='';l.style.opacity='1'});
+      var search=panel.querySelector('.ms-search');
+      if(search)search.value='';
     });
-    // Re-check all filter panel checkboxes
-    document.querySelectorAll('#ovFilterPanel input[data-layer]').forEach(cb=>{cb.checked=true});
-    ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
+    document.querySelectorAll('.ms-btn').forEach(function(btn){btn.textContent='All'});
+    // Reset search bars
+    var ovS=document.getElementById('ovSearch');if(ovS)ovS.value='';
+    var mapS=document.getElementById('mapSearch');if(mapS)mapS.value='';
+    var tblS=document.getElementById('tableSearch');if(tblS)tblS.value='';
+    // Reset data
+    filteredData=[...ASSET_DATA];
+    document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
+    // Reset Overview map layers to default visible + zoom
+    try{
+      if(ovMapInstance&&Object.keys(OV_LAYERS).length){
+        Object.keys(OV_LAYERS).forEach(function(lid){
+          var info=OV_LAYERS[lid];
+          if(!info)return;
+          try{if(!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer)}catch(e){}
+          info.visible=true;
+          try{info.layer.eachLayer(function(sl){
+            if(sl._icon)sl._icon.style.display='';
+            if(sl._path)sl._path.style.display='';
+          })}catch(e){}
+        });
+        document.querySelectorAll('#ovFilterPanel input[data-layer]').forEach(function(cb){cb.checked=true});
+        // Reset Overview filter bar dropdowns
+        document.querySelectorAll('#ovFilterBar .ovf-drop input[type="checkbox"]').forEach(function(cb){cb.checked=false});
+        document.querySelectorAll('#ovFilterBar .ovf-btn').forEach(function(btn){
+          var orig=btn.textContent.replace(/\s*\(\d+\)/,'').replace(/\s*✓/,'').trim().split(' ')[0];
+          btn.innerHTML=orig+' &#9662;';btn.style.borderColor='';btn.style.color='';
+        });
+        ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
+      }
+    }catch(e){}
+    // Mark all pages dirty and re-render
+    Object.keys(_pagesDirty).forEach(function(k){_pagesDirty[k]=true});
+    requestAnimationFrame(function(){
+      renderActivePage();
+      if(icon)icon.style.animation='';
+      if(btnEl)btnEl.style.animation='';
+    });
+  }catch(e){
+    // Fallback: hard reload if reset logic fails
+    window.location.reload();
   }
-  // Only render active page
-  Object.keys(_pagesDirty).forEach(k=>{_pagesDirty[k]=true});
-  requestAnimationFrame(()=>{
-    renderActivePage();
-    if(icon)icon.style.animation='';
-    if(btnEl)btnEl.style.animation='';
-  });
 }
 function refreshDashboard(){resetDashboardFast(document.querySelector('.btn-reset'))}
 
