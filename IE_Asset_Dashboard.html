@@ -2092,6 +2092,14 @@ function _ovfDrawHTFeeders(feederNames,sBU){
     }
   });
 
+  // Build short→full name map from feederNames
+  var shortToFull={};
+  feederNames.forEach(function(fn){
+    var parts=fn.split('-');
+    var last=parts[parts.length-1].trim().toUpperCase();
+    if(last)shortToFull[last]=fn;
+  });
+
   // Match against HT index
   var drawn=new Set();
   Object.keys(_ovfHTIndex).forEach(function(htKey){
@@ -2103,17 +2111,20 @@ function _ovfDrawHTFeeders(feederNames,sBU){
     if(drawn.has(htKey))return;
     drawn.add(htKey);
 
+    // Resolve the full feeder name for labeling
+    var fullName=shortToFull[htKey.toUpperCase().trim()]||htKey;
+
     // Draw each line segment as a bright yellow polyline
     htData.lines.forEach(function(latlngs){
       var pl=L.polyline(latlngs,{
         color:'#facc15',weight:5,opacity:1
       }).addTo(ovMapInstance);
       _ovfHTTempLayers.push(pl);
-      // Add feeder label at midpoint
+      // Add full feeder name label at midpoint
       if(latlngs.length>=2){
         var midIdx=Math.floor(latlngs.length/2);
         var midPt=latlngs[midIdx];
-        _ovfAddLabel(midPt[0],midPt[1],htKey+' FEEDER','ovf-map-label-sm');
+        _ovfAddLabel(midPt[0],midPt[1],fullName,'ovf-map-label-sm');
       }
     });
   });
