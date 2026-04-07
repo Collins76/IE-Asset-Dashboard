@@ -1919,8 +1919,6 @@ function applyDashboardFiltersToOverview(){
     }
   }
 
-  // Track bounds of visible filtered features for precise zooming
-  const filteredBounds=L.latLngBounds([]);
   const hasSubFilter=activeUT.length||activeFeeder.length||activeNom.length||activeOwn.length||activeMs.length||activeConn.length||activeState.length;
 
   Object.keys(OV_LAYERS).forEach(lid=>{
@@ -1947,17 +1945,12 @@ function applyDashboardFiltersToOverview(){
     // Ensure layer is on the map if it should be visible
     if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
 
-    // If no sub-filters, show all features and collect bounds for BU-only zoom
+    // If no sub-filters, show all features in this layer
     if(!hasSubFilter){
       info.layer.eachLayer(function(sl){
         if(sl._icon)sl._icon.style.display='';
         if(sl._path)sl._path.style.display='';
       });
-      // For BU-only filter, collect layer bounds
-      if(activeBU.length&&(isDSS||isHT)){
-        if(info.bounds)filteredBounds.extend(info.bounds);
-        else{try{filteredBounds.extend(info.layer.getBounds())}catch(e){}}
-      }
       return;
     }
 
@@ -1976,19 +1969,19 @@ function applyDashboardFiltersToOverview(){
       let utMatch=true;
       if(activeUT.length&&isDSS){
         const featureUT=(p.UT_NAME||p.UT||'').toUpperCase().trim();
-        utMatch=activeUT.some(u=>featureUT.includes(u.toUpperCase()));
+        utMatch=activeUT.some(function(u){return featureUT===u.toUpperCase()||featureUT.includes(u.toUpperCase())});
       }
       // Feeder filter: match FEEDER_NAME property against selected Feeders
       let feederMatch=true;
-      if(activeFeeder.length&&(isDSS||isHT)){
+      if(activeFeeder.length&&isDSS){
         const featureFN=(p.FEEDER_NAME||p.FED_NAME||p.Feeder_Nam||p.name||'').toUpperCase().trim();
-        feederMatch=activeFeeder.some(f=>featureFN.includes(f.toUpperCase()));
+        feederMatch=activeFeeder.some(function(ff){return featureFN===ff.toUpperCase()||featureFN.includes(ff.toUpperCase())});
       }
       // DT Name (Nomenclature) filter
       let nomMatch=true;
       if(activeNom.length&&isDSS){
-        const featureName=(p.name||'').toLowerCase();
-        nomMatch=activeNom.some(n=>featureName.includes(n.toLowerCase()));
+        const featureName=(p.name||'').toUpperCase().trim();
+        nomMatch=activeNom.some(function(n){return featureName===n.toUpperCase()||featureName.includes(n.toUpperCase())});
       }
       // Ownership/metering/connection only apply to DSS layers
       let subMatch=true;
@@ -2001,29 +1994,20 @@ function applyDashboardFiltersToOverview(){
       const show=stateMatch&&utMatch&&feederMatch&&nomMatch&&subMatch;
       if(sl._icon)sl._icon.style.display=show?'':'none';
       if(sl._path)sl._path.style.display=show?'':'none';
-      // Collect bounds of visible features for precise zoom
-      if(show){
-        const ll=_getFeatureLatLng(sl);
-        if(ll)filteredBounds.extend(ll);
-      }
     });
   });
 
-  // Zoom to fit filtered features
+  // Zoom: compute bounds directly from filteredData lat/lng (most reliable)
   if(!noFilter){
-    if(filteredBounds.isValid()){
-      ovMapInstance.flyToBounds(filteredBounds,{padding:[50,50],maxZoom:17,duration:0.8});
-    } else {
-      // Fallback: zoom to visible BU-specific layers
-      const bounds=L.latLngBounds([]);
-      Object.keys(OV_LAYERS).forEach(lid=>{
-        if(!lid.includes('_dss_')&&!lid.startsWith('ht_lines_'))return;
-        const info=OV_LAYERS[lid];
-        if(!info||!ovMapInstance.hasLayer(info.layer))return;
-        if(info.bounds){bounds.extend(info.bounds)}
-        else{try{bounds.extend(info.layer.getBounds())}catch(e){}}
-      });
-      if(bounds.isValid())ovMapInstance.flyToBounds(bounds,{padding:[30,30],maxZoom:16,duration:0.8});
+    const zoomBounds=L.latLngBounds([]);
+    filteredData.forEach(function(r){
+      const lat=parseFloat(r.lat),lng=parseFloat(r.lng);
+      if(!isNaN(lat)&&!isNaN(lng)&&lat>1&&lat<15&&lng>0&&lng<10){
+        zoomBounds.extend([lat,lng]);
+      }
+    });
+    if(zoomBounds.isValid()){
+      ovMapInstance.flyToBounds(zoomBounds,{padding:[50,50],maxZoom:17,duration:0.8});
     }
   } else {
     ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
