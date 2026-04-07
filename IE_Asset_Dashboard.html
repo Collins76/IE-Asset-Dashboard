@@ -1917,11 +1917,18 @@ function _normUT_OV(raw){
 // and spacing variants into a single canonical form.
 function _normFeeder_OV(raw){
   if(!raw)return '';
-  // Collapse multiple spaces, trim
   var s=raw.replace(/\s+/g,' ').trim();
-  // Build a canonical key for dedup: uppercase + collapse separators
+  // Fix known typos/variants to canonical form before keying
+  var u=s.toUpperCase();
+  if(u==='POWERLINE')s='POWER LINE';
+  else if(u==='OLORUNADABA')s='OLORUN ADABA';
+  else if(u==='NSYC')s='NYSC';
+  else if(u==='AMINKANLE')s='AMIKANLE';
+  else if(u==='AMIKANLE 33KV')s='AMIKANLE';
+  else if(u==='WALTER ANDERM')s='WALTER ANDEM';
+  else if(u==='UNTIY')s='UNITY';
+  // Build canonical key: uppercase + collapse separators
   var key=s.toUpperCase().replace(/[\s_-]+/g,' ');
-  // Use a lookup to return the first-seen form for this key
   if(!_normFeeder_OV._map)_normFeeder_OV._map={};
   if(!_normFeeder_OV._map[key])_normFeeder_OV._map[key]=s;
   return _normFeeder_OV._map[key];
