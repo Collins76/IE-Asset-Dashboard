@@ -2108,15 +2108,30 @@ function _ovfDrawHTFeeders(feederNames,sBU){
     // Resolve the full feeder name for labeling
     var fullName=shortToFull[htKey.toUpperCase().trim()]||htKey;
 
-    // Draw each line segment as a bright yellow polyline
+    // Draw selected feeder as animated antPath (flowing dashes)
     var allPts=[];
-    htData.lines.forEach(function(latlngs){
-      var pl=L.polyline(latlngs,{
-        color:'#facc15',weight:5,opacity:1
+    if(L.polyline&&L.polyline.antPath){
+      var ant=L.polyline.antPath(htData.lines,{
+        color:'#facc15',weight:5,opacity:1,
+        delay:600,dashArray:[15,30],
+        pulseColor:'#ffffff',
+        paused:false,reverse:false,
+        hardwareAccelerated:true
       }).addTo(ovMapInstance);
-      _ovfHTTempLayers.push(pl);
-      latlngs.forEach(function(pt){allPts.push(pt)});
-    });
+      _ovfHTTempLayers.push(ant);
+      htData.lines.forEach(function(latlngs){
+        latlngs.forEach(function(pt){allPts.push(pt)});
+      });
+    } else {
+      // Fallback to static polylines if antPath not available
+      htData.lines.forEach(function(latlngs){
+        var pl=L.polyline(latlngs,{
+          color:'#facc15',weight:5,opacity:1
+        }).addTo(ovMapInstance);
+        _ovfHTTempLayers.push(pl);
+        latlngs.forEach(function(pt){allPts.push(pt)});
+      });
+    }
     // One label per feeder at the centroid of all its points
     if(allPts.length){
       var cLat=0,cLng=0;
