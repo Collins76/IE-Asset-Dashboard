@@ -2039,8 +2039,8 @@ function ovfResetAll(){
   });
   // Remove map labels
   _ovfClearLabels();
-  // Restore all feature visibility
-  _ovfShowAll();
+  // Restore all feature visibility and original styles
+  _ovfRestoreAll();
   // Repopulate dropdowns (full options)
   _ovfPopulate();
   // Close any open dropdown
@@ -2052,28 +2052,32 @@ function ovfResetAll(){
   }
 }
 
-function _ovfShowAll(){
-  // Restore all DSS features and HT layers to visible
+function _ovfRestoreAll(){
+  if(!ovMapInstance)return;
   Object.keys(OV_LAYERS).forEach(function(lid){
     var info=OV_LAYERS[lid];if(!info)return;
-    // Re-add layer if it was removed and should be visible
+    // Re-add layer if removed
     if(info.visible&&!ovMapInstance.hasLayer(info.layer)){
       ovMapInstance.addLayer(info.layer);
     }
-    // Show all individual features
-    if(lid.includes('_dss_')){
-      info.layer.eachLayer(function(sl){
-        if(sl._icon)sl._icon.style.display='';
-        if(sl._path)sl._path.style.display='';
-        if(sl._container)sl._container.style.display='';
-        sl.setStyle&&sl.setStyle({opacity:0.8,fillOpacity:0.85});
-      });
-    }
-  });
-  // Restore non-filterable layers (boundaries, ISS, TCN, 33kV lines)
-  ['lagos','ut_boundary','tcn','iss','33kv_lines'].forEach(function(lid){
-    var info=OV_LAYERS[lid];if(!info||!info.visible)return;
-    if(!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
+    var isDSS=lid.includes('_dss_');
+    if(!isDSS)return;
+    // Find the original color from OV_LAYER_DEFS
+    var defColor='#10b981';
+    OV_LAYER_DEFS.forEach(function(d){if(d.id===lid)defColor=d.color});
+    var is11kv=lid.startsWith('11kv_dss');
+    info.layer.eachLayer(function(sl){
+      // Restore divIcon markers (33kV DSS)
+      if(sl._icon){
+        sl._icon.style.opacity='';
+        sl._icon.style.filter='';
+        sl._icon.style.display='';
+      }
+      // Restore circleMarkers (11kV DSS)
+      if(is11kv&&sl.setStyle){
+        sl.setStyle({fillColor:defColor,fillOpacity:0.85,opacity:0.8,color:'#fff',weight:1.5,radius:5});
+      }
+    });
   });
 }
 
@@ -2093,60 +2097,67 @@ function _ovfGetLayerBU(lid){
 
 function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
   var noFilter=!sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length;
-  // Build a set of matched layer references for fast lookup
-  var matchedSet=null;
-  if(!noFilter){
-    matchedSet=new Set();
-    _ovfFiltered().forEach(function(r){matchedSet.add(r.layer)});
+
+  if(noFilter){
+    _ovfRestoreAll();
+    return;
   }
+
+  // Build a set of matched layer references for fast lookup
+  var matchedSet=new Set();
+  _ovfFiltered().forEach(function(r){matchedSet.add(r.layer)});
 
   Object.keys(OV_LAYERS).forEach(function(lid){
     var info=OV_LAYERS[lid];if(!info)return;
     var isDSS=lid.includes('_dss_');
     var isHT=lid.startsWith('ht_lines_');
+    var is11kv=lid.startsWith('11kv_dss');
 
-    // Non-filterable layers (boundaries, ISS, TCN, 33kV) — always visible
     if(!isDSS&&!isHT)return;
-
-    if(noFilter){
-      // No filter: show everything
-      if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
-      if(isDSS){
-        info.layer.eachLayer(function(sl){
-          if(sl._icon)sl._icon.style.display='';
-          if(sl._path)sl._path.style.display='';
-        });
-      }
-      return;
-    }
 
     var layerBU=_ovfGetLayerBU(lid);
 
-    // HT layers: show/hide entire layer based on BU match
+    // HT layers: show only matching BU's HT, hide the rest
     if(isHT){
       if(sBU.length&&sBU.indexOf(layerBU)===-1){
         if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
       } else {
-        // If no BU filter or BU matches, show HT layer
         if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
       }
       return;
     }
 
-    // DSS layers: BU-level check first
+    // DSS: if BU selected and this layer's BU not in selection, hide entire layer
     if(sBU.length&&sBU.indexOf(layerBU)===-1){
-      // Entire BU not selected — hide the whole layer
       if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
       return;
     }
     // Ensure layer is on map
     if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
 
-    // Individual feature visibility
+    // Style individual features: highlight matched, dim non-matched
     info.layer.eachLayer(function(sl){
-      var show=matchedSet.has(sl);
-      if(sl._icon)sl._icon.style.display=show?'':'none';
-      if(sl._path)sl._path.style.display=show?'':'none';
+      var isMatch=matchedSet.has(sl);
+      // 11kV circleMarkers — use setStyle (works on canvas)
+      if(is11kv&&sl.setStyle){
+        if(isMatch){
+          sl.setStyle({fillColor:'#facc15',fillOpacity:1,opacity:1,color:'#000',weight:2,radius:7});
+          sl.bringToFront&&sl.bringToFront();
+        } else {
+          sl.setStyle({fillOpacity:0.06,opacity:0.06,radius:3});
+        }
+      }
+      // 33kV divIcon markers
+      if(sl._icon){
+        if(isMatch){
+          sl._icon.style.opacity='1';
+          sl._icon.style.filter='drop-shadow(0 0 6px #facc15) brightness(2)';
+          sl.setZIndexOffset&&sl.setZIndexOffset(9000);
+        } else {
+          sl._icon.style.opacity='0.08';
+          sl._icon.style.filter='';
+        }
+      }
     });
   });
 }
