@@ -1891,11 +1891,14 @@ function applyDashboardFiltersToOverview(){
   const sels={};
   FDEFS.forEach(f=>{sels[f.id]=getSelVals(f.id)});
   const activeBU=sels['fBU']||[];
+  const activeUT=sels['fUT']||[];
+  const activeFeeder=sels['fFeeder']||[];
+  const activeNom=sels['fNom']||[];
   const activeOwn=sels['fOwn']||[];
   const activeMs=sels['fMeter']||[];
   const activeConn=sels['fConn']||[];
   const activeState=sels['fState']||[];
-  const noFilter=!activeBU.length&&!activeOwn.length&&!activeMs.length&&!activeConn.length&&!activeState.length;
+  const noFilter=!activeBU.length&&!activeUT.length&&!activeFeeder.length&&!activeNom.length&&!activeOwn.length&&!activeMs.length&&!activeConn.length&&!activeState.length;
 
   // Build geographic bounding box from filteredData when state filter is active
   let stateBounds=null;
@@ -1911,11 +1914,14 @@ function applyDashboardFiltersToOverview(){
       }
     });
     if(count>0){
-      // Add small padding to the bounds
       const pad=0.02;
       stateBounds={minLat:minLat-pad,maxLat:maxLat+pad,minLng:minLng-pad,maxLng:maxLng+pad};
     }
   }
+
+  // Track bounds of visible filtered features for precise zooming
+  const filteredBounds=L.latLngBounds([]);
+  const hasSubFilter=activeUT.length||activeFeeder.length||activeNom.length||activeOwn.length||activeMs.length||activeConn.length||activeState.length;
 
   Object.keys(OV_LAYERS).forEach(lid=>{
     const info=OV_LAYERS[lid];
@@ -1941,26 +1947,48 @@ function applyDashboardFiltersToOverview(){
     // Ensure layer is on the map if it should be visible
     if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
 
-    // If no sub-filters, show all features in this layer
-    const hasSub=activeOwn.length||activeMs.length||activeConn.length||activeState.length;
-    if(!hasSub){
+    // If no sub-filters, show all features and collect bounds for BU-only zoom
+    if(!hasSubFilter){
       info.layer.eachLayer(function(sl){
         if(sl._icon)sl._icon.style.display='';
         if(sl._path)sl._path.style.display='';
       });
+      // For BU-only filter, collect layer bounds
+      if(activeBU.length&&(isDSS||isHT)){
+        if(info.bounds)filteredBounds.extend(info.bounds);
+        else{try{filteredBounds.extend(info.layer.getBounds())}catch(e){}}
+      }
       return;
     }
 
-    // Sub-filter individual features
+    // Sub-filter individual features (UT, Feeder, DT Name, Ownership, Metering, Connection, State)
     info.layer.eachLayer(function(sl){
       const p=sl.feature?sl.feature.properties:{};
-      // Geographic state filter: check if feature is within the state's bounding box
+      // Geographic state filter
       let stateMatch=true;
       if(stateBounds){
         const ll=_getFeatureLatLng(sl);
         if(ll){
           stateMatch=ll.lat>=stateBounds.minLat&&ll.lat<=stateBounds.maxLat&&ll.lng>=stateBounds.minLng&&ll.lng<=stateBounds.maxLng;
         }
+      }
+      // UT filter: match UT_NAME property against selected UTs
+      let utMatch=true;
+      if(activeUT.length&&isDSS){
+        const featureUT=(p.UT_NAME||p.UT||'').toUpperCase().trim();
+        utMatch=activeUT.some(u=>featureUT.includes(u.toUpperCase()));
+      }
+      // Feeder filter: match FEEDER_NAME property against selected Feeders
+      let feederMatch=true;
+      if(activeFeeder.length&&(isDSS||isHT)){
+        const featureFN=(p.FEEDER_NAME||p.FED_NAME||p.Feeder_Nam||p.name||'').toUpperCase().trim();
+        feederMatch=activeFeeder.some(f=>featureFN.includes(f.toUpperCase()));
+      }
+      // DT Name (Nomenclature) filter
+      let nomMatch=true;
+      if(activeNom.length&&isDSS){
+        const featureName=(p.name||'').toLowerCase();
+        nomMatch=activeNom.some(n=>featureName.includes(n.toLowerCase()));
       }
       // Ownership/metering/connection only apply to DSS layers
       let subMatch=true;
@@ -1970,25 +1998,32 @@ function applyDashboardFiltersToOverview(){
         const connMatch=!activeConn.length||activeConn.includes(_normOvConn(p.CONNECTION));
         subMatch=ownMatch&&msMatch&&connMatch;
       }
-      const show=stateMatch&&subMatch;
+      const show=stateMatch&&utMatch&&feederMatch&&nomMatch&&subMatch;
       if(sl._icon)sl._icon.style.display=show?'':'none';
       if(sl._path)sl._path.style.display=show?'':'none';
+      // Collect bounds of visible features for precise zoom
+      if(show){
+        const ll=_getFeatureLatLng(sl);
+        if(ll)filteredBounds.extend(ll);
+      }
     });
   });
 
-  // Zoom to fit visible BU-specific layers (DSS + HT only, not global ISS/TCN)
+  // Zoom to fit filtered features
   if(!noFilter){
-    const bounds=L.latLngBounds([]);
-    Object.keys(OV_LAYERS).forEach(lid=>{
-      if(!lid.includes('_dss_')&&!lid.startsWith('ht_lines_'))return;
-      const info=OV_LAYERS[lid];
-      if(!info||!ovMapInstance.hasLayer(info.layer))return;
-      // Use precomputed bounds (reliable for antPath HT layers)
-      if(info.bounds){bounds.extend(info.bounds)}
-      else{try{bounds.extend(info.layer.getBounds())}catch(e){}}
-    });
-    if(bounds.isValid()){
-      ovMapInstance.flyToBounds(bounds,{padding:[30,30],maxZoom:16,duration:0.8});
+    if(filteredBounds.isValid()){
+      ovMapInstance.flyToBounds(filteredBounds,{padding:[50,50],maxZoom:17,duration:0.8});
+    } else {
+      // Fallback: zoom to visible BU-specific layers
+      const bounds=L.latLngBounds([]);
+      Object.keys(OV_LAYERS).forEach(lid=>{
+        if(!lid.includes('_dss_')&&!lid.startsWith('ht_lines_'))return;
+        const info=OV_LAYERS[lid];
+        if(!info||!ovMapInstance.hasLayer(info.layer))return;
+        if(info.bounds){bounds.extend(info.bounds)}
+        else{try{bounds.extend(info.layer.getBounds())}catch(e){}}
+      });
+      if(bounds.isValid())ovMapInstance.flyToBounds(bounds,{padding:[30,30],maxZoom:16,duration:0.8});
     }
   } else {
     ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
