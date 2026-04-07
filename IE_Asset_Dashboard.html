@@ -2039,6 +2039,8 @@ function ovfResetAll(){
   });
   // Remove map labels
   _ovfClearLabels();
+  // Restore all feature visibility
+  _ovfShowAll();
   // Repopulate dropdowns (full options)
   _ovfPopulate();
   // Close any open dropdown
@@ -2050,12 +2052,103 @@ function ovfResetAll(){
   }
 }
 
+function _ovfShowAll(){
+  // Restore all DSS features and HT layers to visible
+  Object.keys(OV_LAYERS).forEach(function(lid){
+    var info=OV_LAYERS[lid];if(!info)return;
+    // Re-add layer if it was removed and should be visible
+    if(info.visible&&!ovMapInstance.hasLayer(info.layer)){
+      ovMapInstance.addLayer(info.layer);
+    }
+    // Show all individual features
+    if(lid.includes('_dss_')){
+      info.layer.eachLayer(function(sl){
+        if(sl._icon)sl._icon.style.display='';
+        if(sl._path)sl._path.style.display='';
+        if(sl._container)sl._container.style.display='';
+        sl.setStyle&&sl.setStyle({opacity:0.8,fillOpacity:0.85});
+      });
+    }
+  });
+  // Restore non-filterable layers (boundaries, ISS, TCN, 33kV lines)
+  ['lagos','ut_boundary','tcn','iss','33kv_lines'].forEach(function(lid){
+    var info=OV_LAYERS[lid];if(!info||!info.visible)return;
+    if(!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
+  });
+}
+
 function _ovfOnChange(){
   if(_ovfTimer)clearTimeout(_ovfTimer);
   _ovfTimer=setTimeout(function(){
     _ovfPopulate();
     _ovfZoom();
   },60);
+}
+
+function _ovfGetLayerBU(lid){
+  if(lid.includes('_dss_'))return lid.replace(/^(11kv|33kv)_dss_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
+  if(lid.startsWith('ht_lines_'))return lid.replace(/^ht_lines_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
+  return '';
+}
+
+function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
+  var noFilter=!sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length;
+  // Build a set of matched layer references for fast lookup
+  var matchedSet=null;
+  if(!noFilter){
+    matchedSet=new Set();
+    _ovfFiltered().forEach(function(r){matchedSet.add(r.layer)});
+  }
+
+  Object.keys(OV_LAYERS).forEach(function(lid){
+    var info=OV_LAYERS[lid];if(!info)return;
+    var isDSS=lid.includes('_dss_');
+    var isHT=lid.startsWith('ht_lines_');
+
+    // Non-filterable layers (boundaries, ISS, TCN, 33kV) — always visible
+    if(!isDSS&&!isHT)return;
+
+    if(noFilter){
+      // No filter: show everything
+      if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
+      if(isDSS){
+        info.layer.eachLayer(function(sl){
+          if(sl._icon)sl._icon.style.display='';
+          if(sl._path)sl._path.style.display='';
+        });
+      }
+      return;
+    }
+
+    var layerBU=_ovfGetLayerBU(lid);
+
+    // HT layers: show/hide entire layer based on BU match
+    if(isHT){
+      if(sBU.length&&sBU.indexOf(layerBU)===-1){
+        if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
+      } else {
+        // If no BU filter or BU matches, show HT layer
+        if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
+      }
+      return;
+    }
+
+    // DSS layers: BU-level check first
+    if(sBU.length&&sBU.indexOf(layerBU)===-1){
+      // Entire BU not selected — hide the whole layer
+      if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
+      return;
+    }
+    // Ensure layer is on map
+    if(info.visible&&!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
+
+    // Individual feature visibility
+    info.layer.eachLayer(function(sl){
+      var show=matchedSet.has(sl);
+      if(sl._icon)sl._icon.style.display=show?'':'none';
+      if(sl._path)sl._path.style.display=show?'':'none';
+    });
+  });
 }
 
 function _ovfZoom(){
@@ -2065,6 +2158,10 @@ function _ovfZoom(){
 
   var sBU=_ovfGetSel('ovfBU'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
   var noFilter=!sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length;
+
+  // Apply visibility: hide non-matching features/layers
+  _ovfApplyVisibility(sBU,sUT,sFeed,sDT);
+
   if(noFilter){
     ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
     return;
@@ -2073,22 +2170,18 @@ function _ovfZoom(){
   // BU-only: zoom to entire BU boundary (include HT lines extent)
   var bounds=L.latLngBounds([]);
   if(sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length){
-    // Collect all layer bounds for selected BUs (DSS + HT)
     var buBoundsMap={};
     Object.keys(OV_LAYERS).forEach(function(lid){
       var isDSS=lid.includes('_dss_');
       var isHT=lid.startsWith('ht_lines_');
       if(!isDSS&&!isHT)return;
-      var layerBU='';
-      if(isDSS)layerBU=lid.replace(/^(11kv|33kv)_dss_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
-      if(isHT)layerBU=lid.replace(/^ht_lines_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
+      var layerBU=_ovfGetLayerBU(lid);
       if(sBU.indexOf(layerBU)===-1)return;
       var info=OV_LAYERS[lid];if(!info)return;
       if(!buBoundsMap[layerBU])buBoundsMap[layerBU]=L.latLngBounds([]);
       if(info.bounds)buBoundsMap[layerBU].extend(info.bounds);
       else{try{buBoundsMap[layerBU].extend(info.layer.getBounds())}catch(e){}}
     });
-    // Extend total bounds and add BU labels at center
     Object.keys(buBoundsMap).forEach(function(buName){
       var b=buBoundsMap[buName];
       if(b.isValid()){
@@ -2139,10 +2232,9 @@ function _ovfZoom(){
       _ovfAddLabel(cLat,cLng,fn,'ovf-map-label-sm');
     });
   }
-  // Add BU label if BU is selected alongside UT
-  if(sBU.length&&sUT.length){
+  // Add BU label if BU is selected alongside UT or others
+  if(sBU.length){
     sBU.forEach(function(buName){
-      // Find center of filtered features for this BU
       var buFeats=matchedMarkers.filter(function(m){return m.bu===buName});
       if(!buFeats.length)return;
       var cLat=buFeats.reduce(function(a,m){return a+m.lat},0)/buFeats.length;
