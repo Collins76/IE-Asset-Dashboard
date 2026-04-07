@@ -183,6 +183,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ovf-reset{padding:7px 14px;background:rgba(239,68,68,.18);border:1.5px solid rgba(239,68,68,.5);border-radius:8px;color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;backdrop-filter:blur(12px);transition:all .15s;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.4)}
 .ovf-reset:hover{background:rgba(239,68,68,.35);border-color:#ef4444;box-shadow:0 0 12px rgba(239,68,68,.3)}
 .ovf-map-label{background:rgba(11,18,26,.92)!important;border:2px solid rgba(16,185,129,.7)!important;border-radius:8px!important;padding:8px 16px!important;color:#10b981!important;font-size:17px!important;font-weight:800!important;letter-spacing:.6px;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,.7),0 0 14px rgba(16,185,129,.4)!important;text-shadow:0 1px 4px rgba(0,0,0,.8);white-space:nowrap;pointer-events:none}
+.ovf-map-label-bu{background:rgba(30,10,10,.92)!important;border:2px solid rgba(239,68,68,.7)!important;border-radius:8px!important;padding:8px 16px!important;color:#ef4444!important;font-size:17px!important;font-weight:800!important;letter-spacing:.6px;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,.7),0 0 14px rgba(239,68,68,.4)!important;text-shadow:0 0 8px rgba(239,68,68,.5),0 1px 4px rgba(0,0,0,.8);white-space:nowrap;pointer-events:none}
 .ovf-map-label-sm{background:rgba(11,18,26,.9)!important;border:1.5px solid rgba(34,211,238,.6)!important;border-radius:6px!important;padding:5px 12px!important;color:#22d3ee!important;font-size:13px!important;font-weight:700!important;box-shadow:0 3px 14px rgba(0,0,0,.6)!important;white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.7)}
 .ovf-dt-label{background:none!important;border:none!important;border-radius:0!important;padding:0 2px!important;color:#ffffff!important;font-size:9px!important;font-weight:700!important;box-shadow:none!important;white-space:nowrap;pointer-events:none;letter-spacing:.3px;text-shadow:0 0 4px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.8)}
 .ov-search-icon{position:absolute;top:11px;left:10px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
@@ -2044,6 +2045,8 @@ function ovfResetAll(){
   try{
     // Uncheck all Overview filter bar checkboxes
     document.querySelectorAll('#ovFilterBar .ovf-drop input[type="checkbox"]').forEach(function(cb){cb.checked=false});
+    // Reset "All" checkboxes to checked
+    document.querySelectorAll('#ovFilterBar .ovf-all-cb').forEach(function(cb){cb.checked=true});
     // Reset button labels
     document.querySelectorAll('#ovFilterBar .ovf-btn').forEach(function(btn){
       var orig=btn.textContent.replace(/\s*\(\d+\)/,'').replace(/\s*✓/,'').trim().split(' ')[0];
@@ -2054,20 +2057,15 @@ function ovfResetAll(){
     // Clear search
     var ovS=document.getElementById('ovSearch');if(ovS)ovS.value='';
     var sugBox=document.getElementById('ovSuggestions');if(sugBox){sugBox.classList.remove('show');sugBox.innerHTML=''}
-    // Re-show all Overview layers
-    if(ovMapInstance&&Object.keys(OV_LAYERS).length){
-      Object.keys(OV_LAYERS).forEach(function(lid){
-        var info=OV_LAYERS[lid];if(!info)return;
-        try{if(!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer)}catch(e){}
-        info.visible=true;
-        try{info.layer.eachLayer(function(sl){
-          if(sl._icon)sl._icon.style.display='';
-          if(sl._path)sl._path.style.display='';
-        })}catch(e){}
-      });
-      document.querySelectorAll('#ovFilterPanel input[data-layer]').forEach(function(cb){cb.checked=true});
-      ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
-    }
+    // Clear map labels and temp HT lines
+    try{_ovfClearLabels()}catch(e){}
+    try{_ovfClearHTTemp()}catch(e){}
+    // Restore all layers to default state (visibility, styling, opacity)
+    try{_ovfRestoreAll()}catch(e){}
+    // Re-check layer panel checkboxes
+    document.querySelectorAll('#ovFilterPanel input[data-layer]').forEach(function(cb){cb.checked=true});
+    // Fly back to default view
+    if(ovMapInstance)ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
   }catch(e){window.location.reload()}
 }
 function ovfToggle(wrapId){
@@ -2120,7 +2118,7 @@ function _ovfAddLabel(lat,lng,text,cssClass){
   var lbl=L.marker([lat,lng],{
     icon:L.divIcon({className:cls,html:text,iconSize:[0,0],iconAnchor:[0,0]}),
     interactive:false,
-    zIndexOffset:cls==='ovf-dt-label'?8000:9000
+    zIndexOffset:cls==='ovf-dt-label'?8000:(cls==='ovf-map-label-bu'?10000:9000)
   }).addTo(ovMapInstance);
   _ovfMapLabels.push(lbl);
 }
@@ -2379,7 +2377,7 @@ function _ovfZoom(){
       if(b.isValid()){
         bounds.extend(b);
         var c=b.getCenter();
-        _ovfAddLabel(c.lat,c.lng,buName+' BU','ovf-map-label');
+        _ovfAddLabel(c.lat,c.lng,buName+' BU','ovf-map-label-bu');
       }
     });
     if(bounds.isValid()){
@@ -2413,25 +2411,51 @@ function _ovfZoom(){
       _ovfAddLabel(m.lat,m.lng+0.0003,m.dt,'ovf-map-label-sm');
     });
   }
-  // When feeder or UT is selected, show tiny DT name labels on each marker
-  else if((sFeed.length||sUT.length)&&matchedMarkers.length<=500){
+  // When feeder is selected, show feeder name labels on the map
+  if(sFeed.length){
+    // Group markers by feeder to place one label per feeder
+    var feederGroups={};
+    matchedMarkers.forEach(function(m){
+      if(m.feeder){
+        if(!feederGroups[m.feeder])feederGroups[m.feeder]=[];
+        feederGroups[m.feeder].push(m);
+      }
+    });
+    Object.keys(feederGroups).forEach(function(fname){
+      var grp=feederGroups[fname];
+      var cLat=grp.reduce(function(a,m){return a+m.lat},0)/grp.length;
+      var cLng=grp.reduce(function(a,m){return a+m.lng},0)/grp.length;
+      _ovfAddLabel(cLat+0.003,cLng,fname,'ovf-map-label-sm');
+    });
+    // Also show tiny DT labels on each marker
+    if(matchedMarkers.length<=500){
+      matchedMarkers.forEach(function(m){
+        if(m.dt){
+          var parts=m.dt.split('-');
+          var shortDT=parts[parts.length-1].trim();
+          _ovfAddLabel(m.lat+0.0002,m.lng+0.0002,shortDT,'ovf-dt-label');
+        }
+      });
+    }
+  }
+  // When UT is selected (no feeder), show tiny DT name labels
+  else if(sUT.length&&matchedMarkers.length<=500){
     matchedMarkers.forEach(function(m){
       if(m.dt){
-        // Extract short DT name: last part after last dash
         var parts=m.dt.split('-');
         var shortDT=parts[parts.length-1].trim();
         _ovfAddLabel(m.lat+0.0002,m.lng+0.0002,shortDT,'ovf-dt-label');
       }
     });
   }
-  // Add BU label if BU is selected alongside UT or others
+  // Add BU label in RED if BU is selected
   if(sBU.length){
     sBU.forEach(function(buName){
       var buFeats=matchedMarkers.filter(function(m){return m.bu===buName});
       if(!buFeats.length)return;
       var cLat=buFeats.reduce(function(a,m){return a+m.lat},0)/buFeats.length;
       var cLng=buFeats.reduce(function(a,m){return a+m.lng},0)/buFeats.length;
-      _ovfAddLabel(cLat+0.008,cLng,buName+' BU','ovf-map-label');
+      _ovfAddLabel(cLat+0.008,cLng,buName+' BU','ovf-map-label-bu');
     });
   }
 
