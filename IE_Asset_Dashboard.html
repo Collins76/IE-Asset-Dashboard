@@ -1683,7 +1683,15 @@ function initOverviewMap(){
           grp.addLayer(ant);
         }
         grp.addTo(ovMapInstance);
-        OV_LAYERS[def.id]={layer:grp,count:features.length,visible:true};
+        // Precompute bounds from raw feature coordinates (antPath.getBounds() is unreliable)
+        var htBounds=L.latLngBounds([]);
+        features.forEach(function(f){
+          if(!f.geometry)return;
+          var gt=f.geometry.type;
+          var rings=gt==='LineString'?[f.geometry.coordinates]:gt==='MultiLineString'?f.geometry.coordinates:[];
+          rings.forEach(function(line){line.forEach(function(c){htBounds.extend([c[1],c[0]])})});
+        });
+        OV_LAYERS[def.id]={layer:grp,count:features.length,visible:true,bounds:htBounds.isValid()?htBounds:null};
         return;
       }
       const layerGrp=L.geoJSON({type:'FeatureCollection',features:features},{
@@ -1766,7 +1774,9 @@ function initOverviewMap(){
           layer.bindPopup(popup,{maxWidth:600,autoPanPadding:[20,20]});
         }
       }).addTo(ovMapInstance);
-      OV_LAYERS[def.id]={layer:layerGrp,count:features.length,visible:true};
+      var gjBounds=null;
+      try{gjBounds=layerGrp.getBounds();if(!gjBounds||!gjBounds.isValid())gjBounds=null}catch(e){}
+      OV_LAYERS[def.id]={layer:layerGrp,count:features.length,visible:true,bounds:gjBounds};
       // Keep HT lines above UT boundary fills so clicks reach the line, not the polygon
       if(def.id.startsWith('ht_lines')){try{layerGrp.bringToFront()}catch(e){}}
     });
@@ -1821,11 +1831,10 @@ function toggleOvLayer(cb){
   if(cb.checked){
     if(!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
     info.visible=true;
-    // Zoom to the toggled-on layer's bounds
-    try{
-      const b=info.layer.getBounds();
-      if(b&&b.isValid())ovMapInstance.flyToBounds(b,{padding:[50,50],maxZoom:15,duration:0.8});
-    }catch(e){}
+    // Zoom to the toggled-on layer using precomputed bounds
+    var b=info.bounds;
+    if(!b){try{b=info.layer.getBounds();if(!b||!b.isValid())b=null}catch(e){}}
+    if(b)ovMapInstance.flyToBounds(b,{padding:[50,50],maxZoom:15,duration:0.8});
   } else {
     if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
     info.visible=false;
@@ -1971,11 +1980,12 @@ function applyDashboardFiltersToOverview(){
   if(!noFilter){
     const bounds=L.latLngBounds([]);
     Object.keys(OV_LAYERS).forEach(lid=>{
-      // Only use BU-specific layers for zoom calculation (not global ISS/TCN)
       if(!lid.includes('_dss_')&&!lid.startsWith('ht_lines_'))return;
       const info=OV_LAYERS[lid];
       if(!info||!ovMapInstance.hasLayer(info.layer))return;
-      try{bounds.extend(info.layer.getBounds())}catch(e){}
+      // Use precomputed bounds (reliable for antPath HT layers)
+      if(info.bounds){bounds.extend(info.bounds)}
+      else{try{bounds.extend(info.layer.getBounds())}catch(e){}}
     });
     if(bounds.isValid()){
       ovMapInstance.flyToBounds(bounds,{padding:[30,30],maxZoom:16,duration:0.8});
