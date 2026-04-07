@@ -183,6 +183,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ovf-reset:hover{background:rgba(239,68,68,.25);border-color:#ef4444}
 .ovf-map-label{background:rgba(11,18,26,.88)!important;border:2px solid rgba(16,185,129,.6)!important;border-radius:8px!important;padding:6px 14px!important;color:#10b981!important;font-size:15px!important;font-weight:800!important;letter-spacing:.5px;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,.6),0 0 12px rgba(16,185,129,.3)!important;text-shadow:0 1px 4px rgba(0,0,0,.7);white-space:nowrap;pointer-events:none}
 .ovf-map-label-sm{background:rgba(11,18,26,.85)!important;border:1.5px solid rgba(34,211,238,.5)!important;border-radius:6px!important;padding:4px 10px!important;color:#22d3ee!important;font-size:11px!important;font-weight:700!important;box-shadow:0 3px 14px rgba(0,0,0,.5)!important;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.ovf-dt-label{background:rgba(11,18,26,.7)!important;border:1px solid rgba(250,204,21,.4)!important;border-radius:4px!important;padding:1px 5px!important;color:#fde68a!important;font-size:8px!important;font-weight:600!important;box-shadow:0 1px 6px rgba(0,0,0,.4)!important;white-space:nowrap;pointer-events:none;letter-spacing:.2px}
 .ov-search-icon{position:absolute;top:11px;left:12px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
 #ovSearch{width:320px;padding:10px 14px 10px 34px;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.4);border-radius:10px;color:#e2e8f0;font-size:13px;font-weight:500;outline:none;backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(0,0,0,.6);transition:border-color .15s,box-shadow .15s}
 #ovSearch:focus{border-color:#10b981;box-shadow:0 0 12px rgba(16,185,129,.4)}
@@ -544,7 +545,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <div class="ovf-wrap" id="ovfUT"><button class="ovf-btn" onclick="ovfToggle('ovfUT')">UT &#9662;</button><div class="ovf-drop"></div></div>
     <div class="ovf-wrap" id="ovfFeeder"><button class="ovf-btn" onclick="ovfToggle('ovfFeeder')">Feeder &#9662;</button><div class="ovf-drop"></div></div>
     <div class="ovf-wrap" id="ovfDT"><button class="ovf-btn" onclick="ovfToggle('ovfDT')">DT Name &#9662;</button><div class="ovf-drop"></div></div>
-    <button class="ovf-reset" type="button" onmousedown="window.location.reload()">Reset</button>
+    <a class="ovf-reset" href="javascript:void(0)" onclick="window.location.reload();return false;" style="text-decoration:none;display:inline-block;line-height:normal">Reset</a>
   </div>
   <div id="ovMapContainer"></div>
   <button type="button" class="zoom-lens-btn" id="ovLensBtn" style="right:150px" title="Toggle Zoom Lens" onclick="toggleZoomLens('ov')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
@@ -2337,10 +2338,21 @@ function _ovfZoom(){
   var maxZ=sDT.length?17:(sFeed.length?16:(sUT.length?16:14));
   ovMapInstance.flyToBounds(bounds,{padding:[50,50],maxZoom:maxZ,duration:0.8});
 
-  // Add labels for selected DT Names
+  // Add labels for selected DT Names (explicit DT filter)
   if(sDT.length){
     matchedMarkers.forEach(function(m){
       _ovfAddLabel(m.lat,m.lng+0.0003,m.dt,'ovf-map-label-sm');
+    });
+  }
+  // When feeder or UT is selected, show tiny DT name labels on each marker
+  else if((sFeed.length||sUT.length)&&matchedMarkers.length<=200){
+    matchedMarkers.forEach(function(m){
+      if(m.dt){
+        // Extract short DT name: last part after last dash
+        var parts=m.dt.split('-');
+        var shortDT=parts[parts.length-1].trim();
+        _ovfAddLabel(m.lat+0.0002,m.lng+0.0002,shortDT,'ovf-dt-label');
+      }
     });
   }
   // Add BU label if BU is selected alongside UT or others
