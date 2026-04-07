@@ -2068,7 +2068,25 @@ function ovfResetAll(){
     try{_ovfClearHTTemp()}catch(e){}
     // Restore all layers to default state (visibility, styling, opacity)
     try{_ovfRestoreAll()}catch(e){}
-    // Re-check layer panel checkboxes
+    // Restore UT boundaries to default
+    try{
+      var utInfo=OV_LAYERS['ut_boundary'];
+      if(utInfo&&ovMapInstance){
+        if(!ovMapInstance.hasLayer(utInfo.layer))ovMapInstance.addLayer(utInfo.layer);
+        utInfo.layer.eachLayer(function(sl){
+          if(sl.setStyle)sl.setStyle({opacity:1,fillOpacity:0.15,weight:3});
+          if(sl._tooltip)try{sl._tooltip.getElement().style.display=''}catch(e){}
+        });
+      }
+    }catch(e){}
+    // Re-show all layers and re-check layer panel checkboxes
+    try{
+      Object.keys(OV_LAYERS).forEach(function(lid){
+        var info=OV_LAYERS[lid];if(!info)return;
+        if(!ovMapInstance.hasLayer(info.layer))try{ovMapInstance.addLayer(info.layer)}catch(e){}
+        info.visible=true;
+      });
+    }catch(e){}
     document.querySelectorAll('#ovFilterPanel input[data-layer]').forEach(function(cb){cb.checked=true});
     // Fly back to default view
     if(ovMapInstance)ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
@@ -2493,13 +2511,18 @@ function _ovfZoom(){
     return;
   }
 
-  // Specific filters: find matching features
+  // Specific filters: find matching features — include all with valid coords
   var matched=_ovfFiltered();
   var matchedMarkers=[];
   matched.forEach(function(r){
-    if(r.lat&&r.lng&&r.lat>1&&r.lat<15){
-      bounds.extend([r.lat,r.lng]);
-      matchedMarkers.push({marker:r.layer,lat:r.lat,lng:r.lng,dt:r.dt,feeder:r.feeder,bu:r.bu});
+    var lat=r.lat,lng=r.lng;
+    // Try to get coords from layer if stored as 0
+    if((!lat||lat<1)&&r.layer&&r.layer.getLatLng){
+      try{var ll=r.layer.getLatLng();lat=ll.lat;lng=ll.lng}catch(e){}
+    }
+    if(lat&&lng&&lat>1&&lat<15){
+      bounds.extend([lat,lng]);
+      matchedMarkers.push({marker:r.layer,lat:lat,lng:lng,dt:r.dt||'Unknown DT',feeder:r.feeder,bu:r.bu});
     }
   });
   // Also include HT temp line bounds
