@@ -2173,9 +2173,18 @@ function _ovfAddDTCallouts(markers){
       color:'#ef4444',weight:1,dashArray:'3 3',interactive:false
     }).addTo(ovMapInstance);
     _ovfMapLabels.push(line);
-    // Label
+    // Label — extract short DT name (after feeder prefix like "11-XxxINJ-T1-Yyy-")
+    var shortDT=m.dt||'';
+    var dashParts=shortDT.split('-');
+    if(dashParts.length>3){
+      // Find the part after the feeder route segment (e.g. after "T1-Anifowoshe")
+      // Typically: "11-<ISS>INJ-T<n>-<route>-<DT NAME>"
+      shortDT=dashParts.slice(3).join('-');
+    } else if(dashParts.length>1){
+      shortDT=dashParts[dashParts.length-1];
+    }
     var lbl=L.marker([oLat,oLng],{
-      icon:L.divIcon({className:'ovf-dt-label',html:m.dt,iconSize:null,iconAnchor:[0,6]}),
+      icon:L.divIcon({className:'ovf-dt-label',html:shortDT,iconSize:null,iconAnchor:[0,6]}),
       interactive:false,zIndexOffset:8000
     }).addTo(ovMapInstance);
     _ovfMapLabels.push(lbl);
