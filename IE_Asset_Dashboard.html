@@ -162,7 +162,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 /* Radar-ping marker for Geospatial DT Map — solid dot + expanding stroke ring on a single SVG path */
 @keyframes dt-ping{0%{stroke-width:1;stroke-opacity:.95}85%{stroke-width:14;stroke-opacity:0}100%{stroke-width:14;stroke-opacity:0}}
 .leaflet-overlay-pane svg path.dt-ping-svg{animation:dt-ping 1.8s ease-out infinite!important;-webkit-animation:dt-ping 1.8s ease-out infinite!important}
-.ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:12px!important;font-weight:800!important;color:rgba(255,255,255,.85)!important;text-shadow:0 0 5px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.8),1px 1px 3px rgba(0,0,0,.9)!important;letter-spacing:.6px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
+.ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:12px!important;font-weight:800!important;color:#06b6d4!important;text-shadow:0 0 5px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.8),1px 1px 3px rgba(0,0,0,.9)!important;letter-spacing:.6px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
 #ovTopBar{position:absolute;top:12px;left:55px;right:12px;z-index:1001;display:flex;align-items:flex-start;gap:8px;flex-wrap:nowrap}
 #ovSearchWrap{position:relative;top:auto;left:auto;z-index:1000;display:flex;flex-direction:column;flex-shrink:0}
 #ovFilterBar{position:relative;top:auto;left:auto;z-index:1001;display:flex;gap:6px;flex-wrap:nowrap;align-items:center}
@@ -184,7 +184,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ovf-reset:hover{background:rgba(239,68,68,.15);border-color:#ef4444;box-shadow:0 0 12px rgba(239,68,68,.3)}
 .ovf-map-label{background:rgba(11,18,26,.92)!important;border:2px solid rgba(16,185,129,.7)!important;border-radius:8px!important;padding:8px 16px!important;color:#10b981!important;font-size:17px!important;font-weight:800!important;letter-spacing:.6px;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,.7),0 0 14px rgba(16,185,129,.4)!important;text-shadow:0 1px 4px rgba(0,0,0,.8);white-space:nowrap;pointer-events:none;overflow:visible!important}
 .ovf-map-label-bu{background:rgba(30,10,10,.92)!important;border:2px solid rgba(239,68,68,.7)!important;border-radius:8px!important;padding:8px 16px!important;color:#ef4444!important;font-size:17px!important;font-weight:800!important;letter-spacing:.6px;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,.7),0 0 14px rgba(239,68,68,.4)!important;text-shadow:0 0 8px rgba(239,68,68,.5),0 1px 4px rgba(0,0,0,.8);white-space:nowrap;pointer-events:none;overflow:visible!important}
-.ovf-map-label-sm{background:rgba(11,18,26,.94)!important;border:2px solid rgba(250,204,21,.7)!important;border-radius:8px!important;padding:6px 14px!important;color:#facc15!important;font-size:14px!important;font-weight:800!important;box-shadow:0 4px 18px rgba(0,0,0,.7),0 0 12px rgba(250,204,21,.3)!important;white-space:nowrap;max-width:360px;overflow:visible!important;text-overflow:ellipsis;pointer-events:none;text-shadow:0 0 6px rgba(250,204,21,.4),0 1px 3px rgba(0,0,0,.8);letter-spacing:.4px;text-transform:uppercase}
+.ovf-map-label-sm{background:rgba(11,18,26,.94)!important;border:1.5px solid rgba(250,204,21,.6)!important;border-radius:6px!important;padding:4px 10px!important;color:#facc15!important;font-size:11px!important;font-weight:700!important;box-shadow:0 3px 12px rgba(0,0,0,.6),0 0 8px rgba(250,204,21,.25)!important;white-space:nowrap;max-width:320px;overflow:visible!important;text-overflow:ellipsis;pointer-events:none;text-shadow:0 0 4px rgba(250,204,21,.3),0 1px 2px rgba(0,0,0,.7);letter-spacing:.3px;text-transform:uppercase}
 .ovf-dt-label{background:none!important;border:none!important;border-radius:0!important;padding:0 2px!important;color:#111827!important;font-size:9px!important;font-weight:700!important;box-shadow:none!important;white-space:nowrap;pointer-events:none;letter-spacing:.2px;overflow:visible!important;text-shadow:0 0 3px rgba(255,255,255,.9),0 0 6px rgba(255,255,255,.6)}
 .ov-search-icon{position:absolute;top:11px;left:10px;color:#10b981;font-size:14px;pointer-events:none;z-index:1001}
 #ovSearch{width:260px;padding:10px 14px 10px 30px;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.4);border-radius:10px;color:#e2e8f0;font-size:13px;font-weight:500;outline:none;backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(0,0,0,.6);transition:border-color .15s,box-shadow .15s}
@@ -2321,7 +2321,46 @@ function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
 
   if(noFilter){
     _ovfRestoreAll();
+    // Show all UT boundaries in default state
+    var utInfo=OV_LAYERS['ut_boundary'];
+    if(utInfo&&ovMapInstance){
+      if(!ovMapInstance.hasLayer(utInfo.layer))ovMapInstance.addLayer(utInfo.layer);
+      utInfo.layer.eachLayer(function(sl){
+        if(sl.setStyle)sl.setStyle({opacity:1,fillOpacity:0.15});
+        if(sl._tooltip)sl._tooltip.getElement().style.display='';
+      });
+    }
     return;
+  }
+
+  // ── UT Boundary visibility ──
+  var utInfo=OV_LAYERS['ut_boundary'];
+  if(utInfo&&ovMapInstance){
+    // Always show UT boundary layer when any filter is active
+    if(!ovMapInstance.hasLayer(utInfo.layer))ovMapInstance.addLayer(utInfo.layer);
+    if(sUT.length){
+      // UT selected: show only matching UT boundaries, hide rest
+      utInfo.layer.eachLayer(function(sl){
+        var utName=(sl.feature&&sl.feature.properties&&sl.feature.properties.name||'').toUpperCase().trim();
+        var match=sUT.indexOf(utName)!==-1;
+        if(sl.setStyle)sl.setStyle({opacity:match?1:0.1,fillOpacity:match?0.25:0.02,weight:match?4:1});
+        if(sl._tooltip){
+          sl._tooltip.getElement().style.display=match?'':'none';
+        }
+      });
+    } else if(sBU.length){
+      // BU selected: show all UT boundaries normally
+      utInfo.layer.eachLayer(function(sl){
+        if(sl.setStyle)sl.setStyle({opacity:1,fillOpacity:0.15,weight:3});
+        if(sl._tooltip)sl._tooltip.getElement().style.display='';
+      });
+    } else {
+      // Other filter (feeder/DT only): show all UTs dimmed
+      utInfo.layer.eachLayer(function(sl){
+        if(sl.setStyle)sl.setStyle({opacity:0.4,fillOpacity:0.05,weight:1});
+        if(sl._tooltip)sl._tooltip.getElement().style.display='';
+      });
+    }
   }
 
   // Build a set of matched layer references for fast lookup
