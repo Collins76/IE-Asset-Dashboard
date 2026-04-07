@@ -544,7 +544,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <div class="ovf-wrap" id="ovfUT"><button class="ovf-btn" onclick="ovfToggle('ovfUT')">UT &#9662;</button><div class="ovf-drop"></div></div>
     <div class="ovf-wrap" id="ovfFeeder"><button class="ovf-btn" onclick="ovfToggle('ovfFeeder')">Feeder &#9662;</button><div class="ovf-drop"></div></div>
     <div class="ovf-wrap" id="ovfDT"><button class="ovf-btn" onclick="ovfToggle('ovfDT')">DT Name &#9662;</button><div class="ovf-drop"></div></div>
-    <button class="ovf-reset" id="ovfResetBtn" type="button" onclick="ovfResetAll(event)">Reset</button>
+    <button class="ovf-reset" type="button" onmousedown="window.location.reload()">Reset</button>
   </div>
   <div id="ovMapContainer"></div>
   <button type="button" class="zoom-lens-btn" id="ovLensBtn" style="right:150px" title="Toggle Zoom Lens" onclick="toggleZoomLens('ov')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
@@ -2055,12 +2055,6 @@ function _ovfAddLabel(lat,lng,text,cssClass){
   _ovfMapLabels.push(lbl);
 }
 
-function ovfResetAll(e){
-  if(e){e.stopPropagation();e.preventDefault();}
-  // Full page reload — guaranteed clean state
-  window.location.reload();
-}
-
 function _ovfClearHTTemp(){
   _ovfHTTempLayers.forEach(function(l){
     if(ovMapInstance&&ovMapInstance.hasLayer(l))ovMapInstance.removeLayer(l);
@@ -2115,18 +2109,21 @@ function _ovfDrawHTFeeders(feederNames,sBU){
     var fullName=shortToFull[htKey.toUpperCase().trim()]||htKey;
 
     // Draw each line segment as a bright yellow polyline
+    var allPts=[];
     htData.lines.forEach(function(latlngs){
       var pl=L.polyline(latlngs,{
         color:'#facc15',weight:5,opacity:1
       }).addTo(ovMapInstance);
       _ovfHTTempLayers.push(pl);
-      // Add full feeder name label at midpoint
-      if(latlngs.length>=2){
-        var midIdx=Math.floor(latlngs.length/2);
-        var midPt=latlngs[midIdx];
-        _ovfAddLabel(midPt[0],midPt[1],fullName,'ovf-map-label-sm');
-      }
+      latlngs.forEach(function(pt){allPts.push(pt)});
     });
+    // One label per feeder at the centroid of all its points
+    if(allPts.length){
+      var cLat=0,cLng=0;
+      allPts.forEach(function(pt){cLat+=pt[0];cLng+=pt[1]});
+      cLat/=allPts.length;cLng/=allPts.length;
+      _ovfAddLabel(cLat,cLng,fullName,'ovf-map-label-sm');
+    }
   });
 }
 
@@ -2329,22 +2326,6 @@ function _ovfZoom(){
   if(sDT.length){
     matchedMarkers.forEach(function(m){
       _ovfAddLabel(m.lat,m.lng+0.0003,m.dt,'ovf-map-label-sm');
-    });
-  }
-  // Add labels for selected Feeders (one per feeder at centroid)
-  else if(sFeed.length){
-    var feederGroups={};
-    matchedMarkers.forEach(function(m){
-      var fn=m.feeder;
-      if(!feederGroups[fn])feederGroups[fn]={lats:[],lngs:[]};
-      feederGroups[fn].lats.push(m.lat);
-      feederGroups[fn].lngs.push(m.lng);
-    });
-    Object.keys(feederGroups).forEach(function(fn){
-      var g=feederGroups[fn];
-      var cLat=g.lats.reduce(function(a,b){return a+b},0)/g.lats.length;
-      var cLng=g.lngs.reduce(function(a,b){return a+b},0)/g.lngs.length;
-      _ovfAddLabel(cLat,cLng,fn,'ovf-map-label-sm');
     });
   }
   // Add BU label if BU is selected alongside UT or others
