@@ -328,8 +328,8 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
   .ovf-drop{min-width:180px;max-height:200px}
   .btn{font-size:10px!important;padding:5px 8px!important}
   /* Export buttons: icon-only on mobile (hide text labels after emoji) */
-  .nav-right .btn,.btn-csv,.btn-pdf,.btn-reset{font-size:0!important;padding:6px 10px!important}
-  .nav-right .btn::first-letter{font-size:14px}
+  .btn-csv,.btn-pdf,.btn-reset{padding:6px 10px!important}
+  .btn-csv .btn-text,.btn-pdf .btn-text,.btn-reset .btn-text{display:none}
   .leaflet-popup-content-wrapper{max-width:85vw!important}
   .leaflet-popup-content{font-size:11px!important;max-width:75vw!important}
   .data-table{font-size:10px}
@@ -396,9 +396,9 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <button class="nav-tab" data-page="table">Asset Data Table</button>
   </div>
   <div style="display:flex;gap:6px;flex-shrink:0">
-    <button class="btn btn-csv" onclick="exportCSV()" style="border-color:var(--green);color:var(--green)">&#128196; CSV</button>
-    <button class="btn btn-pdf" onclick="generatePDF()" style="border-color:var(--accent);color:var(--accent)">&#128196; PDF Report</button>
-    <button class="btn btn-reset" onclick="resetDashboardFast(this)" style="color:var(--red);border-color:var(--red)"><span class="reset-icon">&#8635;</span> Reset</button>
+    <button class="btn btn-csv" onclick="exportCSV()" style="border-color:var(--green);color:var(--green)">&#128196;<span class="btn-text"> CSV</span></button>
+    <button class="btn btn-pdf" onclick="generatePDF()" style="border-color:var(--accent);color:var(--accent)">&#128196;<span class="btn-text"> PDF Report</span></button>
+    <button class="btn btn-reset" onclick="resetDashboardFast(this)" style="color:var(--red);border-color:var(--red)"><span class="reset-icon">&#8635;</span><span class="btn-text"> Reset</span></button>
   </div>
 </div>
 <div class="powered-bar" style="margin-top:86px"><span>Powered by the GIS Team, Ikeja Electric</span></div>
@@ -859,6 +859,23 @@ function resetDashboardFast(btnEl){
   document.querySelectorAll('.ms-btn').forEach(btn=>{btn.textContent='All'});
   filteredData=[...ASSET_DATA];
   document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
+  // Reset Overview map layers to default visible + zoom
+  if(ovMapInstance&&Object.keys(OV_LAYERS).length){
+    Object.keys(OV_LAYERS).forEach(lid=>{
+      const info=OV_LAYERS[lid];
+      if(!info)return;
+      if(!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
+      info.visible=true;
+      // Un-hide any individually hidden features
+      info.layer.eachLayer(function(sl){
+        if(sl._icon)sl._icon.style.display='';
+        if(sl._path)sl._path.style.display='';
+      });
+    });
+    // Re-check all filter panel checkboxes
+    document.querySelectorAll('#ovFilterPanel input[data-layer]').forEach(cb=>{cb.checked=true});
+    ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
+  }
   // Only render active page
   Object.keys(_pagesDirty).forEach(k=>{_pagesDirty[k]=true});
   requestAnimationFrame(()=>{
