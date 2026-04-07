@@ -2129,21 +2129,57 @@ function _ovfAddLabel(lat,lng,text,cssClass){
   _ovfMapLabels.push(lbl);
 }
 
-function _ovfAddDTCallout(lat,lng,dtName){
-  if(!ovMapInstance)return;
-  // Connector line from marker to label position (offset above-right)
-  var oLat=lat+0.0006,oLng=lng+0.0004;
-  var line=L.polyline([[lat,lng],[oLat,oLng]],{
-    color:'#ef4444',weight:1.5,dashArray:'4 3',interactive:false
-  }).addTo(ovMapInstance);
-  _ovfMapLabels.push(line);
-  // Callout label at offset position
-  var lbl=L.marker([oLat,oLng],{
-    icon:L.divIcon({className:'ovf-dt-label',html:dtName,iconSize:null,iconAnchor:[0,6]}),
-    interactive:false,
-    zIndexOffset:8000
-  }).addTo(ovMapInstance);
-  _ovfMapLabels.push(lbl);
+function _ovfAddDTCallouts(markers){
+  if(!ovMapInstance||!markers.length)return;
+  // Sort markers by lat descending so top markers get labels first
+  var sorted=markers.slice().sort(function(a,b){return b.lat-a.lat});
+  // 8 directions to spread labels around their marker (lat offset, lng offset)
+  var dirs=[
+    [0.0008,0.0006],   // NE
+    [0.0008,-0.0006],  // NW
+    [-0.0008,0.0006],  // SE
+    [-0.0008,-0.0006], // SW
+    [0.0012,0],        // N
+    [-0.0012,0],       // S
+    [0.0004,0.001],    // E
+    [0.0004,-0.001]    // W
+  ];
+  // Track placed label positions to avoid overlaps
+  var placed=[];
+  var MINSEP_LAT=0.0005,MINSEP_LNG=0.0008;
+  for(var i=0;i<sorted.length;i++){
+    var m=sorted[i];
+    if(!m.dt)continue;
+    // Try each direction, pick the one with least overlap
+    var bestDir=0,bestDist=0;
+    for(var d=0;d<dirs.length;d++){
+      var tLat=m.lat+dirs[d][0],tLng=m.lng+dirs[d][1];
+      var minDist=Infinity;
+      for(var p=0;p<placed.length;p++){
+        var dLat=Math.abs(tLat-placed[p][0]),dLng=Math.abs(tLng-placed[p][1]);
+        var dist=dLat+dLng;
+        if(dist<minDist)minDist=dist;
+      }
+      if(minDist>bestDist){bestDist=minDist;bestDir=d}
+    }
+    // If best still overlaps, increase the offset
+    var scale=1;
+    if(bestDist<(MINSEP_LAT+MINSEP_LNG)){scale=1.8}
+    var oLat=m.lat+dirs[bestDir][0]*scale;
+    var oLng=m.lng+dirs[bestDir][1]*scale;
+    placed.push([oLat,oLng]);
+    // Draw connector line
+    var line=L.polyline([[m.lat,m.lng],[oLat,oLng]],{
+      color:'#ef4444',weight:1,dashArray:'3 3',interactive:false
+    }).addTo(ovMapInstance);
+    _ovfMapLabels.push(line);
+    // Label
+    var lbl=L.marker([oLat,oLng],{
+      icon:L.divIcon({className:'ovf-dt-label',html:m.dt,iconSize:null,iconAnchor:[0,6]}),
+      interactive:false,zIndexOffset:8000
+    }).addTo(ovMapInstance);
+    _ovfMapLabels.push(lbl);
+  }
 }
 
 function _ovfClearHTTemp(){
@@ -2453,10 +2489,7 @@ function _ovfZoom(){
   }
   // Show DT callout labels with connector pointing to their marker
   if((sFeed.length||sUT.length)&&matchedMarkers.length<=500){
-    matchedMarkers.forEach(function(m){
-      if(!m.dt)return;
-      _ovfAddDTCallout(m.lat,m.lng,m.dt);
-    });
+    _ovfAddDTCallouts(matchedMarkers);
   }
   // Add BU label in RED if BU is selected
   if(sBU.length){
