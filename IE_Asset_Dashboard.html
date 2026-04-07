@@ -322,9 +322,13 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
   .metrics-bar{grid-template-columns:repeat(2,1fr);gap:8px}
   .card{padding:12px}
   #mapContainer,#ovMapContainer,#ufMapContainer{height:55vh!important;min-height:320px!important;max-height:560px}
-  #mapSearchWrap,#ovSearchWrap{left:52px!important;right:10px;top:8px!important}
+  #mapSearchWrap{left:52px!important;right:10px;top:8px!important}
+  #ovTopBar{flex-wrap:wrap;top:8px;left:8px;right:8px}
+  #ovSearchWrap{flex:1;min-width:0}
+  #ovSearch{width:100%!important}
+  #ovFilterBar{flex-wrap:wrap;width:100%}
   #mapSearch,#ovSearch{width:calc(100vw - 130px)!important;max-width:260px;font-size:11px!important}
-  #ovFilterBar{top:48px;left:8px;max-width:calc(100vw - 24px)}
+  #ovFilterBar{gap:4px}
   .ovf-btn{font-size:10px;padding:5px 8px;min-width:55px}
   .ovf-drop{min-width:180px;max-height:200px}
   .btn{font-size:10px!important;padding:5px 8px!important}
@@ -2036,6 +2040,46 @@ function _ovfBtnLabel(wrapId,sel){
   }
 }
 
+function ovfResetAll(){
+  try{
+    // Uncheck all Overview filter bar checkboxes
+    document.querySelectorAll('#ovFilterBar .ovf-drop input[type="checkbox"]').forEach(function(cb){cb.checked=false});
+    // Reset button labels
+    document.querySelectorAll('#ovFilterBar .ovf-btn').forEach(function(btn){
+      var orig=btn.textContent.replace(/\s*\(\d+\)/,'').replace(/\s*✓/,'').trim().split(' ')[0];
+      btn.innerHTML=orig+' &#9662;';btn.classList.remove('has-sel');btn.style.borderColor='';btn.style.color='';
+    });
+    // Close any open dropdowns
+    document.querySelectorAll('.ovf-wrap.open').forEach(function(w){w.classList.remove('open')});
+    // Clear search
+    var ovS=document.getElementById('ovSearch');if(ovS)ovS.value='';
+    var sugBox=document.getElementById('ovSuggestions');if(sugBox){sugBox.classList.remove('show');sugBox.innerHTML=''}
+    // Re-show all Overview layers
+    if(ovMapInstance&&Object.keys(OV_LAYERS).length){
+      Object.keys(OV_LAYERS).forEach(function(lid){
+        var info=OV_LAYERS[lid];if(!info)return;
+        try{if(!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer)}catch(e){}
+        info.visible=true;
+        try{info.layer.eachLayer(function(sl){
+          if(sl._icon)sl._icon.style.display='';
+          if(sl._path)sl._path.style.display='';
+        })}catch(e){}
+      });
+      document.querySelectorAll('#ovFilterPanel input[data-layer]').forEach(function(cb){cb.checked=true});
+      ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
+    }
+    // Also reset main dashboard filters and trigger re-render
+    document.querySelectorAll('.ms-panel').forEach(function(panel){
+      panel.querySelectorAll('input[type="checkbox"]').forEach(function(cb){cb.checked=cb.value===''});
+      panel.querySelectorAll('label').forEach(function(l){l.style.display='';l.style.opacity='1'});
+    });
+    document.querySelectorAll('.ms-btn').forEach(function(btn){btn.textContent='All'});
+    filteredData=[...ASSET_DATA];
+    document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
+    Object.keys(_pagesDirty).forEach(function(k){_pagesDirty[k]=true});
+    renderActivePage();
+  }catch(e){window.location.reload()}
+}
 function ovfToggle(wrapId){
   var wrap=document.getElementById(wrapId);
   var wasOpen=wrap.classList.contains('open');
