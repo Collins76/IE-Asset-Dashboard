@@ -1918,17 +1918,21 @@ function _normUT_OV(raw){
 function _normFeeder_OV(raw){
   if(!raw)return '';
   var s=raw.replace(/\s+/g,' ').trim();
-  // Fix known typos/variants to canonical form before keying
-  var u=s.toUpperCase();
-  if(u==='POWERLINE')s='POWER LINE';
-  else if(u==='OLORUNADABA')s='OLORUN ADABA';
-  else if(u==='NSYC')s='NYSC';
-  else if(u==='AMINKANLE')s='AMIKANLE';
-  else if(u==='AMIKANLE 33KV')s='AMIKANLE';
-  else if(u==='WALTER ANDERM')s='WALTER ANDEM';
-  else if(u==='UNTIY')s='UNITY';
-  // Build canonical key: uppercase + collapse separators
-  var key=s.toUpperCase().replace(/[\s_-]+/g,' ');
+  // Build canonical key: uppercase, strip voltage suffixes, collapse separators
+  var key=s.toUpperCase().replace(/[\s_-]+/g,' ').trim();
+  // Remove trailing voltage tags: "33KV","11KV","33 KV","11 KV"," 33"," 11"
+  key=key.replace(/\s+(33|11)\s*K?V?\s*$/,'').trim();
+  // Known typo corrections on the key
+  var typos={
+    'POWERLINE':'POWER LINE',
+    'OLORUNADABA':'OLORUN ADABA',
+    'NSYC':'NYSC',
+    'AMINKANLE':'AMIKANLE',
+    'WALTER ANDERM':'WALTER ANDEM',
+    'UNTIY':'UNITY'
+  };
+  if(typos[key])key=typos[key];
+  // Use first-seen form for this canonical key
   if(!_normFeeder_OV._map)_normFeeder_OV._map={};
   if(!_normFeeder_OV._map[key])_normFeeder_OV._map[key]=s;
   return _normFeeder_OV._map[key];
