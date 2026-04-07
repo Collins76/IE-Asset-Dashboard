@@ -1821,6 +1821,11 @@ function toggleOvLayer(cb){
   if(cb.checked){
     if(!ovMapInstance.hasLayer(info.layer))ovMapInstance.addLayer(info.layer);
     info.visible=true;
+    // Zoom to the toggled-on layer's bounds
+    try{
+      const b=info.layer.getBounds();
+      if(b&&b.isValid())ovMapInstance.flyToBounds(b,{padding:[50,50],maxZoom:15,duration:0.8});
+    }catch(e){}
   } else {
     if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
     info.visible=false;
@@ -2020,22 +2025,46 @@ function selectOvSug(idx){
   sugBox.classList.remove('show');
   // Zoom to selected feature
   const layer=m.layer;
-  if(layer&&ovMapInstance){
-    if(layer.getBounds){
-      ovMapInstance.fitBounds(layer.getBounds(),{padding:[60,60],maxZoom:16});
-    } else if(layer.getLatLng){
-      ovMapInstance.setView(layer.getLatLng(),16);
-    }
-    layer.openPopup();
+  if(!layer||!ovMapInstance)return;
+  var zoomLL=null;
+  if(layer.getBounds&&typeof layer.eachLayer==='function'){
+    try{
+      var b=layer.getBounds();
+      if(b&&b.isValid()){ovMapInstance.flyToBounds(b,{padding:[60,60],maxZoom:16,duration:0.8});zoomLL=b.getCenter()}
+    }catch(e){}
+  }
+  if(!zoomLL&&layer.getLatLng){
+    zoomLL=layer.getLatLng();
+    ovMapInstance.flyTo(zoomLL,16,{duration:0.8});
+  }
+  // Open popup on the actual Leaflet layer if possible; for shims show a temporary popup
+  if(typeof layer.openPopup==='function'&&typeof layer.getPopup==='function'){
+    try{layer.openPopup()}catch(e){}
+  } else if(zoomLL){
+    var c=m.color||'#10b981';
+    L.popup({maxWidth:360,autoPanPadding:[20,20]})
+      .setLatLng(zoomLL)
+      .setContent('<div style="min-width:200px"><div style="font-size:13px;font-weight:700;color:'+c+';border-bottom:1px solid #1a2535;padding-bottom:4px;margin-bottom:4px">'+(m.name||'Unknown')+'</div><div style="font-size:11px;color:#94a3b8">'+m.detail+(m.bu?' &middot; '+m.bu:'')+'</div></div>')
+      .openOn(ovMapInstance);
+  }
+  // Pulse animation at zoom location
+  if(zoomLL){
+    ovMapInstance.once('moveend',function(){
+      _pulseMarkers(ovMapInstance,[{marker:{getLatLng:function(){return zoomLL},setStyle:function(){}},lat:zoomLL.lat,lng:zoomLL.lng}]);
+    });
   }
 }
 function ovSugNav(e){
   const sugBox=document.getElementById('ovSuggestions');
   const matches=sugBox._matches||[];
+  if(e.key==='Enter'){
+    e.preventDefault();
+    if(matches.length){selectOvSug(ovSugIdx>=0?ovSugIdx:0)}
+    return;
+  }
   if(!matches.length||!sugBox.classList.contains('show'))return;
   if(e.key==='ArrowDown'){e.preventDefault();ovSugIdx=Math.min(ovSugIdx+1,matches.length-1);highlightOvSug()}
   else if(e.key==='ArrowUp'){e.preventDefault();ovSugIdx=Math.max(ovSugIdx-1,0);highlightOvSug()}
-  else if(e.key==='Enter'&&ovSugIdx>=0){e.preventDefault();selectOvSug(ovSugIdx)}
   else if(e.key==='Escape'){sugBox.classList.remove('show')}
 }
 function highlightOvSug(){
