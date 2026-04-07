@@ -1903,6 +1903,15 @@ var _ovfTimer=null;
 var _ovfHTIndex={};
 var _ovfHTTempLayers=[];
 
+// Normalize UT names: merge variants separated by hyphens, underscores,
+// double-spaces, and fix known typos into one canonical form.
+function _normUT_OV(raw){
+  var s=raw.toUpperCase().replace(/[\s_-]+/g,' ').trim();
+  // Typo corrections
+  if(s==='ABOUR')s='ABORU';
+  if(s==='ODONGUNYAN')s='ODOGUNYAN';
+  return s;
+}
 function buildOvDropdownFilters(){
   _ovfData=[];
   Object.keys(OV_LAYERS).forEach(function(lid){
@@ -1913,7 +1922,7 @@ function buildOvDropdownFilters(){
       var p=sl.feature?sl.feature.properties:{};
       _ovfData.push({
         bu:layerBU,
-        ut:(p.UT_NAME||'').toUpperCase().trim(),
+        ut:_normUT_OV(p.UT_NAME||''),
         feeder:p.FEEDER_NAME||p.FED_NAME||'',
         dt:p.name||'',
         lat:sl.getLatLng?sl.getLatLng().lat:0,
@@ -2368,7 +2377,7 @@ function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
     if(sUT.length){
       // UT selected: show only matching UT boundaries, hide rest
       utInfo.layer.eachLayer(function(sl){
-        var utName=(sl.feature&&sl.feature.properties&&sl.feature.properties.name||'').toUpperCase().trim();
+        var utName=_normUT_OV(sl.feature&&sl.feature.properties&&sl.feature.properties.name||'');
         var match=sUT.indexOf(utName)!==-1;
         if(sl.setStyle)sl.setStyle({opacity:match?1:0.1,fillOpacity:match?0.25:0.02,weight:match?4:1});
         if(sl._tooltip){
