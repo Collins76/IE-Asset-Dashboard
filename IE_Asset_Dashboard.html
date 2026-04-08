@@ -517,6 +517,8 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
       <h4 style="margin:0;flex:1">Survey Records</h4>
       <div style="position:relative;width:280px"><input type="text" id="ufTableSearch" placeholder="Search DT, address, BU, officer..." oninput="ufSearchInput()" onkeydown="ufSugNav(event)" autocomplete="off" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px;width:100%"><div id="ufSuggestions"></div></div>
+      <div class="ms-wrap" id="ufCondFilter" style="width:160px"><button class="ms-btn" onclick="toggleMS('ufCondFilter')">All Conditions</button><div class="ms-panel" id="ufCondPanel" style="max-height:300px"></div></div>
+      <div class="ms-wrap" id="ufTypeFilter" style="width:160px"><button class="ms-btn" onclick="toggleMS('ufTypeFilter')">All FP Types</button><div class="ms-panel" id="ufTypePanel" style="max-height:300px"></div></div>
       <div class="ms-wrap" id="ufFoFilter" style="width:200px"><button class="ms-btn" onclick="toggleMS('ufFoFilter')">All Officers</button><div class="ms-panel" id="ufFoPanel" style="max-height:300px"></div></div>
       <select id="ufPageSize" onchange="renderUfTable()" style="padding:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px"><option>25</option><option>50</option><option>100</option><option>500</option><option value="99999">All</option></select>
     </div>
@@ -1314,6 +1316,12 @@ function getUfFiltered(){
   // DT Nom filter: exact match on DT name
   const nomSel=getSelVals('fNom');
   if(nomSel.length)d=d.filter(r=>nomSel.includes(r.dt));
+  // FP Condition filter
+  const condSel=getUfCondSel();
+  if(condSel.length)d=d.filter(r=>condSel.includes(r.fc));
+  // FP Type filter
+  const typeSel=getUfTypeSel();
+  if(typeSel.length)d=d.filter(r=>typeSel.includes(r.ft));
   // Field Officer filter (local to upriser page)
   const foSel=getUfFoSel();
   if(foSel.length)d=d.filter(r=>foSel.includes(r.fo));
@@ -1572,9 +1580,69 @@ function getUfFoSel(){
   return[...panel.querySelectorAll('input[type="checkbox"]:checked')].filter(c=>c.value!=='').map(c=>c.value);
 }
 
+// FP Condition filter
+function populateUfCondFilter(){
+  const panel=document.getElementById('ufCondPanel');
+  if(!panel||typeof UF_DATA==='undefined')return;
+  const vals=new Set();
+  UF_DATA.forEach(r=>{if(r.fc)vals.add(r.fc)});
+  const sorted=[...vals].sort();
+  panel.innerHTML='<label class="all-opt"><input type="checkbox" value="" checked onchange="ufCondCheck(this)"> All</label>'
+    +sorted.map(v=>'<label><input type="checkbox" value="'+v+'" onchange="ufCondCheck(this)"> '+v+'</label>').join('');
+}
+function ufCondCheck(cb){
+  const panel=document.getElementById('ufCondPanel');
+  const allCb=panel.querySelector('input[value=""]');
+  const valueCbs=[...panel.querySelectorAll('input[type="checkbox"]')].filter(c=>c.value!=='');
+  if(cb.value===''){valueCbs.forEach(c=>c.checked=false);allCb.checked=true}
+  else{allCb.checked=false;if(!valueCbs.some(c=>c.checked))allCb.checked=true}
+  const btn=document.querySelector('#ufCondFilter .ms-btn');
+  if(allCb.checked){btn.textContent='All Conditions'}
+  else{const sel=valueCbs.filter(c=>c.checked);btn.textContent=sel.length<=1?sel.map(c=>c.value).join(''):sel.length+' conditions'}
+  renderUpriserPage();
+}
+function getUfCondSel(){
+  const panel=document.getElementById('ufCondPanel');
+  if(!panel)return[];
+  const allCb=panel.querySelector('input[value=""]');
+  if(allCb&&allCb.checked)return[];
+  return[...panel.querySelectorAll('input[type="checkbox"]:checked')].filter(c=>c.value!=='').map(c=>c.value);
+}
+
+// FP Type filter
+function populateUfTypeFilter(){
+  const panel=document.getElementById('ufTypePanel');
+  if(!panel||typeof UF_DATA==='undefined')return;
+  const vals=new Set();
+  UF_DATA.forEach(r=>{if(r.ft)vals.add(r.ft)});
+  const sorted=[...vals].sort();
+  panel.innerHTML='<label class="all-opt"><input type="checkbox" value="" checked onchange="ufTypeCheck(this)"> All</label>'
+    +sorted.map(v=>'<label><input type="checkbox" value="'+v+'" onchange="ufTypeCheck(this)"> '+v+'</label>').join('');
+}
+function ufTypeCheck(cb){
+  const panel=document.getElementById('ufTypePanel');
+  const allCb=panel.querySelector('input[value=""]');
+  const valueCbs=[...panel.querySelectorAll('input[type="checkbox"]')].filter(c=>c.value!=='');
+  if(cb.value===''){valueCbs.forEach(c=>c.checked=false);allCb.checked=true}
+  else{allCb.checked=false;if(!valueCbs.some(c=>c.checked))allCb.checked=true}
+  const btn=document.querySelector('#ufTypeFilter .ms-btn');
+  if(allCb.checked){btn.textContent='All FP Types'}
+  else{const sel=valueCbs.filter(c=>c.checked);btn.textContent=sel.length<=1?sel.map(c=>c.value).join(''):sel.length+' types'}
+  renderUpriserPage();
+}
+function getUfTypeSel(){
+  const panel=document.getElementById('ufTypePanel');
+  if(!panel)return[];
+  const allCb=panel.querySelector('input[value=""]');
+  if(allCb&&allCb.checked)return[];
+  return[...panel.querySelectorAll('input[type="checkbox"]:checked')].filter(c=>c.value!=='').map(c=>c.value);
+}
+
 function renderUpriserPage(){
   if(typeof UF_DATA==='undefined')return;
   if(!document.getElementById('ufFoPanel').children.length)populateUfFoFilter();
+  if(!document.getElementById('ufCondPanel').children.length)populateUfCondFilter();
+  if(!document.getElementById('ufTypePanel').children.length)populateUfTypeFilter();
   const data=getUfFiltered();
   renderUfKPIs(data);
   if(!ufMapInitialized)initUfMap();
