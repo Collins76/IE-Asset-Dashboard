@@ -116,7 +116,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 /* MAP */
 #mapContainer{width:100%;height:calc(100vh - 160px);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
 #ovMapContainer{width:100%;height:calc(100vh - 120px);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-#ovToggleBtn{position:absolute;top:12px;right:12px;z-index:1000;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:all .2s;overflow:hidden}
+#ovToggleBtn{position:absolute;top:12px;right:12px;z-index:1002;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:all .2s;overflow:hidden}
 #ovToggleBtn:hover{background:rgba(16,185,129,.15);border-color:#10b981;transform:translateY(-1px);box-shadow:0 6px 24px rgba(16,185,129,.25)}
 #ovToggleBtn .star{position:absolute;width:3px;height:3px;background:#10b981;border-radius:50%;animation:shoot 1.8s linear infinite;opacity:0}
 #ovToggleBtn .star:nth-child(1){top:20%;left:10%;animation-delay:0s}
@@ -131,7 +131,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ov-group-hdr.collapsed .ov-arrow{transform:rotate(-90deg)}
 .ov-group-body{overflow:hidden;transition:max-height .3s ease}
 .ov-group-hdr.collapsed+.ov-group-body{max-height:0!important;overflow:hidden}
-#ovFilterPanel{display:none;position:absolute;top:52px;right:12px;z-index:1000;width:240px;max-height:calc(100vh - 220px);overflow-y:auto;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.3);border-radius:12px;padding:12px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.7)}
+#ovFilterPanel{display:none;position:absolute;top:52px;right:12px;z-index:1002;width:240px;max-height:calc(100vh - 220px);overflow-y:auto;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.3);border-radius:12px;padding:12px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.7)}
 #ovFilterPanel.show{display:block}
 /* ZOOM LENS */
 .zoom-lens-btn{position:absolute;top:12px;z-index:1000;width:42px;height:42px;border-radius:50%;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:all .2s;padding:0}
