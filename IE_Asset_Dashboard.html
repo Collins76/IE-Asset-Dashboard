@@ -11,7 +11,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box}button,a,label,input,select,[onclick]{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0b1015;--bg2:#101820;--bg3:#161e28;--bg4:#1c2632;--accent:#00d4ff;--accent2:#0099cc;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;--orange:#f97316;--pink:#ec4899;--teal:#14b8a6;--text:#e2e8f0;--text2:#7a8a9e;--border:#1a2535;--card:#0f171f}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
 /* NAV */
@@ -21,15 +21,15 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .logo-icon svg{width:20px;height:20px;fill:var(--accent)}
 .logo-sub{font-size:10px;color:var(--text2);font-weight:400;margin-top:-2px}
 .nav-tabs{display:flex;gap:2px;margin-left:30px;flex:1;overflow-x:auto}
-.nav-tab{padding:8px 16px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12.5px;font-weight:500;border-radius:6px;transition:.2s;white-space:nowrap}
+.nav-tab{padding:8px 16px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12.5px;font-weight:500;border-radius:6px;transition:background .12s,color .12s;white-space:nowrap}
 .nav-tab:hover{background:var(--bg3);color:var(--text)}
 .nav-tab.active{background:var(--green);color:#000;font-weight:600}
 .nav-right{display:flex;gap:8px;align-items:center}
-.btn{padding:6px 12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:5px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px;transition:all .2s ease;position:relative;overflow:hidden}
+.btn{padding:6px 12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:5px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px;transition:background .15s,border-color .15s,color .15s,transform .1s;position:relative;overflow:hidden}
 .btn::after{content:'';position:absolute;top:50%;left:50%;width:0;height:0;background:rgba(255,255,255,.08);border-radius:50%;transform:translate(-50%,-50%);transition:width .4s ease,height .4s ease}
 .btn:hover{transform:translateY(-2px);box-shadow:0 4px 15px rgba(0,0,0,.3)}
 .btn:hover::after{width:200px;height:200px}
-.btn:active{transform:translateY(0) scale(.95);transition:all .05s ease}
+.btn:active{transform:translateY(0) scale(.95);transition:transform .05s}
 .btn-csv:hover{border-color:var(--green)!important;color:var(--green)!important;box-shadow:0 4px 15px rgba(16,185,129,.2)}
 .btn-pdf:hover{border-color:var(--accent)!important;color:var(--accent)!important;box-shadow:0 4px 15px rgba(6,182,212,.2)}
 .btn-reset:hover{border-color:var(--red)!important;color:var(--red)!important;box-shadow:0 4px 15px rgba(239,68,68,.2)}
@@ -56,7 +56,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ms-btn:hover,.ms-wrap.open .ms-btn{border-color:#10b981;box-shadow:0 0 8px rgba(16,185,129,.25)}
 .ms-panel{display:none;position:absolute;top:calc(100% + 2px);left:0;min-width:180px;max-height:250px;overflow-y:auto;background:#0e1820;border:1px solid #1a3540;border-radius:6px;z-index:1100;box-shadow:0 8px 32px rgba(0,0,0,.7);padding:4px 0}
 .ms-wrap.open .ms-panel{display:block}
-.ms-panel label{display:flex;align-items:center;gap:6px;padding:4px 10px;cursor:pointer;font-size:11.5px;color:var(--text);transition:.15s;user-select:none}
+.ms-panel label{display:flex;align-items:center;gap:6px;padding:4px 10px;cursor:pointer;font-size:11.5px;color:var(--text);transition:background .1s;user-select:none}
 .ms-panel label:hover{background:var(--bg3)}
 .ms-panel label.all-opt{border-bottom:1px solid var(--border);margin-bottom:2px;padding-bottom:6px;font-weight:600;color:var(--green)}
 .ms-panel input[type="checkbox"]{accent-color:#10b981;width:13px;height:13px;cursor:pointer}
@@ -116,7 +116,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 /* MAP */
 #mapContainer{width:100%;height:calc(100vh - 160px);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
 #ovMapContainer{width:100%;height:calc(100vh - 120px);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-#ovToggleBtn{position:absolute;top:12px;right:12px;z-index:1002;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:all .2s;overflow:hidden}
+#ovToggleBtn{position:absolute;top:12px;right:12px;z-index:1002;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:background .15s,border-color .15s,transform .1s,box-shadow .15s;overflow:hidden}
 #ovToggleBtn:hover{background:rgba(16,185,129,.15);border-color:#10b981;transform:translateY(-1px);box-shadow:0 6px 24px rgba(16,185,129,.25)}
 #ovToggleBtn .star{position:absolute;width:3px;height:3px;background:#10b981;border-radius:50%;animation:shoot 1.8s linear infinite;opacity:0}
 #ovToggleBtn .star:nth-child(1){top:20%;left:10%;animation-delay:0s}
@@ -134,7 +134,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 #ovFilterPanel{display:none;position:absolute;top:52px;right:12px;z-index:1002;width:240px;max-height:calc(100vh - 220px);overflow-y:auto;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.3);border-radius:12px;padding:12px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.7)}
 #ovFilterPanel.show{display:block}
 /* ZOOM LENS */
-.zoom-lens-btn{position:absolute;top:12px;z-index:1000;width:42px;height:42px;border-radius:50%;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:all .2s;padding:0}
+.zoom-lens-btn{position:absolute;top:12px;z-index:1000;width:42px;height:42px;border-radius:50%;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:background .15s,border-color .15s,transform .1s;padding:0}
 .zoom-lens-btn:hover{background:rgba(16,185,129,.15);border-color:#10b981;transform:translateY(-1px);box-shadow:0 6px 24px rgba(16,185,129,.35)}
 .zoom-lens-btn.active{background:#10b981;color:#000;border-color:#10b981;box-shadow:0 0 18px rgba(16,185,129,.7)}
 .zoom-lens-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
@@ -167,7 +167,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 #ovSearchWrap{position:relative;top:auto;left:auto;z-index:1000;display:flex;flex-direction:column;flex-shrink:0}
 #ovFilterBar{position:relative;top:auto;left:auto;z-index:1001;display:flex;gap:6px;flex-wrap:nowrap;align-items:center}
 .ovf-wrap{position:relative;display:inline-block}
-.ovf-btn{padding:7px 12px;background:rgba(11,18,26,.96);border:1.5px solid rgba(16,185,129,.4);border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;backdrop-filter:blur(12px);box-shadow:0 2px 12px rgba(0,0,0,.5);white-space:nowrap;min-width:70px;text-align:left;transition:all .15s;user-select:none}
+.ovf-btn{padding:7px 12px;background:rgba(11,18,26,.96);border:1.5px solid rgba(16,185,129,.4);border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;backdrop-filter:blur(12px);box-shadow:0 2px 12px rgba(0,0,0,.5);white-space:nowrap;min-width:70px;text-align:left;transition:background .12s,border-color .12s,color .12s;user-select:none}
 .ovf-btn:hover,.ovf-wrap.open .ovf-btn{border-color:#10b981;background:rgba(16,185,129,.1)}
 .ovf-btn.has-sel{border-color:#10b981;color:#10b981}
 .ovf-drop{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:220px;max-height:260px;overflow-y:auto;background:rgba(11,18,26,.97);border:1.5px solid rgba(16,185,129,.35);border-radius:8px;padding:6px 0;backdrop-filter:blur(14px);box-shadow:0 8px 32px rgba(0,0,0,.7);z-index:1002}
@@ -180,7 +180,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ovf-drop input[type="checkbox"]{accent-color:#10b981;width:13px;height:13px;cursor:pointer;flex-shrink:0}
 .ovf-drop::-webkit-scrollbar{width:4px}
 .ovf-drop::-webkit-scrollbar-thumb{background:#1a3540;border-radius:3px}
-.ovf-reset{padding:7px 12px;background:rgba(11,18,26,.96);border:1.5px solid rgba(239,68,68,.5);border-radius:8px;color:#ef4444;font-size:11px;font-weight:600;cursor:pointer;backdrop-filter:blur(12px);transition:all .15s;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.5)}
+.ovf-reset{padding:7px 12px;background:rgba(11,18,26,.96);border:1.5px solid rgba(239,68,68,.5);border-radius:8px;color:#ef4444;font-size:11px;font-weight:600;cursor:pointer;backdrop-filter:blur(12px);transition:background .12s,border-color .12s;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.5)}
 .ovf-reset:hover{background:rgba(239,68,68,.15);border-color:#ef4444;box-shadow:0 0 12px rgba(239,68,68,.3)}
 .ovf-map-label{background:rgba(11,18,26,.92)!important;border:2px solid rgba(16,185,129,.7)!important;border-radius:8px!important;padding:8px 16px!important;color:#10b981!important;font-size:17px!important;font-weight:800!important;letter-spacing:.6px;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,.7),0 0 14px rgba(16,185,129,.4)!important;text-shadow:0 1px 4px rgba(0,0,0,.8);white-space:nowrap;pointer-events:none;overflow:visible!important}
 .ovf-map-label-bu{background:rgba(30,10,10,.92)!important;border:2px solid rgba(239,68,68,.7)!important;border-radius:8px!important;padding:8px 16px!important;color:#ef4444!important;font-size:17px!important;font-weight:800!important;letter-spacing:.6px;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,.7),0 0 14px rgba(239,68,68,.4)!important;text-shadow:0 0 8px rgba(239,68,68,.5),0 1px 4px rgba(0,0,0,.8);white-space:nowrap;pointer-events:none;overflow:visible!important}
@@ -715,31 +715,64 @@ function filterMSPanel(input,id){
 }
 
 function getFilteredData(){
-  const sels={};FDEFS.forEach(f=>{sels[f.id]=getSelVals(f.id)});
-  return ASSET_DATA.filter(r=>FDEFS.every(f=>{const s=sels[f.id];return !s.length||s.includes(f.v(r))}));
+  // Build Sets for O(1) lookup instead of Array.includes
+  const sets={};
+  const active=[];
+  FDEFS.forEach(f=>{
+    const s=getSelVals(f.id);
+    if(s.length){sets[f.id]=new Set(s);active.push(f)}
+  });
+  if(!active.length)return ASSET_DATA.slice();
+  return ASSET_DATA.filter(r=>active.every(f=>sets[f.id].has(f.v(r))));
 }
 
 // Cascading: update each filter's options based on all OTHER filters
+// Single-pass: scan data once, accumulate available values per filter
+const _fdefMap={};FDEFS.forEach(f=>{_fdefMap[f.id]=f});
 function updateFilterOptions(){
-  const sels={};FDEFS.forEach(f=>{sels[f.id]=getSelVals(f.id)});
+  const sets={};
+  const activeFdefs=[];
   FDEFS.forEach(f=>{
-    // Filter data by everything EXCEPT this filter
-    const subset=ASSET_DATA.filter(r=>FDEFS.every(of=>of.id===f.id||!sels[of.id].length||sels[of.id].includes(of.v(r))));
-    const available=new Set();subset.forEach(r=>{const val=f.v(r);if(val)available.add(val)});
+    const s=getSelVals(f.id);
+    if(s.length){sets[f.id]=new Set(s);activeFdefs.push(f)}
+  });
+  // For each filter, track which values appear when all OTHER filters are applied
+  const avail={};
+  FDEFS.forEach(f=>{avail[f.id]=new Set()});
+  const aLen=activeFdefs.length;
+  for(let i=0,len=ASSET_DATA.length;i<len;i++){
+    const r=ASSET_DATA[i];
+    // Precompute which filters this record fails
+    let failId='';
+    let failCount=0;
+    for(let j=0;j<aLen;j++){
+      const af=activeFdefs[j];
+      if(!sets[af.id].has(af.v(r))){failId=af.id;failCount++;if(failCount>1)break}
+    }
+    // If record passes all filters: it contributes to every filter's available values
+    if(failCount===0){
+      for(let j=0;j<FDEFS.length;j++){const val=FDEFS[j].v(r);if(val)avail[FDEFS[j].id].add(val)}
+    } else if(failCount===1){
+      // Fails exactly one filter: contributes to THAT filter's available values
+      const val=_fdefMap[failId].v(r);
+      if(val)avail[failId].add(val);
+    }
+  }
+  // Update DOM
+  FDEFS.forEach(f=>{
     const wrap=document.getElementById(f.id);if(!wrap)return;
-    let anyUncheckedHidden=false;
-    wrap.querySelectorAll('.ms-panel label:not(.all-opt)').forEach(label=>{
-      const cb=label.querySelector('input[type="checkbox"]');if(!cb)return;
+    const available=avail[f.id];
+    const labels=wrap.querySelectorAll('.ms-panel label:not(.all-opt)');
+    for(let i=0;i<labels.length;i++){
+      const cb=labels[i].firstElementChild;if(!cb)continue;
       const inData=available.has(cb.value);
-      // Show if value exists in subset OR is currently checked (so user can uncheck it)
-      label.style.display=(inData||cb.checked)?'':'none';
-      label.style.opacity=(cb.checked&&!inData)?'0.5':'1';
-      if(!inData&&!cb.checked)anyUncheckedHidden=true;
-    });
+      labels[i].style.display=(inData||cb.checked)?'':'none';
+      labels[i].style.opacity=(cb.checked&&!inData)?'0.5':'1';
+    }
   });
 }
 
-let _applyTimer=null;
+let _applyRAF=null;
 let _pagesDirty={summary:true,network:true,metering:true,operations:true,map:true,overview:true,table:true};
 function applyLive(){
   filteredData=getFilteredData();
@@ -747,9 +780,9 @@ function applyLive(){
   updateFilterOptions();
   // Mark all pages dirty
   Object.keys(_pagesDirty).forEach(k=>{_pagesDirty[k]=true});
-  // Only render the active page (fast!)
-  if(_applyTimer)clearTimeout(_applyTimer);
-  _applyTimer=setTimeout(()=>{renderActivePage()},80);
+  // Render on next frame — no artificial delay
+  if(_applyRAF)cancelAnimationFrame(_applyRAF);
+  _applyRAF=requestAnimationFrame(renderActivePage);
 }
 function renderActivePage(){
   const p=currentPage;
@@ -1996,12 +2029,14 @@ function _ovfGetSel(wrapId){
 
 function _ovfFiltered(){
   var sBU=_ovfGetSel('ovfBU'),sV=_ovfGetSel('ovfVoltage'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
+  var fBU=sBU.length?new Set(sBU):null,fV=sV.length?new Set(sV):null,fUT=sUT.length?new Set(sUT):null,fF=sFeed.length?new Set(sFeed):null,fDT=sDT.length?new Set(sDT):null;
+  if(!fBU&&!fV&&!fUT&&!fF&&!fDT)return _ovfData;
   return _ovfData.filter(function(r){
-    if(sBU.length&&sBU.indexOf(r.bu)===-1)return false;
-    if(sV.length&&sV.indexOf(r.voltage)===-1)return false;
-    if(sUT.length&&sUT.indexOf(r.ut)===-1)return false;
-    if(sFeed.length&&sFeed.indexOf(r.feeder)===-1)return false;
-    if(sDT.length&&sDT.indexOf(r.dt)===-1)return false;
+    if(fBU&&!fBU.has(r.bu))return false;
+    if(fV&&!fV.has(r.voltage))return false;
+    if(fUT&&!fUT.has(r.ut))return false;
+    if(fF&&!fF.has(r.feeder))return false;
+    if(fDT&&!fDT.has(r.dt))return false;
     return true;
   });
 }
@@ -2382,11 +2417,11 @@ function _ovfRestoreAll(){
 }
 
 function _ovfOnChange(){
-  if(_ovfTimer)clearTimeout(_ovfTimer);
-  _ovfTimer=setTimeout(function(){
+  if(_ovfTimer)cancelAnimationFrame(_ovfTimer);
+  _ovfTimer=requestAnimationFrame(function(){
     _ovfPopulate();
     _ovfZoom();
-  },60);
+  });
 }
 
 function _ovfGetLayerBU(lid){
