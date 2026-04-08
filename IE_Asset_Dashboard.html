@@ -133,16 +133,6 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ov-group-hdr.collapsed+.ov-group-body{max-height:0!important;overflow:hidden}
 #ovFilterPanel{display:none;position:absolute;top:52px;right:12px;z-index:1002;width:240px;max-height:calc(100vh - 220px);overflow-y:auto;background:rgba(11,18,26,.96);border:2px solid rgba(16,185,129,.3);border-radius:12px;padding:12px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.7)}
 #ovFilterPanel.show{display:block}
-/* ZOOM LENS */
-.zoom-lens-btn{position:absolute;top:12px;z-index:1000;width:42px;height:42px;border-radius:50%;background:rgba(11,18,26,.95);color:#10b981;border:2px solid rgba(16,185,129,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.5);transition:background .15s,border-color .15s,transform .1s;padding:0}
-.zoom-lens-btn:hover{background:rgba(16,185,129,.15);border-color:#10b981;transform:translateY(-1px);box-shadow:0 6px 24px rgba(16,185,129,.35)}
-.zoom-lens-btn.active{background:#10b981;color:#000;border-color:#10b981;box-shadow:0 0 18px rgba(16,185,129,.7)}
-.zoom-lens-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.zoom-lens{position:absolute;width:220px;height:220px;border-radius:50%;border:3px solid #10b981;box-shadow:0 0 0 2px rgba(0,0,0,.65),0 10px 40px rgba(0,0,0,.8),0 0 22px rgba(16,185,129,.55);overflow:hidden;pointer-events:none;z-index:950;display:none;background:#0b121a}
-.zoom-lens.active{display:block}
-.zoom-lens-inner{width:100%;height:100%}
-.zoom-lens-inner .leaflet-control-container{display:none}
-@media (max-width:640px){.zoom-lens-btn{width:36px;height:36px}.zoom-lens{width:170px;height:170px}}
 #ovFilterPanel::-webkit-scrollbar{width:5px}
 #ovFilterPanel::-webkit-scrollbar-thumb{background:#1a3540;border-radius:3px}
 .ov-group{margin-bottom:12px}
@@ -517,7 +507,6 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
   <div class="uf-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px">
     <div style="position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);height:calc(100vh - 280px);min-height:400px">
       <div id="ufMapContainer" style="width:100%;height:100%"></div>
-      <button type="button" class="zoom-lens-btn" id="ufLensBtn" style="right:12px" title="Toggle Zoom Lens" onclick="toggleZoomLens('uf')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="chart-box" style="flex:1;margin:0"><h4>Feeder Pillar Condition by BU</h4><div class="chart-container" id="ch_uf_cond_bu"></div></div>
@@ -540,7 +529,6 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 <div class="page" id="page-map" style="position:relative">
   <div id="mapSearchWrap"><span id="mapSearchIcon">&#128269;</span><input type="text" id="mapSearch" placeholder="Search DT by name, feeder, customer..." oninput="searchMapDebounced()" onkeydown="mapSugNav(event)" autocomplete="off"><div id="mapSuggestions"></div></div>
   <div id="mapContainer"></div>
-  <button type="button" class="zoom-lens-btn" id="mapLensBtn" style="right:12px" title="Toggle Zoom Lens" onclick="toggleZoomLens('dt')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
 </div>
 
 <!-- PAGE: IE NETWORK OVERVIEW MAP -->
@@ -557,7 +545,6 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     </div>
   </div>
   <div id="ovMapContainer"></div>
-  <button type="button" class="zoom-lens-btn" id="ovLensBtn" style="right:150px" title="Toggle Zoom Lens" onclick="toggleZoomLens('ov')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
   <div id="ovToggleBtn" onclick="toggleOvFilter()"><span class="star"></span><span class="star"></span><span class="star"></span><span class="star"></span><span class="star"></span>&#9776; Filters</div>
   <div id="ovFilterPanel"></div>
 </div>
@@ -1095,63 +1082,6 @@ function renderOperations(data){
 // ============ PAGE 5: MAP (Canvas CircleMarker) ============
 let mapLayerGroup=null,mapSvgRenderer=null;
 
-// Zoom lens registry + factory — a circular, cursor-following magnifier overlay for any Leaflet map
-const zoomLensRegistry={};
-function createZoomLens(mainMap,key,zoomDelta){
-  const container=mainMap.getContainer();
-  const lensEl=document.createElement('div');
-  lensEl.className='zoom-lens';
-  const inner=document.createElement('div');
-  inner.className='zoom-lens-inner';
-  lensEl.appendChild(inner);
-  container.appendChild(lensEl);
-  let lensMap=null,active=false;
-  const dz=(typeof zoomDelta==='number'?zoomDelta:2);
-  function ensureLensMap(){
-    if(lensMap)return;
-    lensMap=L.map(inner,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,zoomAnimation:false,fadeAnimation:false,inertia:false,preferCanvas:true}).setView(mainMap.getCenter(),Math.min(19,mainMap.getZoom()+dz));
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:''}).addTo(lensMap);
-  }
-  function sync(e){
-    if(!active||!lensMap)return;
-    const rect=container.getBoundingClientRect();
-    const x=e.originalEvent.clientX-rect.left;
-    const y=e.originalEvent.clientY-rect.top;
-    const w=lensEl.offsetWidth,h=lensEl.offsetHeight;
-    lensEl.style.left=(x-w/2)+'px';
-    lensEl.style.top=(y-h/2)+'px';
-    lensMap.setView(e.latlng,Math.min(19,mainMap.getZoom()+dz),{animate:false});
-  }
-  mainMap.on('mousemove',sync);
-  mainMap.on('mouseout',function(){if(active)lensEl.style.display='none'});
-  mainMap.on('mouseover',function(){if(active)lensEl.style.display='block'});
-  mainMap.on('zoomend moveend',function(){if(active&&lensMap)lensMap.setView(mainMap.getCenter(),Math.min(19,mainMap.getZoom()+dz),{animate:false})});
-  const api={
-    toggle:function(){
-      active=!active;
-      if(active){
-        ensureLensMap();
-        lensEl.style.display='block';
-        setTimeout(function(){lensMap.invalidateSize();lensMap.setView(mainMap.getCenter(),Math.min(19,mainMap.getZoom()+dz),{animate:false})},50);
-      }else{
-        lensEl.style.display='none';
-      }
-      return active;
-    },
-    isActive:function(){return active}
-  };
-  zoomLensRegistry[key]=api;
-  return api;
-}
-function toggleZoomLens(key){
-  const map={dt:'mapInstance',uf:'ufMapInstance',ov:'ovMapInstance'}[key];
-  const btnId={dt:'mapLensBtn',uf:'ufLensBtn',ov:'ovLensBtn'}[key];
-  const lens=zoomLensRegistry[key];
-  if(!lens||!window[map]){return}
-  const on=lens.toggle();
-  const btn=document.getElementById(btnId);
-  if(btn)btn.classList.toggle('active',on);
-}
 
 function initMap(){
   if(mapInitialized)return;
@@ -1187,7 +1117,6 @@ function initMap(){
     renderMap(filteredData);
   },500);
   setTimeout(()=>{mapInstance.invalidateSize()},1500);
-  createZoomLens(mapInstance,'dt',2);
 }
 
 function renderMap(data){
@@ -1389,7 +1318,6 @@ function initUfMap(){
   ufMapInitialized=true;
   const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'OSM'});
   ufMapInstance=L.map('ufMapContainer',{zoomControl:true,layers:[osm],preferCanvas:true}).setView([6.55,3.38],11);
-  createZoomLens(ufMapInstance,'uf',2);
   ufLayerGroup=L.featureGroup().addTo(ufMapInstance);
   // Dedicated SVG renderer so UF markers are real <path> elements that CSS can animate
   ufSvgRenderer=L.svg({padding:0.5}).addTo(ufMapInstance);
@@ -1675,7 +1603,6 @@ function initOverviewMap(){
   const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Esri'});
   const hot=L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',{maxZoom:19,attribution:'OSM HOT'});
   ovMapInstance=L.map('ovMapContainer',{zoomControl:true,layers:[osm],preferCanvas:true}).setView([6.55,3.38],11);
-  createZoomLens(ovMapInstance,'ov',2);
   L.control.layers({'OpenStreetMap':osm,'Dark Gray (Esri)':dark,'Satellite (Esri)':sat,'Humanitarian (OSM)':hot},null,{position:'bottomright',collapsed:true}).addTo(ovMapInstance);
   // Load all network layers from OV_NETWORK_DATA
   if(typeof OV_NETWORK_DATA!=='undefined'){
