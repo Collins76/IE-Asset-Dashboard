@@ -549,6 +549,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <div id="ovSearchWrap"><span class="ov-search-icon">&#128269;</span><input type="text" id="ovSearch" placeholder="Search network features..." oninput="ovSearchDebounced()" onkeydown="ovSugNav(event)" autocomplete="off"><div id="ovSuggestions"></div></div>
     <div id="ovFilterBar">
       <div class="ovf-wrap" id="ovfBU"><button class="ovf-btn" onclick="ovfToggle('ovfBU')">BU &#9662;</button><div class="ovf-drop"></div></div>
+      <div class="ovf-wrap" id="ovfVoltage"><button class="ovf-btn" onclick="ovfToggle('ovfVoltage')">Voltage &#9662;</button><div class="ovf-drop"></div></div>
       <div class="ovf-wrap" id="ovfUT"><button class="ovf-btn" onclick="ovfToggle('ovfUT')">UT &#9662;</button><div class="ovf-drop"></div></div>
       <div class="ovf-wrap" id="ovfFeeder"><button class="ovf-btn" onclick="ovfToggle('ovfFeeder')">Feeder &#9662;</button><div class="ovf-drop"></div></div>
       <div class="ovf-wrap" id="ovfDT"><button class="ovf-btn" onclick="ovfToggle('ovfDT')">DT Name &#9662;</button><div class="ovf-drop"></div></div>
@@ -1897,7 +1898,7 @@ function buildOvFilters(){
 // ===== Overview Map Filter Dropdowns (multi-select, cascading) =====
 // Master data: array of {bu, ut, feeder, dt, lat, lng, layer(leaflet)}
 var _ovfData=[];
-var _ovfLabels={ovfBU:'BU',ovfUT:'UT',ovfFeeder:'Feeder',ovfDT:'DT Name'};
+var _ovfLabels={ovfBU:'BU',ovfVoltage:'Voltage',ovfUT:'UT',ovfFeeder:'Feeder',ovfDT:'DT Name'};
 var _ovfTimer=null;
 // Per-feeder HT line data: {feederName: {bu, color, lines: [[[lat,lng],...]]}}
 var _ovfHTIndex={};
@@ -1943,10 +1944,12 @@ function buildOvDropdownFilters(){
     if(!lid.includes('_dss_'))return;
     var info=OV_LAYERS[lid];if(!info)return;
     var layerBU=lid.replace(/^(11kv|33kv)_dss_/,'').toUpperCase().replace('ABULE_EGBA','ABULE EGBA');
+    var layerVoltage=lid.startsWith('33kv')?'33kV':'11kV';
     info.layer.eachLayer(function(sl){
       var p=sl.feature?sl.feature.properties:{};
       _ovfData.push({
         bu:layerBU,
+        voltage:layerVoltage,
         ut:_normUT_OV(p.UT_NAME||''),
         feeder:_normFeeder_OV(p.FEEDER_NAME||p.FED_NAME||''),
         dt:p.name||'',
@@ -1992,9 +1995,10 @@ function _ovfGetSel(wrapId){
 }
 
 function _ovfFiltered(){
-  var sBU=_ovfGetSel('ovfBU'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
+  var sBU=_ovfGetSel('ovfBU'),sV=_ovfGetSel('ovfVoltage'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
   return _ovfData.filter(function(r){
     if(sBU.length&&sBU.indexOf(r.bu)===-1)return false;
+    if(sV.length&&sV.indexOf(r.voltage)===-1)return false;
     if(sUT.length&&sUT.indexOf(r.ut)===-1)return false;
     if(sFeed.length&&sFeed.indexOf(r.feeder)===-1)return false;
     if(sDT.length&&sDT.indexOf(r.dt)===-1)return false;
@@ -2003,9 +2007,17 @@ function _ovfFiltered(){
 }
 
 function _ovfPopulate(){
-  var sBU=_ovfGetSel('ovfBU'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
+  var sBU=_ovfGetSel('ovfBU'),sV=_ovfGetSel('ovfVoltage'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
   // Compute available options based on other filters (cascading)
   var forBU=_ovfData.filter(function(r){
+    if(sV.length&&sV.indexOf(r.voltage)===-1)return false;
+    if(sUT.length&&sUT.indexOf(r.ut)===-1)return false;
+    if(sFeed.length&&sFeed.indexOf(r.feeder)===-1)return false;
+    if(sDT.length&&sDT.indexOf(r.dt)===-1)return false;
+    return true;
+  });
+  var forVoltage=_ovfData.filter(function(r){
+    if(sBU.length&&sBU.indexOf(r.bu)===-1)return false;
     if(sUT.length&&sUT.indexOf(r.ut)===-1)return false;
     if(sFeed.length&&sFeed.indexOf(r.feeder)===-1)return false;
     if(sDT.length&&sDT.indexOf(r.dt)===-1)return false;
@@ -2013,28 +2025,33 @@ function _ovfPopulate(){
   });
   var forUT=_ovfData.filter(function(r){
     if(sBU.length&&sBU.indexOf(r.bu)===-1)return false;
+    if(sV.length&&sV.indexOf(r.voltage)===-1)return false;
     if(sFeed.length&&sFeed.indexOf(r.feeder)===-1)return false;
     if(sDT.length&&sDT.indexOf(r.dt)===-1)return false;
     return true;
   });
   var forFeed=_ovfData.filter(function(r){
     if(sBU.length&&sBU.indexOf(r.bu)===-1)return false;
+    if(sV.length&&sV.indexOf(r.voltage)===-1)return false;
     if(sUT.length&&sUT.indexOf(r.ut)===-1)return false;
     if(sDT.length&&sDT.indexOf(r.dt)===-1)return false;
     return true;
   });
   var forDT=_ovfData.filter(function(r){
     if(sBU.length&&sBU.indexOf(r.bu)===-1)return false;
+    if(sV.length&&sV.indexOf(r.voltage)===-1)return false;
     if(sUT.length&&sUT.indexOf(r.ut)===-1)return false;
     if(sFeed.length&&sFeed.indexOf(r.feeder)===-1)return false;
     return true;
   });
   _ovfRenderDrop('ovfBU','bu',forBU,sBU);
+  _ovfRenderDrop('ovfVoltage','voltage',forVoltage,sV);
   _ovfRenderDrop('ovfUT','ut',forUT,sUT);
   _ovfRenderDrop('ovfFeeder','feeder',forFeed,sFeed);
   _ovfRenderDrop('ovfDT','dt',forDT,sDT);
   // Update button labels
   _ovfBtnLabel('ovfBU',sBU);
+  _ovfBtnLabel('ovfVoltage',sV);
   _ovfBtnLabel('ovfUT',sUT);
   _ovfBtnLabel('ovfFeeder',sFeed);
   _ovfBtnLabel('ovfDT',sDT);
@@ -2083,7 +2100,7 @@ function ovfResetAll(){
     // Clear dropdown search inputs
     document.querySelectorAll('#ovFilterBar .ovf-drop input[type="text"]').forEach(function(inp){inp.value='';ovfSearchDrop(inp)});
     // Reset button labels to default
-    var defaultLabels={ovfBU:'BU',ovfUT:'UT',ovfFeeder:'Feeder',ovfDT:'DT'};
+    var defaultLabels={ovfBU:'BU',ovfVoltage:'Voltage',ovfUT:'UT',ovfFeeder:'Feeder',ovfDT:'DT'};
     document.querySelectorAll('#ovFilterBar .ovf-wrap').forEach(function(wrap){
       var btn=wrap.querySelector('.ovf-btn');
       if(!btn)return;
@@ -2378,8 +2395,8 @@ function _ovfGetLayerBU(lid){
   return '';
 }
 
-function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
-  var noFilter=!sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length;
+function _ovfApplyVisibility(sBU,sV,sUT,sFeed,sDT){
+  var noFilter=!sBU.length&&!sV.length&&!sUT.length&&!sFeed.length&&!sDT.length;
 
   // Always clear previous temp HT lines
   _ovfClearHTTemp();
@@ -2432,13 +2449,14 @@ function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
   var matchedSet=new Set();
   _ovfFiltered().forEach(function(r){matchedSet.add(r.layer)});
 
-  var hasSubFilter=sUT.length||sFeed.length||sDT.length;
+  var hasSubFilter=sV.length||sUT.length||sFeed.length||sDT.length;
 
   Object.keys(OV_LAYERS).forEach(function(lid){
     var info=OV_LAYERS[lid];if(!info)return;
     var isDSS=lid.includes('_dss_');
     var isHT=lid.startsWith('ht_lines_');
     var is11kv=lid.startsWith('11kv_dss');
+    var layerVoltage=lid.startsWith('33kv')?'33kV':'11kV';
 
     if(!isDSS&&!isHT)return;
 
@@ -2461,6 +2479,11 @@ function _ovfApplyVisibility(sBU,sUT,sFeed,sDT){
 
     // DSS: if BU selected and this layer's BU not in selection, hide entire layer
     if(sBU.length&&sBU.indexOf(layerBU)===-1){
+      if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
+      return;
+    }
+    // Voltage filter: hide entire layer if voltage not in selection
+    if(sV.length&&sV.indexOf(layerVoltage)===-1){
       if(ovMapInstance.hasLayer(info.layer))ovMapInstance.removeLayer(info.layer);
       return;
     }
@@ -2509,18 +2532,18 @@ function _ovfZoom(){
   // Clear previous labels
   _ovfClearLabels();
 
-  var sBU=_ovfGetSel('ovfBU'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
-  var noFilter=!sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length;
+  var sBU=_ovfGetSel('ovfBU'),sV=_ovfGetSel('ovfVoltage'),sUT=_ovfGetSel('ovfUT'),sFeed=_ovfGetSel('ovfFeeder'),sDT=_ovfGetSel('ovfDT');
+  var noFilter=!sBU.length&&!sV.length&&!sUT.length&&!sFeed.length&&!sDT.length;
 
   // Apply visibility: hide non-matching features/layers
-  _ovfApplyVisibility(sBU,sUT,sFeed,sDT);
+  _ovfApplyVisibility(sBU,sV,sUT,sFeed,sDT);
 
   if(noFilter){
     ovMapInstance.flyTo([6.55,3.38],11,{duration:0.6});
     return;
   }
 
-  // BU-only: zoom to entire BU boundary (include HT lines extent)
+  // BU-only (with optional voltage): zoom to entire BU boundary (include HT lines extent)
   var bounds=L.latLngBounds([]);
   if(sBU.length&&!sUT.length&&!sFeed.length&&!sDT.length){
     var buBoundsMap={};
@@ -2530,6 +2553,8 @@ function _ovfZoom(){
       if(!isDSS&&!isHT)return;
       var layerBU=_ovfGetLayerBU(lid);
       if(sBU.indexOf(layerBU)===-1)return;
+      var lidVoltage=lid.startsWith('33kv')?'33kV':'11kV';
+      if(sV.length&&sV.indexOf(lidVoltage)===-1)return;
       var info=OV_LAYERS[lid];if(!info)return;
       if(!buBoundsMap[layerBU])buBoundsMap[layerBU]=L.latLngBounds([]);
       if(info.bounds)buBoundsMap[layerBU].extend(info.bounds);
