@@ -1111,6 +1111,36 @@ function initMap(){
     'Humanitarian (OSM)':osmHot
   },null,{position:'bottomright',collapsed:false}).addTo(mapInstance);
 
+  // Add UT and Lagos boundaries from network overview data
+  if(typeof OV_NETWORK_DATA!=='undefined'){
+    const utFeatures=OV_NETWORK_DATA.features.filter(f=>f.properties._layer==='ut_boundary');
+    const lagosFeatures=OV_NETWORK_DATA.features.filter(f=>f.properties._layer==='lagos');
+    if(lagosFeatures.length){
+      L.geoJSON({type:'FeatureCollection',features:lagosFeatures},{
+        style:function(){return {color:'#f43f5e',weight:4,fillColor:'#f43f5e',fillOpacity:0.05,dashArray:''}},
+        onEachFeature:function(f,l){l.bindPopup('<b style="color:#f43f5e">Lagos State Boundary</b>')}
+      }).addTo(mapInstance);
+    }
+    if(utFeatures.length){
+      L.geoJSON({type:'FeatureCollection',features:utFeatures},{
+        style:function(feature){
+          const c=typeof getUtColor==='function'?getUtColor(feature.properties.name||''):'#64748b';
+          return {color:c,weight:2,fillColor:c,fillOpacity:0.1,dashArray:''}
+        },
+        onEachFeature:function(feature,layer){
+          const name=feature.properties.name||'';
+          if(name){
+            layer.bindTooltip(name,{permanent:true,direction:'center',className:'ut-label',opacity:0.85});
+            const c=typeof getUtColor==='function'?getUtColor(name):'#64748b';
+            layer.bindPopup('<b style="color:'+c+'">'+name+'</b><br>UT Boundary');
+          }
+          layer.on('mouseover',function(){this.setStyle({weight:4,fillOpacity:0.2})});
+          layer.on('mouseout',function(){this.setStyle({weight:2,fillOpacity:0.1})});
+        }
+      }).addTo(mapInstance);
+    }
+  }
+
   // Give the container time to fully render, then size + draw markers
   setTimeout(()=>{
     mapInstance.invalidateSize();
