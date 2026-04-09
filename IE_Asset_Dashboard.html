@@ -1740,7 +1740,7 @@ function initOverviewMap(){
             const mid=firstRing[Math.floor(firstRing.length/2)]||firstRing[0];
             const ll=L.latLng(mid[1],mid[0]);
             const shim={getLatLng:function(){return ll}};
-            const searchStr=[p.name||'',p.BU||'',p.UT_NAME||'',p.FEEDER_NAME||p.Feeder_Nam||'',p._bu||'',def.name].join('|').toLowerCase();
+            const searchStr=[p.name||'',p.BU||'',p.UT_NAME||'',p.FEEDER_NAME||p.Feeder_Nam||'',p._bu||'',def.name,p.LAT||'',p.LONG||''].join('|').toLowerCase();
             ovSearchableFeatures.push({layer:shim,name:p.name||p.FEEDER_NAME||p.FED_NAME||'HT Feeder',detail:def.name,bu:p._bu||p.BU||'',color:def.color,search:searchStr});
           }
         });
@@ -1863,7 +1863,7 @@ function initOverviewMap(){
           const p=feature.properties;
           const c=p._color||def.color;
           // Store for search
-          const searchStr=[p.name||'',p.BU||'',p.UT_NAME||'',p.FEEDER_NAME||p.Feeder_Nam||'',p._bu||'',def.name].join('|').toLowerCase();
+          const searchStr=[p.name||'',p.BU||'',p.UT_NAME||'',p.FEEDER_NAME||p.Feeder_Nam||'',p._bu||'',def.name,p.LAT||'',p.LONG||''].join('|').toLowerCase();
           ovSearchableFeatures.push({layer:layer,name:p.name||'',detail:def.name,bu:p._bu||p.BU||'',color:c,search:searchStr});
           // Add permanent label for UT boundaries
           if(def.id==='ut_boundary'&&p.name){
@@ -2920,6 +2920,36 @@ function ovSearch(){
     sugBox.classList.remove('show');sugBox._matches=[];
     return;
   }
+  // Detect coordinate input (e.g. "6.639129,3.670573" or "6.639129, 3.670573")
+  const coordMatch=q.match(/^\s*(-?\d+\.?\d*)\s*[,\s]\s*(-?\d+\.?\d*)\s*$/);
+  if(coordMatch){
+    const cLat=parseFloat(coordMatch[1]),cLng=parseFloat(coordMatch[2]);
+    if(!isNaN(cLat)&&!isNaN(cLng)&&cLat>=-90&&cLat<=90&&cLng>=-180&&cLng<=180){
+      // Find nearest features to these coordinates
+      const nearby=[];
+      for(let i=0;i<ovSearchableFeatures.length;i++){
+        const sf=ovSearchableFeatures[i];
+        const ll=sf.layer&&sf.layer.getLatLng?sf.layer.getLatLng():null;
+        if(!ll)continue;
+        const dist=Math.sqrt(Math.pow(ll.lat-cLat,2)+Math.pow(ll.lng-cLng,2));
+        nearby.push({sf:sf,dist:dist});
+      }
+      nearby.sort((a,b)=>a.dist-b.dist);
+      const coordMatches=nearby.slice(0,15).map(n=>n.sf);
+      // Add a "Go to coordinates" option at the top
+      const goToEntry={name:'Go to '+cLat.toFixed(6)+', '+cLng.toFixed(6),detail:'Zoom to coordinates',bu:'',color:'#10b981',search:'',layer:null,_coordLat:cLat,_coordLng:cLng};
+      const allMatches=[goToEntry,...coordMatches];
+      const html=[];
+      for(let i=0;i<allMatches.length;i++){
+        const m=allMatches[i];
+        const distLabel=i>0?(' · ~'+((nearby[i-1].dist*111).toFixed(1))+'km'):'';
+        html.push('<div class="sug-item" data-idx="'+i+'" onmousedown="selectOvSug('+i+')" onmouseover="ovSugIdx='+i+';highlightOvSug()"><div class="sug-name" style="color:'+m.color+'">'+(m.name||'Unknown')+'</div><div class="sug-detail">'+(m.detail||'')+distLabel+(m.bu?' · '+m.bu:'')+'</div></div>');
+      }
+      sugBox.innerHTML=html.join('');
+      sugBox.classList.add('show');sugBox._matches=allMatches;
+      return;
+    }
+  }
   const matches=[];
   for(let i=0;i<ovSearchableFeatures.length;i++){
     if(ovSearchableFeatures[i].search.includes(q)){
@@ -2945,6 +2975,14 @@ function selectOvSug(idx){
   const m=matches[idx];
   document.getElementById('ovSearch').value=m.name;
   sugBox.classList.remove('show');
+  // Handle "Go to coordinates" entry
+  if(m._coordLat!=null&&m._coordLng!=null&&ovMapInstance){
+    var ll=L.latLng(m._coordLat,m._coordLng);
+    ovMapInstance.flyTo(ll,17,{duration:0.8});
+    L.popup({maxWidth:300}).setLatLng(ll).setContent('<div style="font-size:13px;font-weight:700;color:#10b981;padding:2px 0">Coordinates</div><div style="font-size:11px;color:#94a3b8">'+m._coordLat.toFixed(6)+', '+m._coordLng.toFixed(6)+'</div>').openOn(ovMapInstance);
+    ovMapInstance.once('moveend',function(){_pulseMarkers(ovMapInstance,[{marker:{getLatLng:function(){return ll},setStyle:function(){}},lat:ll.lat,lng:ll.lng}])});
+    return;
+  }
   // Zoom to selected feature
   const layer=m.layer;
   if(!layer||!ovMapInstance)return;
