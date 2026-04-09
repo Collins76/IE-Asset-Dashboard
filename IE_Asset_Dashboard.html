@@ -2924,29 +2924,26 @@ function ovSearch(){
   const coordMatch=q.match(/^\s*(-?\d+\.?\d*)\s*[,\s]\s*(-?\d+\.?\d*)\s*$/);
   if(coordMatch){
     const cLat=parseFloat(coordMatch[1]),cLng=parseFloat(coordMatch[2]);
-    if(!isNaN(cLat)&&!isNaN(cLng)&&cLat>=-90&&cLat<=90&&cLng>=-180&&cLng<=180){
-      // Find nearest features to these coordinates
-      const nearby=[];
-      for(let i=0;i<ovSearchableFeatures.length;i++){
-        const sf=ovSearchableFeatures[i];
-        const ll=sf.layer&&sf.layer.getLatLng?sf.layer.getLatLng():null;
-        if(!ll)continue;
-        const dist=Math.sqrt(Math.pow(ll.lat-cLat,2)+Math.pow(ll.lng-cLng,2));
-        nearby.push({sf:sf,dist:dist});
+    if(!isNaN(cLat)&&!isNaN(cLng)&&cLat>=-90&&cLat<=90&&cLng>=-180&&cLng<=180&&ovMapInstance){
+      sugBox.classList.remove('show');sugBox._matches=[];
+      var ll=L.latLng(cLat,cLng);
+      ovMapInstance.flyTo(ll,17,{duration:0.8});
+      // Find nearest feature to show in popup
+      var nearest=null,nearDist=Infinity;
+      for(var i=0;i<ovSearchableFeatures.length;i++){
+        var sf=ovSearchableFeatures[i];
+        var sll=sf.layer&&sf.layer.getLatLng?sf.layer.getLatLng():null;
+        if(!sll)continue;
+        var d=Math.sqrt(Math.pow(sll.lat-cLat,2)+Math.pow(sll.lng-cLng,2));
+        if(d<nearDist){nearDist=d;nearest=sf}
       }
-      nearby.sort((a,b)=>a.dist-b.dist);
-      const coordMatches=nearby.slice(0,15).map(n=>n.sf);
-      // Add a "Go to coordinates" option at the top
-      const goToEntry={name:'Go to '+cLat.toFixed(6)+', '+cLng.toFixed(6),detail:'Zoom to coordinates',bu:'',color:'#10b981',search:'',layer:null,_coordLat:cLat,_coordLng:cLng};
-      const allMatches=[goToEntry,...coordMatches];
-      const html=[];
-      for(let i=0;i<allMatches.length;i++){
-        const m=allMatches[i];
-        const distLabel=i>0?(' · ~'+((nearby[i-1].dist*111).toFixed(1))+'km'):'';
-        html.push('<div class="sug-item" data-idx="'+i+'" onmousedown="selectOvSug('+i+')" onmouseover="ovSugIdx='+i+';highlightOvSug()"><div class="sug-name" style="color:'+m.color+'">'+(m.name||'Unknown')+'</div><div class="sug-detail">'+(m.detail||'')+distLabel+(m.bu?' · '+m.bu:'')+'</div></div>');
+      var nearHTML=nearest?'<div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a2535"><div style="font-size:10px;color:#475569;margin-bottom:2px">Nearest feature (~'+(nearDist*111).toFixed(1)+'km)</div><div style="font-size:12px;font-weight:600;color:'+(nearest.color||'#94a3b8')+'">'+(nearest.name||'Unknown')+'</div><div style="font-size:10px;color:#64748b">'+(nearest.detail||'')+(nearest.bu?' · '+nearest.bu:'')+'</div></div>':'';
+      L.popup({maxWidth:350}).setLatLng(ll).setContent('<div style="min-width:200px"><div style="font-size:13px;font-weight:700;color:#10b981;padding-bottom:2px">'+cLat.toFixed(6)+', '+cLng.toFixed(6)+'</div>'+nearHTML+'</div>').openOn(ovMapInstance);
+      ovMapInstance.once('moveend',function(){_pulseMarkers(ovMapInstance,[{marker:{getLatLng:function(){return ll},setStyle:function(){}},lat:ll.lat,lng:ll.lng}])});
+      // If nearest is very close (<50m), open its popup instead
+      if(nearest&&nearDist<0.0005&&nearest.layer&&typeof nearest.layer.openPopup==='function'){
+        try{nearest.layer.openPopup()}catch(e){}
       }
-      sugBox.innerHTML=html.join('');
-      sugBox.classList.add('show');sugBox._matches=allMatches;
       return;
     }
   }
