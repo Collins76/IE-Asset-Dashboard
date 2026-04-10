@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}button,a,label,input,select,[onclick]{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0b1015;--bg2:#101820;--bg3:#161e28;--bg4:#1c2632;--accent:#00d4ff;--accent2:#0099cc;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;--orange:#f97316;--pink:#ec4899;--teal:#14b8a6;--text:#e2e8f0;--text2:#7a8a9e;--border:#1a2535;--card:#0f171f}
@@ -368,6 +369,56 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 .leaflet-popup-content b{color:var(--green)}
 .leaflet-control-layers{background:rgba(11,16,21,.94)!important;border:1px solid var(--border)!important;border-radius:8px!important;color:var(--text)!important;padding:8px 12px!important;box-shadow:0 4px 16px rgba(0,0,0,.5)!important;backdrop-filter:blur(8px)}
 .leaflet-control-layers label{color:var(--text)!important;font-size:12px}
+/* DT MAINTENANCE PAGE */
+.maint-upload-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.maint-drop{background:linear-gradient(160deg,#0d151d,#101a24);border:2px dashed rgba(16,185,129,.35);border-radius:12px;padding:18px 18px 16px;position:relative;transition:border-color .2s,background .2s;cursor:pointer}
+.maint-drop.dragover{border-color:#10b981;background:linear-gradient(160deg,#0f1d24,#112331)}
+.maint-drop.loaded{border-color:rgba(16,185,129,.6);border-style:solid;background:linear-gradient(160deg,#0d1b21,#0f2130)}
+.maint-drop-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.maint-drop-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#0d2a22,#0a3429);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.maint-drop.public .maint-drop-icon{background:linear-gradient(135deg,#0d1f2a,#0a2634)}
+.maint-drop-title{font-size:13px;color:#fff;font-weight:700;letter-spacing:.3px}
+.maint-drop-title .m-tag{display:inline-block;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:6px;font-weight:600;letter-spacing:.5px}
+.maint-drop.private .m-tag{background:rgba(16,185,129,.15);color:#10b981}
+.maint-drop.public .m-tag{background:rgba(0,212,255,.15);color:#00d4ff}
+.maint-drop-sub{font-size:10.5px;color:var(--text2);margin-bottom:10px}
+.maint-drop-status{font-size:11px;color:var(--text2);padding:6px 0;border-top:1px dashed var(--border);margin-top:4px;min-height:22px}
+.maint-drop-status b{color:#10b981}
+.maint-drop-status .m-err{color:#ef4444}
+.maint-drop-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.maint-btn-sm{padding:5px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;transition:background .15s,border-color .15s,color .15s}
+.maint-btn-sm:hover{border-color:#10b981;color:#10b981}
+.maint-btn-sm.primary{background:linear-gradient(135deg,#10b981,#0d9668);border-color:#10b981;color:#000}
+.maint-btn-sm.primary:hover{background:linear-gradient(135deg,#14c89b,#0fb37d);color:#000}
+.maint-btn-sm.danger:hover{border-color:#ef4444;color:#ef4444}
+.maint-controls{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;background:linear-gradient(180deg,#0c141c,#0e1820);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+.maint-controls .mc-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.maint-controls select,.maint-controls input[type="text"]{padding:7px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:12px;outline:none}
+.maint-controls select:focus,.maint-controls input[type="text"]:focus{border-color:#10b981;box-shadow:0 0 8px rgba(16,185,129,.2)}
+.maint-controls input[type="text"]{min-width:220px;flex:1;max-width:360px}
+.maint-view-toggle{display:flex;gap:0;background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.maint-view-btn{padding:7px 14px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:11.5px;font-weight:600;transition:background .15s,color .15s;border-right:1px solid var(--border)}
+.maint-view-btn:last-child{border-right:none}
+.maint-view-btn:hover{color:var(--text);background:var(--bg4)}
+.maint-view-btn.active{background:var(--green);color:#000}
+.maint-empty{text-align:center;padding:54px 20px;background:linear-gradient(160deg,#0d151d,#101a24);border:1px solid var(--border);border-radius:12px;color:var(--text2)}
+.maint-empty .m-emoji{font-size:42px;margin-bottom:10px;opacity:.5}
+.maint-empty h3{color:var(--text);font-size:16px;font-weight:700;margin-bottom:6px}
+.maint-empty p{font-size:12px;max-width:460px;margin:0 auto;line-height:1.6}
+.maint-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.maint-badge.own-private{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)}
+.maint-badge.own-public{background:rgba(0,212,255,.15);color:#00d4ff;border:1px solid rgba(0,212,255,.3)}
+.maint-badge.cat{background:rgba(139,92,246,.12);color:#a78bfa;border:1px solid rgba(139,92,246,.25)}
+.maint-table td{font-size:11.5px;padding:7px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.maint-table th{font-size:10.5px}
+.maint-old-val{color:#ef4444;font-size:11px}
+.maint-new-val{color:#10b981;font-size:11px}
+.maint-arrow{color:var(--text2);margin:0 4px}
+@media(max-width:900px){
+  .maint-upload-row{grid-template-columns:1fr}
+  .maint-controls{gap:8px;padding:10px}
+  .maint-controls input[type="text"]{min-width:0;flex:1 1 100%;max-width:none}
+}
 </style>
 </head>
 <body>
@@ -385,6 +436,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <button class="nav-tab active" data-page="summary">Executive Summary</button>
     <button class="nav-tab" data-page="network">Network Infrastructure</button>
     <button class="nav-tab" data-page="metering">Metering Analytics</button>
+    <button class="nav-tab" data-page="maint">DT Maintenance</button>
     <button class="nav-tab" data-page="operations">Operational Status</button>
     <button class="nav-tab" data-page="upriser">Upriser &amp; Feeder Pillar</button>
     <button class="nav-tab" data-page="map">Geospatial DT Map</button>
@@ -481,6 +533,84 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
   <div class="chart-grid g2">
     <div class="chart-box"><h4>Unmetered Transformers by Business Unit</h4><div class="chart-container" id="ch_met_unmetered_bu"></div></div>
     <div class="chart-box"><h4>Meter Coverage by Business Unit</h4><div class="chart-container" id="ch_met_coverage"></div></div>
+  </div>
+</div>
+
+<!-- PAGE: DT MAINTENANCE -->
+<div class="page" id="page-maint">
+  <div class="maint-upload-row">
+    <div class="maint-drop private" id="maintDropPrivate">
+      <div class="maint-drop-head">
+        <div class="maint-drop-icon">&#128228;</div>
+        <div>
+          <div class="maint-drop-title">Private DT Workbook<span class="m-tag">PRIVATE</span></div>
+          <div class="maint-drop-sub">Drag &amp; drop or browse for IEGIS008 Private DT maintenance file</div>
+        </div>
+      </div>
+      <div class="maint-drop-status" id="maintStatusPrivate">No file loaded.</div>
+      <div class="maint-drop-actions">
+        <input type="file" id="maintFilePrivate" accept=".xlsx,.xls" style="display:none" onchange="maintHandleFile(event,'Private')">
+        <button class="maint-btn-sm primary" type="button" onclick="document.getElementById('maintFilePrivate').click()">Choose File</button>
+        <button class="maint-btn-sm danger" type="button" onclick="maintClearOne('Private')">Clear</button>
+      </div>
+    </div>
+    <div class="maint-drop public" id="maintDropPublic">
+      <div class="maint-drop-head">
+        <div class="maint-drop-icon">&#128228;</div>
+        <div>
+          <div class="maint-drop-title">Public DT Workbook<span class="m-tag">PUBLIC</span></div>
+          <div class="maint-drop-sub">Drag &amp; drop or browse for IEGIS008 Public DT maintenance file</div>
+        </div>
+      </div>
+      <div class="maint-drop-status" id="maintStatusPublic">No file loaded.</div>
+      <div class="maint-drop-actions">
+        <input type="file" id="maintFilePublic" accept=".xlsx,.xls" style="display:none" onchange="maintHandleFile(event,'Public')">
+        <button class="maint-btn-sm primary" type="button" onclick="document.getElementById('maintFilePublic').click()">Choose File</button>
+        <button class="maint-btn-sm danger" type="button" onclick="maintClearOne('Public')">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="maint-controls">
+    <div style="display:flex;align-items:center;gap:6px"><span class="mc-label">Period:</span><select id="maintPeriod" onchange="maintOnPeriodChange()"><option value="">(none)</option></select></div>
+    <div class="maint-view-toggle">
+      <button class="maint-view-btn active" data-view="all" onclick="maintSetView('all')">All DTs</button>
+      <button class="maint-view-btn" data-view="Private" onclick="maintSetView('Private')">Private</button>
+      <button class="maint-view-btn" data-view="Public" onclick="maintSetView('Public')">Public</button>
+    </div>
+    <input type="text" id="maintSearch" placeholder="Search DT number, name, feeder, BU..." oninput="renderMaintTable()">
+    <div style="flex:1"></div>
+    <button class="maint-btn-sm danger" type="button" onclick="maintClearAll()">Clear All Data</button>
+  </div>
+
+  <div id="maintEmpty" class="maint-empty">
+    <div class="m-emoji">&#128194;</div>
+    <h3>No Maintenance Data Loaded</h3>
+    <p>Upload the monthly Private and Public IEGIS008 workbooks above to view change records, KPIs, and analytics. Empty template workbooks (headers only, no data rows) are handled gracefully.</p>
+  </div>
+
+  <div id="maintDashboard" style="display:none">
+    <div class="kpi-grid" id="maintKpiGrid"></div>
+
+    <div class="chart-grid g2">
+      <div class="chart-box"><h4>Records by Business Unit</h4><div class="chart-container" id="ch_maint_bu"></div></div>
+      <div class="chart-box"><h4>Top 10 Change Categories</h4><div class="chart-container" id="ch_maint_cat"></div></div>
+    </div>
+
+    <div class="chart-box" style="padding:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <h4 style="margin:0;flex:1">Change Log</h4>
+        <div class="ms-wrap" id="fMaintBU" style="width:150px"><button class="ms-btn" onclick="toggleMS('fMaintBU')">All BUs</button><div class="ms-panel"></div></div>
+        <div class="ms-wrap" id="fMaintCat" style="width:200px"><button class="ms-btn" onclick="toggleMS('fMaintCat')">All Categories</button><div class="ms-panel"></div></div>
+        <select id="maintPageSize" onchange="renderMaintTable()" style="padding:7px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:11px"><option>25</option><option>50</option><option>100</option><option value="99999">All</option></select>
+        <button class="btn btn-csv" type="button" onclick="maintExportCSV()" style="border-color:var(--green);color:var(--green)">&#128196; CSV</button>
+        <button class="btn btn-pdf" type="button" onclick="maintExportPDF()" style="border-color:var(--accent);color:var(--accent)">&#128196; PDF</button>
+      </div>
+      <div class="table-wrap" style="max-height:calc(100vh - 540px);min-height:280px;overflow:auto">
+        <table class="data-table maint-table" style="width:100%"><thead><tr id="maintThead"></tr></thead><tbody id="maintTbody"></tbody></table>
+      </div>
+      <div id="maintPagination" class="pagination" style="margin-top:10px"></div>
+    </div>
   </div>
 </div>
 
@@ -606,6 +736,7 @@ document.querySelectorAll('.nav-tab').forEach(tab=>{
     if(currentPage==='upriser'){renderUpriserPage()}
     else if(currentPage==='map'){if(!mapInitialized)initMap();else if(mapInstance){setTimeout(()=>{mapInstance.invalidateSize();if(_pagesDirty.map){renderMap(filteredData);_pagesDirty.map=false}},150)}}
     else if(currentPage==='overview'){if(!ovMapInitialized)initOverviewMap();else if(ovMapInstance){setTimeout(()=>{ovMapInstance.invalidateSize();if(_pagesDirty.overview){renderOverviewMap();_pagesDirty.overview=false}},150)}}
+    else if(currentPage==='maint'){renderMaintenancePage()}
     else{renderActivePage()}
   });
 });
@@ -3526,6 +3657,773 @@ function renderAll(){
   renderActivePage();
 }
 
+// ============ DT MAINTENANCE MODULE ============
+// Sheet name -> human-readable change category
+const MAINT_CATEGORY_MAP={
+  'New DT':'New DT',
+  'New DT(VOLTAGE CHANGE)':'New DT (Voltage Change)',
+  'DT TO FEEDER CHANGE':'DT to Feeder Change','DT to feeder change':'DT to Feeder Change',
+  'CHANGE OF NOMENCLATURE':'Change of Nomenclature','Change of Nomenclature':'Change of Nomenclature',
+  'CHANGE OF COMMISSIONING STATUS':'Change of Commissioning Status',
+  'Change of Connection Status':'Change of Connection Status',
+  'DT TO UT':'DT to UT Change','DT to UT':'DT to UT Change',
+  'CHANGE CAPACITY':'Change of Capacity','Change of Capacity':'Change of Capacity',
+  'CHANGE OF METERING STATUS':'Change of Metering Status','Change of Metering Status':'Change of Metering Status',
+  'CHANGE OF METER NUMBER':'Change of Meter Number','Change of Meter Number':'Change of Meter Number',
+  'CHANGE OF COORDINATES':'Change of Coordinates','Change of Coordinate':'Change of Coordinates',
+  'CHANGE OF CIS NUMBER':'Change of CIS Number',
+  'CHANGE OF ADDRESS':'Change of Address','Change of Address':'Change of Address',
+  'CHANGE PUBLIC TO PRIVATE':'Change Public to Private','Change Public to Private':'Change Public to Private',
+  'CHANGE PRIVATE TO PUBLIC':'Change Private to Public',
+  'FEEDER NAME CHANGE':'Feeder Name Change','Feeder Name Change':'Feeder Name Change',
+  'NEW FEEDER CREATION':'New Feeder Creation',
+  'DUPLICATE DT':'Duplicate DT','Duplicate DT':'Duplicate DT',
+  'DELETE DT':'Delete DT','DT TO BE DELETED':'Delete DT',
+  'ISS TO FEEDER CHANGE':'ISS to Feeder Change',
+  'DT Loadshedding':'DT Loadshedding',
+  'TBC':'To Be Confirmed',
+  'MISSING DT':'Missing DT',
+  'MOVE TO PRIVATE SHEET FROM WIP':'Move to Private (from WIP)',
+  'MD ON PUBLIC TO BE REMOVED':'MD on Public to Remove',
+  'POINT LOAD MAPPED AS MD ON PUBL':'Point Load on Public',
+  'ISS STATION TRANSFORMER':'ISS Station Transformer',
+  'MOVE TO MD ON PUBLIC':'Move to MD on Public',
+  'MD ON WRONG PUBLIC DT':'MD on Wrong Public DT',
+  'DUPLICATE DT NUMBER':'Duplicate DT Number',
+  'NEW CONNECTIONS_NOT TREATED':'New Connections (Not Treated)',
+  'OTHERS':'Others',
+  'PPM ON WRONG SHARED PRIVATE DT':'PPM on Wrong Shared Private DT'
+};
+// Utility sheets to skip entirely
+const MAINT_SKIP_SHEETS=new Set(['DROP DOWN OPTIONS','ESRI_MAPINFO_SHEET','SUMMARY','SUMMARY OF TABS']);
+// Private-only markers (for workbook type detection)
+const MAINT_PRIVATE_MARKERS=new Set(['CHANGE OF COMMISSIONING STATUS','New DT(VOLTAGE CHANGE)','CHANGE OF CIS NUMBER','MISSING DT','MD ON PUBLIC TO BE REMOVED','PPM ON WRONG SHARED PRIVATE DT']);
+const MAINT_PUBLIC_MARKERS=new Set(['DT Loadshedding','Change of Connection Status','DT to feeder change','Change of Nomenclature']);
+
+// Unified-schema column name candidates (fuzzy header matching)
+const MAINT_COLS={
+  bu:['BU','Business Unit','BUSINESS UNIT'],
+  ut:['UT','Undertaking','UNDERTAKING'],
+  dtNumber:['DT Number','DT NUMBER','CIS DT Numbers','CIS DT Number','DT number','CIS DT NUMBERS','DT Numbers of DT to be deleted','DT NUMBERS OF DT TO BE DELETED'],
+  dtName:['New Unique DT Nomenclature','Proposed unique DT Nomenclature Name','Unique DT Nomenclature Name','New Unique Dt Nomenclature','Nomenclature of DT to be deleted','NEW UNIQUE DT NOMENCLATURE','PROPOSED UNIQUE DT NOMENCLATURE NAME'],
+  feeder:['Feeder','Feeder Name','Proposed Feeder','New Feeder','New Feeder Name','FEEDER','FEEDER NAME','PROPOSED FEEDER','FEEDER NOMENCLATURE','PROPOSED FEEDER NOMENCLATURE'],
+  capacity:['Capacity (KVA)','Capacity (kVA)','Capacity KVA','Capacity','New Capacity (kVA)','DT Capacity (kVA)','CAPACITY','CAPACITY KVA','CAPACITY (KVA)'],
+  meteringStatus:['Metering Status','Meter Status','Meter  Status','METERING STATUS'],
+  meterNumber:['Meter number','Meter Number','METER NUMBER','Meter  number','CORRECT METER NUMBER','Correct Meter Number','METER NO.','METER NO'],
+  latitude:['Latitude (Decimal Degrees)','Coordinates (LAT)','LAT','Lat','NEW  LAT','NEW LAT','LATITUDE','Latitude'],
+  longitude:['Longitude (Decimal Degrees)','Coordinates (LONG)','LONG','Long','NEW LONG','LONGITUDE','Longitude'],
+  address:['Address','Addresses','Correct Address','CORRECT ADDRESS','NEW ADDRESS','New Address','ADDRESS','Customer Address'],
+  remark:['Remark','Remarks','REMARK','REMARKS','Remarks Reason for Change','Comment','UT Remarks (Reason for change)','Reason For Disconnection','REMARK (Reason for change of capacity)','REMARK (REASON FOR ADDRESS CHANGE)','UT Remarks','Reason'],
+  state:['STATE','State'],
+  connectionStatus:['Connection Status','CONNECTION STATUS'],
+  commissioningStatus:['Commissioning Status','COMMISSIONING STATUS'],
+  // Multiple candidates for old/new pair — the parser picks the first match but also
+  // does category-specific fallbacks in normalizeRow().
+  oldValue:['OLD NAME','Old name','Old Name','Old Feeder Name','Old Name DT Name','Old DT Unique Nomenclature','Wrong CIS Number','WRONG Meter Number','Wrong Meter Number','OLD ADDRESS','Old Address','Old Capacity (kVA)','Old Feeder','Old Feeder No.'],
+  newValue:['NEW NAME','New name','New Name','New name (Nomenclature)','New DT Name','Correct CIS Number','Proposed unique DT Nomenclature Name','New Unique DT Nomenclature','New UT','New Capacity (kVA)','Proposed Feeder','Proposed Feeder No.']
+};
+
+// Normalize a header label: replace non-breaking spaces, collapse whitespace, trim
+function _maintNormHdr(h){return (h==null?'':String(h)).replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim()}
+
+// Build lookup map: normalized header -> column index
+function _maintHdrMap(hdrRow){
+  const m={};
+  for(let i=0;i<hdrRow.length;i++){
+    const h=_maintNormHdr(hdrRow[i]);
+    if(h){
+      m[h]=i;
+      m[h.toLowerCase()]=i;
+    }
+  }
+  return m;
+}
+
+// Find first column index whose header matches any candidate in the list
+function _maintFindCol(hdrMap,candidates){
+  for(let i=0;i<candidates.length;i++){
+    const c=_maintNormHdr(candidates[i]);
+    if(hdrMap[c]!=null)return hdrMap[c];
+    if(hdrMap[c.toLowerCase()]!=null)return hdrMap[c.toLowerCase()];
+  }
+  return -1;
+}
+
+// Detect header row: Row 0 is header unless Row 0 cell 0 contains "Document Control No"
+// OR Row 0 cell 0 is empty/null and Row 0 cell 1 contains "Document Control No"
+function _maintDetectHdrRow(rows){
+  if(!rows||rows.length===0)return 0;
+  const r0=rows[0]||[];
+  const c0=_maintNormHdr(r0[0]).toLowerCase();
+  const c1=_maintNormHdr(r0[1]).toLowerCase();
+  if(c0.includes('document control')||(!c0&&c1.includes('document control')))return 1;
+  // Some sheets have header on row 1 even without document control marker — fallback check:
+  // If row 0 has few cells and row 1 has many more, treat row 1 as header
+  if(r0.length<3&&rows[1]&&rows[1].length>=r0.length+2)return 1;
+  return 0;
+}
+
+function _maintNum(v){
+  if(v==null||v==='')return null;
+  const n=Number(String(v).replace(/[,\s]/g,''));
+  return isNaN(n)?null:n;
+}
+function _maintStr(v){
+  if(v==null)return null;
+  const s=String(v).replace(/\u00a0/g,' ').trim();
+  return s===''?null:s;
+}
+
+// Normalize a single data row from a sheet into the unified schema
+function _maintNormalizeRow(row,colMap,category,ownership,period,sheetName){
+  const g=(key)=>{const i=colMap[key];return i>=0?row[i]:undefined};
+  const rec={
+    id:(ownership+'_'+sheetName+'_'+Math.random().toString(36).slice(2,11)),
+    period:period||null,
+    ownership:ownership,
+    changeCategory:category,
+    sheetName:sheetName,
+    bu:_maintStr(g('bu')),
+    ut:_maintStr(g('ut')),
+    dtNumber:_maintStr(g('dtNumber')),
+    dtName:_maintStr(g('dtName')),
+    oldValue:_maintStr(g('oldValue')),
+    newValue:_maintStr(g('newValue')),
+    feeder:_maintStr(g('feeder')),
+    capacity:_maintNum(g('capacity')),
+    meteringStatus:_maintStr(g('meteringStatus')),
+    meterNumber:_maintStr(g('meterNumber')),
+    connectionStatus:_maintStr(g('connectionStatus')),
+    commissioningStatus:_maintStr(g('commissioningStatus')),
+    latitude:_maintNum(g('latitude')),
+    longitude:_maintNum(g('longitude')),
+    address:_maintStr(g('address')),
+    remark:_maintStr(g('remark')),
+    state:_maintStr(g('state'))
+  };
+  // Category-specific fallback wiring for oldValue/newValue when header-name match
+  // returned nothing (e.g. "New DT" has no old value; "Delete DT" has no new value).
+  if(!rec.oldValue&&!rec.newValue){
+    if(category==='New DT'||category==='New DT (Voltage Change)'){
+      rec.newValue=rec.dtName||null;
+    } else if(category==='Delete DT'){
+      rec.oldValue=rec.dtName||null;
+    }
+  }
+  return rec;
+}
+
+// Row is "real" only if at least one MAPPED column has a value.
+// This avoids counting orphan dropdown-list values in far-right columns.
+function _maintRowIsValid(row,colMap){
+  const keys=['bu','ut','dtNumber','dtName','feeder','oldValue','newValue'];
+  for(let i=0;i<keys.length;i++){
+    const idx=colMap[keys[i]];
+    if(idx>=0&&row[idx]!=null&&String(row[idx]).trim()!==''){
+      return true;
+    }
+  }
+  return false;
+}
+
+// Extract period "YYYY-MM" from a filename
+function _maintExtractPeriod(filename){
+  if(!filename)return null;
+  const MONTHS={JAN:'01',JANUARY:'01',FEB:'02',FEBRUARY:'02',MAR:'03',MARCH:'03',APR:'04',APRIL:'04',MAY:'05',JUN:'06',JUNE:'06',JUL:'07',JULY:'07',AUG:'08',AUGUST:'08',SEP:'09',SEPT:'09',SEPTEMBER:'09',OCT:'10',OCTOBER:'10',NOV:'11',NOVEMBER:'11',DEC:'12',DECEMBER:'12'};
+  const f=filename.toUpperCase().replace(/[._-]/g,' ');
+  const m=f.match(/\b(JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER|JAN|FEB|MAR|APR|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)\b[\s]*([12][0-9]{3})/);
+  if(m&&MONTHS[m[1]])return m[2]+'-'+MONTHS[m[1]];
+  return null;
+}
+
+// Detect Private vs Public workbook from sheet names (fallback: filename)
+function _maintDetectOwnership(sheetNames,filename){
+  let privateHits=0,publicHits=0;
+  sheetNames.forEach(s=>{
+    if(MAINT_PRIVATE_MARKERS.has(s))privateHits++;
+    if(MAINT_PUBLIC_MARKERS.has(s))publicHits++;
+  });
+  if(privateHits>publicHits)return 'Private';
+  if(publicHits>privateHits)return 'Public';
+  // Fallback to filename
+  const fn=(filename||'').toLowerCase();
+  if(fn.includes('private'))return 'Private';
+  if(fn.includes('public'))return 'Public';
+  return null;
+}
+
+// Main parser: accepts an ArrayBuffer and filename, returns normalized workbook payload
+function parseMaintenanceWorkbook(buffer,filename){
+  const wb=XLSX.read(buffer,{type:'array',cellDates:false,raw:false});
+  const sheetNames=wb.SheetNames||[];
+  const ownership=_maintDetectOwnership(sheetNames,filename)||(filename&&filename.toLowerCase().includes('private')?'Private':'Public');
+  const period=_maintExtractPeriod(filename)||new Date().toISOString().slice(0,7);
+  const records=[];
+  const sheetsProcessed=[];
+  const byCategory={};
+  const byBU={};
+  sheetNames.forEach(sheetName=>{
+    if(MAINT_SKIP_SHEETS.has(sheetName))return;
+    const category=MAINT_CATEGORY_MAP[sheetName]||sheetName;
+    const sheet=wb.Sheets[sheetName];
+    if(!sheet)return;
+    const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:null,blankrows:false});
+    if(!rows||rows.length===0){sheetsProcessed.push({sheet:sheetName,category,count:0});return}
+    const hdrIdx=_maintDetectHdrRow(rows);
+    const hdrRow=rows[hdrIdx]||[];
+    const hdrMap=_maintHdrMap(hdrRow);
+    const colMap={};
+    Object.keys(MAINT_COLS).forEach(k=>{colMap[k]=_maintFindCol(hdrMap,MAINT_COLS[k])});
+    let count=0;
+    for(let i=hdrIdx+1;i<rows.length;i++){
+      const r=rows[i];
+      if(!r||r.length===0)continue;
+      if(!_maintRowIsValid(r,colMap))continue;
+      const rec=_maintNormalizeRow(r,colMap,category,ownership,period,sheetName);
+      records.push(rec);
+      count++;
+      byCategory[category]=(byCategory[category]||0)+1;
+      if(rec.bu)byBU[rec.bu]=(byBU[rec.bu]||0)+1;
+    }
+    sheetsProcessed.push({sheet:sheetName,category,count});
+  });
+  return {
+    period,
+    ownership,
+    filename:filename||null,
+    totalRecords:records.length,
+    records,
+    sheetsProcessed,
+    summary:{totalRecords:records.length,byCategory,byBU,sheetCount:sheetsProcessed.length}
+  };
+}
+
+// ============ DT MAINTENANCE STATE & UI ============
+const MAINT_STATE={
+  private:null,      // last-parsed Private payload (current period)
+  public:null,       // last-parsed Public payload (current period)
+  period:null,       // currently displayed period
+  archive:{},        // {"YYYY-MM": {private, public}}
+  view:'all',        // 'all' | 'Private' | 'Public'
+  sortCol:null,
+  sortAsc:true,
+  page:0,
+  buSel:new Set(),   // filter BU selections (empty = all)
+  catSel:new Set()   // filter category selections (empty = all)
+};
+const MAINT_LS_KEY='ie_dt_maintenance_v1';
+
+function maintSaveLS(){
+  try{
+    const payload={
+      period:MAINT_STATE.period,
+      private:MAINT_STATE.private,
+      public:MAINT_STATE.public,
+      archive:MAINT_STATE.archive
+    };
+    localStorage.setItem(MAINT_LS_KEY,JSON.stringify(payload));
+  }catch(e){console.warn('maint: localStorage save failed',e)}
+}
+function maintLoadLS(){
+  try{
+    const raw=localStorage.getItem(MAINT_LS_KEY);if(!raw)return;
+    const p=JSON.parse(raw);
+    MAINT_STATE.period=p.period||null;
+    MAINT_STATE.private=p.private||null;
+    MAINT_STATE.public=p.public||null;
+    MAINT_STATE.archive=p.archive||{};
+  }catch(e){console.warn('maint: localStorage load failed',e)}
+}
+
+// Archive the current period's payload before overwriting with a new one
+function _maintArchiveCurrent(newPeriod){
+  if(!MAINT_STATE.period||MAINT_STATE.period===newPeriod)return;
+  if(!MAINT_STATE.private&&!MAINT_STATE.public)return;
+  MAINT_STATE.archive[MAINT_STATE.period]={
+    private:MAINT_STATE.private,
+    public:MAINT_STATE.public
+  };
+}
+
+// Handle drag-drop or input file selection
+function maintHandleFile(event,expectedOwnership){
+  const file=(event.target&&event.target.files&&event.target.files[0])||null;
+  if(!file)return;
+  _maintReadFile(file,expectedOwnership);
+  // reset input so same file can be re-selected
+  try{event.target.value=''}catch(e){}
+}
+function _maintReadFile(file,expectedOwnership){
+  const status=document.getElementById('maintStatus'+expectedOwnership);
+  if(status)status.innerHTML='<span style="color:var(--yellow)">Parsing '+file.name+'...</span>';
+  const reader=new FileReader();
+  reader.onerror=function(){if(status)status.innerHTML='<span class="m-err">Failed to read file.</span>'};
+  reader.onload=function(e){
+    try{
+      const payload=parseMaintenanceWorkbook(e.target.result,file.name);
+      // If the workbook self-identifies as the "other" type, warn but honor filename slot
+      if(payload.ownership&&payload.ownership!==expectedOwnership){
+        payload.ownership=expectedOwnership;
+        payload.records.forEach(r=>{r.ownership=expectedOwnership});
+      }
+      // Archive previous period if switching periods
+      if(MAINT_STATE.period&&MAINT_STATE.period!==payload.period){
+        _maintArchiveCurrent(payload.period);
+      }
+      MAINT_STATE.period=payload.period;
+      if(expectedOwnership==='Private')MAINT_STATE.private=payload;
+      else MAINT_STATE.public=payload;
+      maintSaveLS();
+      _maintUpdateStatusCard(expectedOwnership);
+      _maintUpdatePeriodDropdown();
+      renderMaintenancePage();
+    }catch(err){
+      console.error('maint parse error',err);
+      if(status)status.innerHTML='<span class="m-err">Parse error: '+(err.message||err)+'</span>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function _maintUpdateStatusCard(ownership){
+  const status=document.getElementById('maintStatus'+ownership);
+  const drop=document.getElementById('maintDrop'+ownership);
+  const payload=ownership==='Private'?MAINT_STATE.private:MAINT_STATE.public;
+  if(!status)return;
+  if(!payload){
+    status.innerHTML='No file loaded.';
+    if(drop)drop.classList.remove('loaded');
+    return;
+  }
+  const p=payload;
+  const fn=p.filename||('('+ownership+' workbook)');
+  const rec=fmt(p.totalRecords||0);
+  const sh=p.summary&&p.summary.sheetCount||0;
+  const per=p.period||'—';
+  status.innerHTML='<b>'+fn+'</b> &middot; Period <b>'+per+'</b> &middot; <b>'+rec+'</b> records across <b>'+sh+'</b> sheets';
+  if(drop)drop.classList.add('loaded');
+}
+
+function _maintAllPeriods(){
+  const set=new Set();
+  if(MAINT_STATE.period)set.add(MAINT_STATE.period);
+  Object.keys(MAINT_STATE.archive||{}).forEach(k=>{if(k)set.add(k)});
+  return [...set].sort().reverse();
+}
+function _maintUpdatePeriodDropdown(){
+  const sel=document.getElementById('maintPeriod');if(!sel)return;
+  const periods=_maintAllPeriods();
+  const cur=MAINT_STATE.period||'';
+  if(!periods.length){sel.innerHTML='<option value="">(none)</option>';return}
+  sel.innerHTML=periods.map(p=>'<option value="'+p+'"'+(p===cur?' selected':'')+'>'+_maintFormatPeriod(p)+'</option>').join('');
+}
+function _maintFormatPeriod(p){
+  if(!p)return '—';
+  const parts=p.split('-');
+  if(parts.length!==2)return p;
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const m=parseInt(parts[1],10)-1;
+  if(m<0||m>11)return p;
+  return months[m]+' '+parts[0];
+}
+
+function maintOnPeriodChange(){
+  const sel=document.getElementById('maintPeriod');if(!sel)return;
+  const newPeriod=sel.value;
+  if(!newPeriod||newPeriod===MAINT_STATE.period){renderMaintenancePage();return}
+  // Swap current with archived
+  if(MAINT_STATE.period){
+    MAINT_STATE.archive[MAINT_STATE.period]={
+      private:MAINT_STATE.private,
+      public:MAINT_STATE.public
+    };
+  }
+  const arch=MAINT_STATE.archive[newPeriod]||{};
+  MAINT_STATE.private=arch.private||null;
+  MAINT_STATE.public=arch.public||null;
+  MAINT_STATE.period=newPeriod;
+  delete MAINT_STATE.archive[newPeriod];
+  maintSaveLS();
+  _maintUpdateStatusCard('Private');
+  _maintUpdateStatusCard('Public');
+  _maintUpdatePeriodDropdown();
+  renderMaintenancePage();
+}
+
+function maintClearOne(ownership){
+  if(ownership==='Private')MAINT_STATE.private=null;
+  else MAINT_STATE.public=null;
+  if(!MAINT_STATE.private&&!MAINT_STATE.public)MAINT_STATE.period=null;
+  maintSaveLS();
+  _maintUpdateStatusCard(ownership);
+  _maintUpdatePeriodDropdown();
+  renderMaintenancePage();
+}
+function maintClearAll(){
+  if(!confirm('Clear all loaded maintenance data (current period AND archive)? This cannot be undone.'))return;
+  MAINT_STATE.private=null;
+  MAINT_STATE.public=null;
+  MAINT_STATE.period=null;
+  MAINT_STATE.archive={};
+  try{localStorage.removeItem(MAINT_LS_KEY)}catch(e){}
+  _maintUpdateStatusCard('Private');
+  _maintUpdateStatusCard('Public');
+  _maintUpdatePeriodDropdown();
+  renderMaintenancePage();
+}
+
+function maintSetView(v){
+  MAINT_STATE.view=v;
+  document.querySelectorAll('.maint-view-btn').forEach(b=>{b.classList.toggle('active',b.dataset.view===v)});
+  MAINT_STATE.page=0;
+  renderMaintenancePage();
+}
+
+function _maintAllRecords(){
+  const out=[];
+  if(MAINT_STATE.private&&MAINT_STATE.private.records){
+    for(let i=0;i<MAINT_STATE.private.records.length;i++)out.push(MAINT_STATE.private.records[i]);
+  }
+  if(MAINT_STATE.public&&MAINT_STATE.public.records){
+    for(let i=0;i<MAINT_STATE.public.records.length;i++)out.push(MAINT_STATE.public.records[i]);
+  }
+  return out;
+}
+function _maintViewRecords(){
+  const all=_maintAllRecords();
+  if(MAINT_STATE.view==='all')return all;
+  return all.filter(r=>r.ownership===MAINT_STATE.view);
+}
+function _maintFilteredRecords(){
+  let rows=_maintViewRecords();
+  const buSel=MAINT_STATE.buSel;
+  const catSel=MAINT_STATE.catSel;
+  if(buSel.size)rows=rows.filter(r=>buSel.has(r.bu||'(None)'));
+  if(catSel.size)rows=rows.filter(r=>catSel.has(r.changeCategory));
+  const q=((document.getElementById('maintSearch')||{}).value||'').toLowerCase().trim();
+  if(q){
+    rows=rows.filter(r=>(
+      (r.dtNumber&&String(r.dtNumber).toLowerCase().includes(q))||
+      (r.dtName&&String(r.dtName).toLowerCase().includes(q))||
+      (r.feeder&&String(r.feeder).toLowerCase().includes(q))||
+      (r.bu&&String(r.bu).toLowerCase().includes(q))||
+      (r.ut&&String(r.ut).toLowerCase().includes(q))||
+      (r.remark&&String(r.remark).toLowerCase().includes(q))||
+      (r.oldValue&&String(r.oldValue).toLowerCase().includes(q))||
+      (r.newValue&&String(r.newValue).toLowerCase().includes(q))
+    ));
+  }
+  return rows;
+}
+
+// ============ DT MAINTENANCE RENDERERS ============
+function renderMaintenancePage(){
+  const hasData=!!(MAINT_STATE.private||MAINT_STATE.public);
+  const empty=document.getElementById('maintEmpty');
+  const dash=document.getElementById('maintDashboard');
+  _maintUpdateStatusCard('Private');
+  _maintUpdateStatusCard('Public');
+  _maintUpdatePeriodDropdown();
+  if(!hasData){
+    if(empty)empty.style.display='block';
+    if(dash)dash.style.display='none';
+    return;
+  }
+  if(empty)empty.style.display='none';
+  if(dash)dash.style.display='block';
+  _maintRenderKPIs();
+  _maintRenderCharts();
+  _maintRenderFilterPanels();
+  renderMaintTable();
+}
+
+function _maintRenderKPIs(){
+  const grid=document.getElementById('maintKpiGrid');if(!grid)return;
+  const all=_maintAllRecords();
+  const viewRecs=_maintViewRecords();
+  const categories=new Set();
+  const bus=new Set();
+  const catCounts={};
+  viewRecs.forEach(r=>{
+    if(r.changeCategory)categories.add(r.changeCategory);
+    if(r.bu)bus.add(r.bu);
+    const c=r.changeCategory||'Unknown';
+    catCounts[c]=(catCounts[c]||0)+1;
+  });
+  let topCat='—';let topCatCount=0;
+  Object.keys(catCounts).forEach(k=>{if(catCounts[k]>topCatCount){topCat=k;topCatCount=catCounts[k]}});
+  const totalBUs=6;
+  const periodLabel=_maintFormatPeriod(MAINT_STATE.period);
+  const privateCnt=all.filter(r=>r.ownership==='Private').length;
+  const publicCnt=all.filter(r=>r.ownership==='Public').length;
+  const kpis=[
+    {icon:'&#128203;',color:'#10b981',glow:'16,185,129',val:fmt(viewRecs.length),label:'Total Records',sub:periodLabel+' &middot; '+fmt(privateCnt)+' Pvt / '+fmt(publicCnt)+' Pub'},
+    {icon:'&#128203;',color:'#00d4ff',glow:'0,212,255',val:fmt(categories.size),label:'Change Categories',sub:'Active categories in view'},
+    {icon:'&#127970;',color:'#f59e0b',glow:'245,158,11',val:fmt(bus.size)+' / '+totalBUs,label:'BUs Reporting',sub:'Business Units with changes'},
+    {icon:'&#127942;',color:'#8b5cf6',glow:'139,92,246',val:fmt(topCatCount),label:'Top Category',sub:topCat}
+  ];
+  grid.innerHTML=kpis.map(k=>
+    '<div class="kpi-card" style="--glow:'+k.glow+'">'
+    +'<div class="kpi-icon" style="background:rgba('+k.glow+',.15);color:'+k.color+'">'+k.icon+'</div>'
+    +'<div class="kpi-value" style="color:'+k.color+'">'+k.val+'</div>'
+    +'<div class="kpi-label">'+k.label+'</div>'
+    +'<div class="kpi-sub">'+k.sub+'</div>'
+    +'</div>'
+  ).join('');
+}
+
+function _maintRenderCharts(){
+  const recs=_maintViewRecords();
+  // Records by BU (stacked Private/Public)
+  const BUS=['IKEJA','IKORODU','AKOWONJO','SHOMOLU','OSHODI','ABULE EGBA'];
+  const privateByBU={};const publicByBU={};
+  recs.forEach(r=>{
+    const bu=(r.bu||'').toUpperCase();
+    if(!bu)return;
+    if(r.ownership==='Private')privateByBU[bu]=(privateByBU[bu]||0)+1;
+    else publicByBU[bu]=(publicByBU[bu]||0)+1;
+  });
+  // Also capture any BUs not in the default 6 (safety net)
+  const allBUSet=new Set(BUS);
+  Object.keys(privateByBU).concat(Object.keys(publicByBU)).forEach(b=>allBUSet.add(b));
+  const buLabels=[...allBUSet];
+  const privVals=buLabels.map(b=>privateByBU[b]||0);
+  const pubVals=buLabels.map(b=>publicByBU[b]||0);
+  const buEl=document.getElementById('ch_maint_bu');
+  if(buEl){
+    if(recs.length===0){
+      buEl.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text2);font-size:12px">No records in current view</div>';
+    }else{
+      Plotly.newPlot(buEl,[
+        {type:'bar',orientation:'h',name:'Private',y:buLabels,x:privVals,marker:{color:'#10b981'},hovertemplate:'%{y}: %{x} Private<extra></extra>'},
+        {type:'bar',orientation:'h',name:'Public',y:buLabels,x:pubVals,marker:{color:'#00d4ff'},hovertemplate:'%{y}: %{x} Public<extra></extra>'}
+      ],Object.assign({},PL,{barmode:'stack',margin:{t:10,b:30,l:90,r:20},xaxis:Object.assign({},PL.xaxis,{title:''}),yaxis:Object.assign({},PL.yaxis,{automargin:true}),legend:{orientation:'h',x:0,y:1.12,font:{size:10}}}),PC);
+    }
+  }
+  // Top 10 change categories
+  const catCounts={};
+  recs.forEach(r=>{const c=r.changeCategory||'Unknown';catCounts[c]=(catCounts[c]||0)+1});
+  const catSorted=Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const catLabels=catSorted.map(e=>e[0]);
+  const catVals=catSorted.map(e=>e[1]);
+  const colors=['#10b981','#00d4ff','#f59e0b','#8b5cf6','#ef4444','#ec4899','#f97316','#14b8a6','#a855f7','#fbbf24'];
+  const catEl=document.getElementById('ch_maint_cat');
+  if(catEl){
+    if(catLabels.length===0){
+      catEl.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text2);font-size:12px">No records in current view</div>';
+    }else{
+      Plotly.newPlot(catEl,[{type:'bar',orientation:'h',y:catLabels.slice().reverse(),x:catVals.slice().reverse(),marker:{color:catLabels.slice().reverse().map((_,i)=>colors[(catLabels.length-1-i)%colors.length])},hovertemplate:'%{y}: %{x}<extra></extra>'}],Object.assign({},PL,{margin:{t:10,b:30,l:180,r:20},xaxis:Object.assign({},PL.xaxis,{title:''}),yaxis:Object.assign({},PL.yaxis,{automargin:true,tickfont:{size:10}})}),PC);
+    }
+  }
+}
+
+function _maintRenderFilterPanels(){
+  const recs=_maintViewRecords();
+  // BU panel
+  const buPanel=document.querySelector('#fMaintBU .ms-panel');
+  if(buPanel){
+    const buSet=new Set();
+    recs.forEach(r=>{if(r.bu)buSet.add(r.bu)});
+    const bus=[...buSet].sort();
+    buPanel.innerHTML='<label class="all-opt"><input type="checkbox" value="" '+(MAINT_STATE.buSel.size===0?'checked':'')+' onchange="maintFilterCheck(this,\'bu\')"> All</label>'
+      +bus.map(b=>'<label><input type="checkbox" value="'+b+'" '+(MAINT_STATE.buSel.has(b)?'checked':'')+' onchange="maintFilterCheck(this,\'bu\')"> '+b+'</label>').join('');
+    _maintUpdateFilterBtn('fMaintBU',MAINT_STATE.buSel,'BUs');
+  }
+  // Category panel
+  const catPanel=document.querySelector('#fMaintCat .ms-panel');
+  if(catPanel){
+    const catSet=new Set();
+    recs.forEach(r=>{if(r.changeCategory)catSet.add(r.changeCategory)});
+    const cats=[...catSet].sort();
+    catPanel.innerHTML='<label class="all-opt"><input type="checkbox" value="" '+(MAINT_STATE.catSel.size===0?'checked':'')+' onchange="maintFilterCheck(this,\'cat\')"> All</label>'
+      +cats.map(c=>'<label><input type="checkbox" value="'+c.replace(/"/g,'&quot;')+'" '+(MAINT_STATE.catSel.has(c)?'checked':'')+' onchange="maintFilterCheck(this,\'cat\')"> '+c+'</label>').join('');
+    _maintUpdateFilterBtn('fMaintCat',MAINT_STATE.catSel,'Categories');
+  }
+}
+function _maintUpdateFilterBtn(wrapId,selSet,labelAll){
+  const btn=document.querySelector('#'+wrapId+' .ms-btn');if(!btn)return;
+  if(selSet.size===0){btn.textContent='All '+labelAll}
+  else if(selSet.size<=2){btn.textContent=[...selSet].join(', ')}
+  else{btn.textContent=selSet.size+' selected'}
+}
+function maintFilterCheck(cb,kind){
+  const set=kind==='bu'?MAINT_STATE.buSel:MAINT_STATE.catSel;
+  if(cb.value===''){set.clear()}
+  else{
+    if(cb.checked)set.add(cb.value);
+    else set.delete(cb.value);
+  }
+  MAINT_STATE.page=0;
+  _maintRenderFilterPanels();
+  renderMaintTable();
+}
+
+// ============ MAINTENANCE TABLE ============
+const MAINT_TCOLS=[
+  {key:'ownership',label:'Owner',w:80},
+  {key:'changeCategory',label:'Category',w:180},
+  {key:'bu',label:'BU',w:100},
+  {key:'ut',label:'UT',w:110},
+  {key:'dtNumber',label:'DT Number',w:130},
+  {key:'dtName',label:'DT Name',w:220},
+  {key:'oldValue',label:'Old Value',w:170},
+  {key:'newValue',label:'New Value',w:170},
+  {key:'feeder',label:'Feeder',w:160},
+  {key:'remark',label:'Remark',w:200},
+  {key:'state',label:'State',w:90}
+];
+function _maintEscapeHtml(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function renderMaintTable(){
+  const theadEl=document.getElementById('maintThead');if(!theadEl)return;
+  theadEl.innerHTML=MAINT_TCOLS.map(c=>`<th onclick="maintSort('${c.key}')" style="min-width:${c.w}px">${c.label}<span class="sort-arrow">${MAINT_STATE.sortCol===c.key?(MAINT_STATE.sortAsc?'&uarr;':'&darr;'):'&udarr;'}</span></th>`).join('');
+  let rows=_maintFilteredRecords();
+  if(MAINT_STATE.sortCol){
+    const col=MAINT_STATE.sortCol,asc=MAINT_STATE.sortAsc;
+    rows=rows.slice().sort((a,b)=>{
+      let va=a[col];let vb=b[col];
+      if(va==null)va='';if(vb==null)vb='';
+      if(typeof va==='number'&&typeof vb==='number')return asc?va-vb:vb-va;
+      return asc?String(va).localeCompare(String(vb)):String(vb).localeCompare(String(va));
+    });
+  }
+  const psSel=document.getElementById('maintPageSize');
+  const ps=psSel?parseInt(psSel.value,10)||25:25;
+  const tp=Math.max(1,Math.ceil(rows.length/ps));
+  if(MAINT_STATE.page>=tp)MAINT_STATE.page=0;
+  const st=MAINT_STATE.page*ps;
+  const pr=rows.slice(st,st+ps);
+  const body=document.getElementById('maintTbody');
+  if(!pr.length){
+    body.innerHTML='<tr><td colspan="'+MAINT_TCOLS.length+'" style="text-align:center;padding:24px;color:var(--text2);font-size:12px">No records match the current filters. '+(rows.length===0&&_maintAllRecords().length===0?'This workbook appears to be an empty template.':'')+'</td></tr>';
+  }else{
+    body.innerHTML=pr.map(r=>{
+      const ownCls=r.ownership==='Private'?'own-private':'own-public';
+      const old=_maintEscapeHtml(r.oldValue);
+      const nw=_maintEscapeHtml(r.newValue);
+      return '<tr>'
+        +'<td><span class="maint-badge '+ownCls+'">'+_maintEscapeHtml(r.ownership)+'</span></td>'
+        +'<td><span class="maint-badge cat">'+_maintEscapeHtml(r.changeCategory||'')+'</span></td>'
+        +'<td title="'+_maintEscapeHtml(r.bu||'')+'">'+_maintEscapeHtml(r.bu||'')+'</td>'
+        +'<td title="'+_maintEscapeHtml(r.ut||'')+'">'+_maintEscapeHtml(r.ut||'')+'</td>'
+        +'<td title="'+_maintEscapeHtml(r.dtNumber||'')+'">'+_maintEscapeHtml(r.dtNumber||'')+'</td>'
+        +'<td title="'+_maintEscapeHtml(r.dtName||'')+'">'+_maintEscapeHtml(r.dtName||'')+'</td>'
+        +'<td title="'+old+'"><span class="maint-old-val">'+(old||'<span style="color:var(--text2)">—</span>')+'</span></td>'
+        +'<td title="'+nw+'"><span class="maint-new-val">'+(nw||'<span style="color:var(--text2)">—</span>')+'</span></td>'
+        +'<td title="'+_maintEscapeHtml(r.feeder||'')+'">'+_maintEscapeHtml(r.feeder||'')+'</td>'
+        +'<td title="'+_maintEscapeHtml(r.remark||'')+'">'+_maintEscapeHtml(r.remark||'')+'</td>'
+        +'<td>'+_maintEscapeHtml(r.state||'')+'</td>'
+        +'</tr>';
+    }).join('');
+  }
+  const pg=document.getElementById('maintPagination');
+  if(pg){
+    let btns='';
+    let sb=Math.max(0,MAINT_STATE.page-3),eb=Math.min(tp,sb+7);
+    if(eb-sb<7)sb=Math.max(0,eb-7);
+    if(sb>0)btns+='<button class="page-btn" onclick="maintGoPage(0)">1</button><span style="color:var(--text2)">...</span>';
+    for(let i=sb;i<eb;i++)btns+='<button class="page-btn '+(i===MAINT_STATE.page?'active':'')+'" onclick="maintGoPage('+i+')">'+(i+1)+'</button>';
+    if(eb<tp)btns+='<span style="color:var(--text2)">...</span><button class="page-btn" onclick="maintGoPage('+(tp-1)+')">'+tp+'</button>';
+    const showing=rows.length?(st+1)+'-'+Math.min(st+ps,rows.length):'0-0';
+    pg.innerHTML='<span>Showing '+showing+' of '+fmt(rows.length)+'</span><div class="page-btns">'+btns+'</div>';
+  }
+}
+function maintSort(col){
+  if(MAINT_STATE.sortCol===col)MAINT_STATE.sortAsc=!MAINT_STATE.sortAsc;
+  else{MAINT_STATE.sortCol=col;MAINT_STATE.sortAsc=true}
+  renderMaintTable();
+}
+function maintGoPage(p){MAINT_STATE.page=p;renderMaintTable()}
+
+// ============ MAINTENANCE EXPORTS ============
+function maintExportCSV(){
+  const rows=_maintFilteredRecords();
+  if(!rows.length){alert('No records to export.');return}
+  const headers=['Period','Ownership','Category','BU','UT','DT Number','DT Name','Old Value','New Value','Feeder','Capacity','Metering Status','Meter Number','Connection Status','Commissioning Status','Latitude','Longitude','Address','Remark','State'];
+  const esc=v=>{if(v==null)return '';const s=String(v);if(s.includes(',')||s.includes('"')||s.includes('\n'))return '"'+s.replace(/"/g,'""')+'"';return s};
+  const lines=[headers.join(',')];
+  rows.forEach(r=>{
+    lines.push([r.period,r.ownership,r.changeCategory,r.bu,r.ut,r.dtNumber,r.dtName,r.oldValue,r.newValue,r.feeder,r.capacity,r.meteringStatus,r.meterNumber,r.connectionStatus,r.commissioningStatus,r.latitude,r.longitude,r.address,r.remark,r.state].map(esc).join(','));
+  });
+  const csv=lines.join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const per=(MAINT_STATE.period||'current').replace(/-/g,'_');
+  a.href=url;a.download='IE_DT_Maintenance_'+per+'_'+MAINT_STATE.view+'.csv';
+  a.click();URL.revokeObjectURL(url);
+}
+
+function maintExportPDF(){
+  const rows=_maintFilteredRecords();
+  if(!rows.length){alert('No records to export.');return}
+  const period=_maintFormatPeriod(MAINT_STATE.period);
+  const view=MAINT_STATE.view==='all'?'All DTs':MAINT_STATE.view+' DTs';
+  const byCat={};const byBU={};let privateCnt=0,publicCnt=0;
+  rows.forEach(r=>{
+    byCat[r.changeCategory]=(byCat[r.changeCategory]||0)+1;
+    if(r.bu)byBU[r.bu]=(byBU[r.bu]||0)+1;
+    if(r.ownership==='Private')privateCnt++;else if(r.ownership==='Public')publicCnt++;
+  });
+  const now=new Date();
+  const dateStr=now.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>'<tr><td style="padding:5px 10px;border:1px solid #e2e8f0;color:#334155;font-size:10px">'+k+'</td><td style="padding:5px 10px;border:1px solid #e2e8f0;color:#334155;font-size:10px;text-align:right">'+v+'</td></tr>').join('');
+  const buRows=Object.entries(byBU).sort((a,b)=>b[1]-a[1]).map(([k,v])=>'<tr><td style="padding:5px 10px;border:1px solid #e2e8f0;color:#334155;font-size:10px">'+k+'</td><td style="padding:5px 10px;border:1px solid #e2e8f0;color:#334155;font-size:10px;text-align:right">'+v+'</td></tr>').join('');
+  const tableRows=rows.slice(0,400).map(r=>'<tr>'
+    +'<td style="padding:4px 6px;border:1px solid #e2e8f0;font-size:8.5px;color:#334155">'+(r.ownership||'')+'</td>'
+    +'<td style="padding:4px 6px;border:1px solid #e2e8f0;font-size:8.5px;color:#334155">'+(r.changeCategory||'')+'</td>'
+    +'<td style="padding:4px 6px;border:1px solid #e2e8f0;font-size:8.5px;color:#334155">'+(r.bu||'')+'</td>'
+    +'<td style="padding:4px 6px;border:1px solid #e2e8f0;font-size:8.5px;color:#334155">'+(r.dtNumber||'')+'</td>'
+    +'<td style="padding:4px 6px;border:1px solid #e2e8f0;font-size:8.5px;color:#334155">'+(r.dtName||'')+'</td>'
+    +'<td style="padding:4px 6px;border:1px solid #e2e8f0;font-size:8.5px;color:#ef4444">'+(r.oldValue||'—')+'</td>'
+    +'<td style="padding:4px 6px;border:1px solid #e2e8f0;font-size:8.5px;color:#059669">'+(r.newValue||'—')+'</td>'
+    +'<td style="padding:4px 6px;border:1px solid #e2e8f0;font-size:8.5px;color:#334155">'+(r.remark||'')+'</td>'
+    +'</tr>').join('');
+  const moreNote=rows.length>400?'<p style="font-size:9px;color:#94a3b8;margin-top:6px;font-style:italic">Showing first 400 of '+rows.length+' records. Export CSV for the complete dataset.</p>':'';
+  const reportHTML='<div style="font-family:Segoe UI,Arial,sans-serif;color:#1a202c">'
+    +'<div style="background:#0f172a;color:#fff;padding:18px 22px;border-radius:6px 6px 0 0"><h1 style="font-size:20px;margin:0">Ikeja Electric &mdash; DT Maintenance Change Report</h1><p style="font-size:11px;margin-top:4px;color:#94a3b8">Period: <b style="color:#10b981">'+period+'</b> &middot; View: <b>'+view+'</b> &middot; Generated: '+dateStr+' '+timeStr+'</p></div>'
+    +'<div style="padding:16px 22px">'
+    +'<h2 style="font-size:14px;color:#0f172a;margin:10px 0 8px">Summary</h2>'
+    +'<table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:10px"><tr><td style="padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc"><b>Total Records</b></td><td style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right">'+rows.length+'</td><td style="padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc"><b>Private</b></td><td style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right">'+privateCnt+'</td><td style="padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc"><b>Public</b></td><td style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right">'+publicCnt+'</td></tr></table>'
+    +'<div style="display:flex;gap:14px;margin-bottom:14px">'
+    +'<div style="flex:1"><h3 style="font-size:12px;color:#0f172a;margin-bottom:4px">Records by Category</h3><table style="width:100%;border-collapse:collapse"><tr><th style="background:#0f172a;color:#fff;padding:6px 10px;text-align:left;font-size:9px">Category</th><th style="background:#0f172a;color:#fff;padding:6px 10px;text-align:right;font-size:9px">Count</th></tr>'+catRows+'</table></div>'
+    +'<div style="flex:1"><h3 style="font-size:12px;color:#0f172a;margin-bottom:4px">Records by BU</h3><table style="width:100%;border-collapse:collapse"><tr><th style="background:#0f172a;color:#fff;padding:6px 10px;text-align:left;font-size:9px">BU</th><th style="background:#0f172a;color:#fff;padding:6px 10px;text-align:right;font-size:9px">Count</th></tr>'+buRows+'</table></div>'
+    +'</div>'
+    +'<h2 style="font-size:14px;color:#0f172a;margin:14px 0 6px">Change Log</h2>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:9px">'
+    +'<thead><tr>'+['Owner','Category','BU','DT #','DT Name','Old','New','Remark'].map(h=>'<th style="background:#0f172a;color:#fff;padding:6px 8px;text-align:left;font-size:9px;border:1px solid #1e293b">'+h+'</th>').join('')+'</tr></thead>'
+    +'<tbody>'+tableRows+'</tbody></table>'
+    +moreNote
+    +'<p style="text-align:center;font-size:9px;color:#94a3b8;margin-top:14px;padding-top:8px;border-top:1px solid #e2e8f0">Powered by the GIS Team, Ikeja Electric &middot; Confidential &mdash; For internal use only</p>'
+    +'</div></div>';
+  const win=window.open('','_blank');
+  if(!win){alert('Please allow popups to generate the PDF report.');return}
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>IE DT Maintenance - '+period+'</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Segoe UI,Arial,sans-serif;background:#fff;padding:0}#r{padding:20px;max-width:900px;margin:0 auto}.ab{position:fixed;top:0;left:0;right:0;background:#0f172a;color:#fff;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:9999}.ab button{padding:8px 22px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px;background:#059669;color:#fff}.ab button:hover{background:#047857}@media print{.ab{display:none!important}body{padding:0}}@page{margin:12mm 10mm;size:A4 landscape}</style></head><body><div class="ab"><span>IE &mdash; DT Maintenance Report Preview</span><div><button onclick="window.print()">Save as PDF</button><button onclick="window.print()">Print</button></div></div><div id="r" style="margin-top:50px">'+reportHTML+'</div></body></html>');
+  win.document.close();
+  setTimeout(()=>{try{win.focus();win.print()}catch(e){}},800);
+}
+
+// ============ MAINTENANCE DRAG-AND-DROP WIRING ============
+function _maintInitDropZones(){
+  [['maintDropPrivate','Private'],['maintDropPublic','Public']].forEach(([id,own])=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.addEventListener('click',function(e){
+      // Ignore clicks that originate from buttons inside the drop zone
+      if(e.target.closest('button'))return;
+      const input=document.getElementById('maintFile'+own);
+      if(input)input.click();
+    });
+    el.addEventListener('dragover',function(e){e.preventDefault();e.stopPropagation();el.classList.add('dragover')});
+    el.addEventListener('dragleave',function(e){e.preventDefault();e.stopPropagation();el.classList.remove('dragover')});
+    el.addEventListener('drop',function(e){
+      e.preventDefault();e.stopPropagation();el.classList.remove('dragover');
+      const files=e.dataTransfer&&e.dataTransfer.files;
+      if(!files||!files.length)return;
+      _maintReadFile(files[0],own);
+    });
+  });
+}
+
 // ============ INIT ============
 function init(){
   // Normalize feeder names: merge case/hyphen duplicates into one canonical form
@@ -3544,9 +4442,19 @@ function init(){
   populateFilters();renderTableHeader();
   document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
   renderAll();
+  // Maintenance tab: load persisted state and wire drag-and-drop
+  maintLoadLS();
+  _maintInitDropZones();
+  _maintUpdateStatusCard('Private');
+  _maintUpdateStatusCard('Public');
+  _maintUpdatePeriodDropdown();
 }
 if(typeof ASSET_DATA!=='undefined')init();
-else document.querySelector('.main').innerHTML='<div style="display:flex;justify-content:center;align-items:center;height:200px;color:var(--text2)"><div class="spinner"></div>Failed to load data. Ensure dashboard_data.js is in the same folder.</div>';
+else {
+  document.querySelector('.main').innerHTML='<div style="display:flex;justify-content:center;align-items:center;height:200px;color:var(--text2)"><div class="spinner"></div>Failed to load data. Ensure dashboard_data.js is in the same folder.</div>';
+  // Still allow maintenance tab to work even if asset data failed to load
+  try{maintLoadLS();_maintInitDropZones();_maintUpdateStatusCard('Private');_maintUpdateStatusCard('Public');_maintUpdatePeriodDropdown();}catch(e){console.warn('maint fallback init failed',e)}
+}
 </script>
 </body>
 </html>
