@@ -3658,6 +3658,14 @@ function renderAll(){
 }
 
 // ============ DT MAINTENANCE MODULE ============
+// Supabase REST config for cross-device sync
+const MAINT_SB_URL='https://blxuwvxitbbjhzgucvhp.supabase.co';
+const MAINT_SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJseHV3dnhpdGJiamh6Z3VjdmhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNDg1MDcsImV4cCI6MjA5MDYyNDUwN30.lRozI7QMh_qL6sR5BWSrgT-vZQummU8Zo-O1RTwcppY';
+function _maintSbHeaders(extra){
+  return Object.assign({'apikey':MAINT_SB_KEY,'Authorization':'Bearer '+MAINT_SB_KEY,'Content-Type':'application/json'},extra||{});
+}
+function _maintSbUrl(path){return MAINT_SB_URL+'/rest/v1/'+path}
+
 // Sheet name -> human-readable change category
 const MAINT_CATEGORY_MAP={
   'New DT':'New DT',
@@ -3935,6 +3943,209 @@ function maintLoadLS(){
   }catch(e){console.warn('maint: localStorage load failed',e)}
 }
 
+// ============ SUPABASE CLOUD SYNC ============
+// Map a normalized JS record to the DB row shape
+function _maintRecToRow(r){
+  return {
+    period:r.period,
+    ownership:r.ownership,
+    change_category:r.changeCategory,
+    sheet_name:r.sheetName||null,
+    bu:r.bu||null,
+    ut:r.ut||null,
+    dt_number:r.dtNumber||null,
+    dt_name:r.dtName||null,
+    old_value:r.oldValue||null,
+    new_value:r.newValue||null,
+    feeder:r.feeder||null,
+    capacity:r.capacity==null?null:r.capacity,
+    metering_status:r.meteringStatus||null,
+    meter_number:r.meterNumber||null,
+    connection_status:r.connectionStatus||null,
+    commissioning_status:r.commissioningStatus||null,
+    latitude:r.latitude==null?null:r.latitude,
+    longitude:r.longitude==null?null:r.longitude,
+    address:r.address||null,
+    remark:r.remark||null,
+    state:r.state||null
+  };
+}
+// Map a DB row back to the normalized JS record shape
+function _maintRowToRec(row){
+  return {
+    id:'db_'+row.id,
+    period:row.period,
+    ownership:row.ownership,
+    changeCategory:row.change_category,
+    sheetName:row.sheet_name,
+    bu:row.bu,
+    ut:row.ut,
+    dtNumber:row.dt_number,
+    dtName:row.dt_name,
+    oldValue:row.old_value,
+    newValue:row.new_value,
+    feeder:row.feeder,
+    capacity:row.capacity==null?null:Number(row.capacity),
+    meteringStatus:row.metering_status,
+    meterNumber:row.meter_number,
+    connectionStatus:row.connection_status,
+    commissioningStatus:row.commissioning_status,
+    latitude:row.latitude==null?null:Number(row.latitude),
+    longitude:row.longitude==null?null:Number(row.longitude),
+    address:row.address,
+    remark:row.remark,
+    state:row.state
+  };
+}
+
+// Upload a parsed workbook payload to Supabase:
+// 1. DELETE any existing records for (period, ownership)
+// 2. INSERT new records in chunks of 500
+// 3. UPSERT workbook metadata
+async function _maintCloudUpload(payload){
+  const period=payload.period;
+  const ownership=payload.ownership;
+  if(!period||!ownership)throw new Error('Missing period or ownership');
+  // Delete existing
+  const delUrl=_maintSbUrl('dt_maintenance_records?period=eq.'+encodeURIComponent(period)+'&ownership=eq.'+encodeURIComponent(ownership));
+  const delResp=await fetch(delUrl,{method:'DELETE',headers:_maintSbHeaders({'Prefer':'return=minimal'})});
+  if(!delResp.ok){const t=await delResp.text();throw new Error('Delete failed: '+delResp.status+' '+t)}
+  // Insert in chunks
+  const rows=(payload.records||[]).map(_maintRecToRow);
+  const CHUNK=500;
+  for(let i=0;i<rows.length;i+=CHUNK){
+    const slice=rows.slice(i,i+CHUNK);
+    const insResp=await fetch(_maintSbUrl('dt_maintenance_records'),{
+      method:'POST',
+      headers:_maintSbHeaders({'Prefer':'return=minimal'}),
+      body:JSON.stringify(slice)
+    });
+    if(!insResp.ok){const t=await insResp.text();throw new Error('Insert failed: '+insResp.status+' '+t)}
+  }
+  // Upsert workbook metadata
+  const wbRow={
+    period,
+    ownership,
+    filename:payload.filename||null,
+    total_records:payload.totalRecords||0,
+    sheet_count:(payload.summary&&payload.summary.sheetCount)||(payload.sheetsProcessed&&payload.sheetsProcessed.length)||0,
+    sheets_processed:payload.sheetsProcessed||null
+  };
+  const wbResp=await fetch(_maintSbUrl('dt_maintenance_workbooks?on_conflict=period,ownership'),{
+    method:'POST',
+    headers:_maintSbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+    body:JSON.stringify(wbRow)
+  });
+  if(!wbResp.ok){const t=await wbResp.text();throw new Error('Workbook upsert failed: '+wbResp.status+' '+t)}
+}
+
+// Fetch ALL records + workbooks from Supabase and hydrate MAINT_STATE.
+// Called on page load. Preserves the currently selected period if possible.
+async function maintCloudLoad(){
+  let wbs=[];let recs=[];
+  try{
+    const wbResp=await fetch(_maintSbUrl('dt_maintenance_workbooks?select=*&order=uploaded_at.desc'),{headers:_maintSbHeaders()});
+    if(!wbResp.ok)throw new Error('Workbooks fetch failed: '+wbResp.status);
+    wbs=await wbResp.json();
+    if(!Array.isArray(wbs))wbs=[];
+    // Use Range header style by passing select=* with no limit; Supabase default cap is 1000.
+    // For larger datasets, page via Range headers.
+    let from=0;const PAGE=1000;
+    while(true){
+      const r=await fetch(_maintSbUrl('dt_maintenance_records?select=*&order=period.desc,uploaded_at.desc'),{
+        headers:_maintSbHeaders({'Range-Unit':'items','Range':from+'-'+(from+PAGE-1)})
+      });
+      if(!r.ok){const t=await r.text();throw new Error('Records fetch failed: '+r.status+' '+t)}
+      const chunk=await r.json();
+      if(!Array.isArray(chunk)||chunk.length===0)break;
+      recs=recs.concat(chunk);
+      if(chunk.length<PAGE)break;
+      from+=PAGE;
+      if(from>20000)break; // safety cap
+    }
+  }catch(e){
+    console.warn('maint: cloud load failed, using localStorage only',e);
+    return false;
+  }
+  // Group records by (period, ownership)
+  const grouped={};
+  recs.forEach(row=>{
+    const k=row.period+'|'+row.ownership;
+    if(!grouped[k])grouped[k]={period:row.period,ownership:row.ownership,records:[]};
+    grouped[k].records.push(_maintRowToRec(row));
+  });
+  // Build payloads keyed by (period, ownership) using workbook metadata when available
+  const payloadByKey={};
+  wbs.forEach(wb=>{
+    const k=wb.period+'|'+wb.ownership;
+    const g=grouped[k]||{records:[]};
+    payloadByKey[k]={
+      period:wb.period,
+      ownership:wb.ownership,
+      filename:wb.filename||null,
+      totalRecords:g.records.length,
+      records:g.records,
+      sheetsProcessed:wb.sheets_processed||[],
+      summary:{
+        totalRecords:g.records.length,
+        sheetCount:wb.sheet_count||0,
+        byCategory:{},byBU:{}
+      }
+    };
+  });
+  // Safety net: records with no workbook row (shouldn't happen, but handle gracefully)
+  Object.keys(grouped).forEach(k=>{
+    if(!payloadByKey[k]){
+      payloadByKey[k]={
+        period:grouped[k].period,
+        ownership:grouped[k].ownership,
+        filename:null,
+        totalRecords:grouped[k].records.length,
+        records:grouped[k].records,
+        sheetsProcessed:[],
+        summary:{totalRecords:grouped[k].records.length,sheetCount:0,byCategory:{},byBU:{}}
+      };
+    }
+  });
+  // Rebuild MAINT_STATE. Pick the most-recent period with any data as the current view,
+  // unless the user has already chosen a period this session.
+  const periods=[...new Set(Object.values(payloadByKey).map(p=>p.period))].sort().reverse();
+  const pickPeriod=MAINT_STATE.period&&periods.indexOf(MAINT_STATE.period)>=0?MAINT_STATE.period:(periods[0]||null);
+  MAINT_STATE.private=null;
+  MAINT_STATE.public=null;
+  MAINT_STATE.archive={};
+  MAINT_STATE.period=pickPeriod;
+  Object.values(payloadByKey).forEach(p=>{
+    if(p.period===pickPeriod){
+      if(p.ownership==='Private')MAINT_STATE.private=p;
+      else if(p.ownership==='Public')MAINT_STATE.public=p;
+    }else{
+      if(!MAINT_STATE.archive[p.period])MAINT_STATE.archive[p.period]={private:null,public:null};
+      if(p.ownership==='Private')MAINT_STATE.archive[p.period].private=p;
+      else if(p.ownership==='Public')MAINT_STATE.archive[p.period].public=p;
+    }
+  });
+  maintSaveLS();
+  return true;
+}
+
+// Delete one period+ownership from Supabase
+async function _maintCloudDeleteOne(period,ownership){
+  if(!period||!ownership)return;
+  const qs='period=eq.'+encodeURIComponent(period)+'&ownership=eq.'+encodeURIComponent(ownership);
+  try{
+    await fetch(_maintSbUrl('dt_maintenance_records?'+qs),{method:'DELETE',headers:_maintSbHeaders({'Prefer':'return=minimal'})});
+    await fetch(_maintSbUrl('dt_maintenance_workbooks?'+qs),{method:'DELETE',headers:_maintSbHeaders({'Prefer':'return=minimal'})});
+  }catch(e){console.warn('maint: cloud delete failed',e)}
+}
+// Delete everything from Supabase
+async function _maintCloudDeleteAll(){
+  try{
+    await fetch(_maintSbUrl('dt_maintenance_records?id=gt.0'),{method:'DELETE',headers:_maintSbHeaders({'Prefer':'return=minimal'})});
+    await fetch(_maintSbUrl('dt_maintenance_workbooks?id=gt.0'),{method:'DELETE',headers:_maintSbHeaders({'Prefer':'return=minimal'})});
+  }catch(e){console.warn('maint: cloud delete-all failed',e)}
+}
+
 // Archive the current period's payload before overwriting with a new one
 function _maintArchiveCurrent(newPeriod){
   if(!MAINT_STATE.period||MAINT_STATE.period===newPeriod)return;
@@ -3977,6 +4188,23 @@ function _maintReadFile(file,expectedOwnership){
       _maintUpdateStatusCard(expectedOwnership);
       _maintUpdatePeriodDropdown();
       renderMaintenancePage();
+      // Cross-device sync: push to Supabase in the background
+      if(status){
+        const prev=status.innerHTML;
+        status.innerHTML=prev+' <span style="color:var(--yellow)">&middot; Syncing to cloud...</span>';
+      }
+      _maintCloudUpload(payload).then(function(){
+        _maintUpdateStatusCard(expectedOwnership);
+        if(status){
+          status.innerHTML=status.innerHTML+' <span style="color:var(--green)">&middot; <b>Synced</b></span>';
+        }
+      }).catch(function(err){
+        console.error('maint cloud upload failed',err);
+        if(status){
+          _maintUpdateStatusCard(expectedOwnership);
+          status.innerHTML=status.innerHTML+' <span class="m-err">&middot; Cloud sync FAILED: '+(err.message||err)+' (saved locally)</span>';
+        }
+      });
     }catch(err){
       console.error('maint parse error',err);
       if(status)status.innerHTML='<span class="m-err">Parse error: '+(err.message||err)+'</span>';
@@ -4051,6 +4279,7 @@ function maintOnPeriodChange(){
 }
 
 function maintClearOne(ownership){
+  const period=MAINT_STATE.period;
   if(ownership==='Private')MAINT_STATE.private=null;
   else MAINT_STATE.public=null;
   if(!MAINT_STATE.private&&!MAINT_STATE.public)MAINT_STATE.period=null;
@@ -4058,9 +4287,11 @@ function maintClearOne(ownership){
   _maintUpdateStatusCard(ownership);
   _maintUpdatePeriodDropdown();
   renderMaintenancePage();
+  // Cross-device: delete from Supabase too
+  if(period){_maintCloudDeleteOne(period,ownership)}
 }
 function maintClearAll(){
-  if(!confirm('Clear all loaded maintenance data (current period AND archive)? This cannot be undone.'))return;
+  if(!confirm('Clear ALL loaded maintenance data (all periods, all devices)? This cannot be undone and will also wipe the cloud copy.'))return;
   MAINT_STATE.private=null;
   MAINT_STATE.public=null;
   MAINT_STATE.period=null;
@@ -4070,6 +4301,8 @@ function maintClearAll(){
   _maintUpdateStatusCard('Public');
   _maintUpdatePeriodDropdown();
   renderMaintenancePage();
+  // Wipe cloud
+  _maintCloudDeleteAll();
 }
 
 function maintSetView(v){
@@ -4442,18 +4675,32 @@ function init(){
   populateFilters();renderTableHeader();
   document.getElementById('showCount').textContent=fmt(ASSET_DATA.length);
   renderAll();
-  // Maintenance tab: load persisted state and wire drag-and-drop
+  // Maintenance tab: load persisted state (local first for instant UI) and wire drag-and-drop
   maintLoadLS();
   _maintInitDropZones();
   _maintUpdateStatusCard('Private');
   _maintUpdateStatusCard('Public');
   _maintUpdatePeriodDropdown();
+  // Then fetch fresh data from Supabase (cross-device sync). Rerender the
+  // maintenance page if the user is already on that tab, or just refresh
+  // its cached state otherwise.
+  maintCloudLoad().then(function(ok){
+    if(ok){
+      _maintUpdateStatusCard('Private');
+      _maintUpdateStatusCard('Public');
+      _maintUpdatePeriodDropdown();
+      if(currentPage==='maint')renderMaintenancePage();
+    }
+  });
 }
 if(typeof ASSET_DATA!=='undefined')init();
 else {
   document.querySelector('.main').innerHTML='<div style="display:flex;justify-content:center;align-items:center;height:200px;color:var(--text2)"><div class="spinner"></div>Failed to load data. Ensure dashboard_data.js is in the same folder.</div>';
   // Still allow maintenance tab to work even if asset data failed to load
-  try{maintLoadLS();_maintInitDropZones();_maintUpdateStatusCard('Private');_maintUpdateStatusCard('Public');_maintUpdatePeriodDropdown();}catch(e){console.warn('maint fallback init failed',e)}
+  try{
+    maintLoadLS();_maintInitDropZones();_maintUpdateStatusCard('Private');_maintUpdateStatusCard('Public');_maintUpdatePeriodDropdown();
+    maintCloudLoad().then(function(ok){if(ok){_maintUpdateStatusCard('Private');_maintUpdateStatusCard('Public');_maintUpdatePeriodDropdown();if(currentPage==='maint')renderMaintenancePage();}});
+  }catch(e){console.warn('maint fallback init failed',e)}
 }
 </script>
 </body>
