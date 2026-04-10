@@ -391,6 +391,11 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 .maint-btn-sm.primary{background:linear-gradient(135deg,#10b981,#0d9668);border-color:#10b981;color:#000}
 .maint-btn-sm.primary:hover{background:linear-gradient(135deg,#14c89b,#0fb37d);color:#000}
 .maint-btn-sm.danger:hover{border-color:#ef4444;color:#ef4444}
+.maint-btn-sm.cloud:hover{border-color:#00d4ff;color:#00d4ff;box-shadow:0 0 8px rgba(0,212,255,.25)}
+.maint-btn-sm.cloud.loading{border-color:#f59e0b;color:#f59e0b;opacity:.85;cursor:wait}
+.maint-btn-sm.cloud.success{border-color:#10b981;color:#10b981;box-shadow:0 0 8px rgba(16,185,129,.35)}
+.maint-btn-sm.cloud.failure{border-color:#ef4444;color:#ef4444;box-shadow:0 0 8px rgba(239,68,68,.35)}
+.maint-btn-sm:disabled{opacity:.55;cursor:not-allowed}
 .maint-controls{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;background:linear-gradient(180deg,#0c141c,#0e1820);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
 .maint-controls .mc-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 .maint-controls select,.maint-controls input[type="text"]{padding:7px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:12px;outline:none}
@@ -580,6 +585,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     </div>
     <input type="text" id="maintSearch" placeholder="Search DT number, name, feeder, BU..." oninput="renderMaintTable()">
     <div style="flex:1"></div>
+    <button class="maint-btn-sm cloud" id="maintCloudBtn" type="button" onclick="maintReloadFromCloud()">&#9729; Load from Cloud</button>
     <button class="maint-btn-sm danger" type="button" onclick="maintClearAll()">Clear All Data</button>
   </div>
 
@@ -4127,6 +4133,46 @@ async function maintCloudLoad(){
   });
   maintSaveLS();
   return true;
+}
+
+// Manual "Load from Cloud" button handler. Wraps maintCloudLoad() with
+// user-visible feedback states (loading / success / failure).
+async function maintReloadFromCloud(){
+  const btn=document.getElementById('maintCloudBtn');
+  if(!btn)return;
+  if(btn.disabled)return;
+  const origHTML=btn.innerHTML;
+  btn.disabled=true;
+  btn.classList.remove('success','failure');
+  btn.classList.add('loading');
+  btn.innerHTML='&#9729; Loading...';
+  try{
+    const ok=await maintCloudLoad();
+    if(!ok)throw new Error('Cloud fetch failed — see console');
+    _maintUpdateStatusCard('Private');
+    _maintUpdateStatusCard('Public');
+    _maintUpdatePeriodDropdown();
+    renderMaintenancePage();
+    const total=(_maintAllRecords()||[]).length;
+    btn.classList.remove('loading');
+    btn.classList.add('success');
+    btn.innerHTML='&#9729; Loaded &middot; '+fmt(total)+' records';
+    setTimeout(()=>{
+      btn.classList.remove('success');
+      btn.innerHTML=origHTML;
+      btn.disabled=false;
+    },2200);
+  }catch(err){
+    console.error('maintReloadFromCloud failed',err);
+    btn.classList.remove('loading');
+    btn.classList.add('failure');
+    btn.innerHTML='&#9729; Load failed';
+    setTimeout(()=>{
+      btn.classList.remove('failure');
+      btn.innerHTML=origHTML;
+      btn.disabled=false;
+    },2800);
+  }
 }
 
 // Delete one period+ownership from Supabase
