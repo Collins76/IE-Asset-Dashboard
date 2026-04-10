@@ -3737,6 +3737,25 @@ const MAINT_COLS={
   newValue:['NEW NAME','New name','New Name','New name (Nomenclature)','New DT Name','Correct CIS Number','Proposed unique DT Nomenclature Name','New Unique DT Nomenclature','New UT','New Capacity (kVA)','Proposed Feeder','Proposed Feeder No.']
 };
 
+// Canonical Business Units for the IE network. Anything outside this set
+// is treated as either a case/whitespace variant (remapped) or garbage
+// (set to null so it doesn't inflate the "BUs Reporting" KPI).
+const MAINT_CANONICAL_BUS=['ABULE EGBA','AKOWONJO','IKEJA','IKORODU','OSHODI','SHOMOLU'];
+const MAINT_BU_ALIASES={
+  'ABULE-EGBA':'ABULE EGBA',
+  'ABULEGBA':'ABULE EGBA',
+  'ABULE_EGBA':'ABULE EGBA'
+};
+function _maintCanonBU(raw){
+  if(raw==null)return null;
+  let s=String(raw).replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+  if(!s)return null;
+  s=s.toUpperCase();
+  if(MAINT_BU_ALIASES[s])return MAINT_BU_ALIASES[s];
+  if(MAINT_CANONICAL_BUS.indexOf(s)>=0)return s;
+  return null; // unmapped/garbage: DT nomenclature in BU column, typos, etc.
+}
+
 // Normalize a header label: replace non-breaking spaces, collapse whitespace, trim
 function _maintNormHdr(h){return (h==null?'':String(h)).replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim()}
 
@@ -3797,7 +3816,7 @@ function _maintNormalizeRow(row,colMap,category,ownership,period,sheetName){
     ownership:ownership,
     changeCategory:category,
     sheetName:sheetName,
-    bu:_maintStr(g('bu')),
+    bu:_maintCanonBU(g('bu')),
     ut:_maintStr(g('ut')),
     dtNumber:_maintStr(g('dtNumber')),
     dtName:_maintStr(g('dtName')),
@@ -3984,7 +4003,7 @@ function _maintRowToRec(row){
     ownership:row.ownership,
     changeCategory:row.change_category,
     sheetName:row.sheet_name,
-    bu:row.bu,
+    bu:_maintCanonBU(row.bu),
     ut:row.ut,
     dtNumber:row.dt_number,
     dtName:row.dt_name,
