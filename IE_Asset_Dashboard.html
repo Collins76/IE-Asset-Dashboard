@@ -583,8 +583,10 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
       <button class="maint-view-btn" data-view="Private" onclick="maintSetView('Private')">Private</button>
       <button class="maint-view-btn" data-view="Public" onclick="maintSetView('Public')">Public</button>
     </div>
-    <input type="text" id="maintSearch" placeholder="Search DT number, name, feeder, BU..." oninput="renderMaintTable()">
-    <div style="flex:1"></div>
+    <div style="position:relative;flex:1;max-width:360px;min-width:220px">
+      <input type="text" id="maintSearch" placeholder="Search DT number, name, feeder, BU..." oninput="maintShowAC();renderMaintTable()" onkeydown="maintACNav(event)" autocomplete="off" style="width:100%">
+      <div class="ac-dropdown" id="maintACDropdown"></div>
+    </div>
     <button class="maint-btn-sm cloud" id="maintCloudBtn" type="button" onclick="maintReloadFromCloud()">&#9729; Load from Cloud</button>
     <button class="maint-btn-sm danger" type="button" onclick="maintClearAll()">Clear All Data</button>
   </div>
@@ -4802,6 +4804,104 @@ const MAINT_TCOLS=[
   {key:'state',label:'State',w:90}
 ];
 function _maintEscapeHtml(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+// ============ MAINTENANCE SEARCH INTELLISENSE ============
+// Fields the autocomplete can match against. Order controls preference
+// when two fields on the same record both match (DT Number wins first).
+const MAINT_AC_FIELDS=[
+  {key:'dtNumber',label:'DT Number'},
+  {key:'dtName',label:'DT Name'},
+  {key:'feeder',label:'Feeder'},
+  {key:'oldValue',label:'Old Value'},
+  {key:'newValue',label:'New Value'},
+  {key:'bu',label:'BU'},
+  {key:'ut',label:'UT'},
+  {key:'changeCategory',label:'Category'},
+  {key:'address',label:'Address'},
+  {key:'remark',label:'Remark'},
+  {key:'meterNumber',label:'Meter #'}
+];
+let _maintACIdx=-1;
+function maintShowAC(){
+  const inp=document.getElementById('maintSearch');
+  const dd=document.getElementById('maintACDropdown');
+  if(!inp||!dd)return;
+  const q=(inp.value||'').toLowerCase().trim();
+  if(q.length<2){dd.classList.remove('show');dd.innerHTML='';_maintACIdx=-1;return}
+  // Search across the current view so suggestions reflect the active ownership toggle,
+  // but BEFORE the BU/Category filters so the user can actually discover filters to set.
+  const recs=_maintViewRecords();
+  const seen=new Set();
+  const items=[];
+  const MAX=12;
+  for(let i=0;i<recs.length&&items.length<MAX;i++){
+    const r=recs[i];
+    for(let j=0;j<MAINT_AC_FIELDS.length;j++){
+      if(items.length>=MAX)break;
+      const f=MAINT_AC_FIELDS[j];
+      const raw=r[f.key];
+      if(raw==null||raw==='')continue;
+      const v=String(raw);
+      const key=f.key+'|'+v.toLowerCase();
+      if(seen.has(key))continue;
+      const lv=v.toLowerCase();
+      const idx=lv.indexOf(q);
+      if(idx===-1)continue;
+      seen.add(key);
+      const esc=_maintEscapeHtml;
+      const hl=esc(v.substring(0,idx))+'<span class="ac-match">'+esc(v.substring(idx,idx+q.length))+'</span>'+esc(v.substring(idx+q.length));
+      // Rank: earlier match index + shorter value is better
+      items.push({text:v,html:hl,type:f.label,rank:idx*100+v.length,field:f.key});
+    }
+  }
+  if(!items.length){dd.classList.remove('show');dd.innerHTML='';_maintACIdx=-1;return}
+  items.sort((a,b)=>a.rank-b.rank);
+  _maintACIdx=-1;
+  dd.innerHTML=items.map((it,i)=>'<div class="ac-item" data-idx="'+i+'" onmousedown="maintPickAC(this.getAttribute(\'data-text\'))" data-text="'+it.text.replace(/"/g,'&quot;')+'">'+it.html+'<span class="ac-type">'+it.type+'</span></div>').join('');
+  dd.classList.add('show');
+}
+function maintPickAC(val){
+  const inp=document.getElementById('maintSearch');
+  const dd=document.getElementById('maintACDropdown');
+  if(inp)inp.value=val;
+  if(dd){dd.classList.remove('show');dd.innerHTML=''}
+  _maintACIdx=-1;
+  renderMaintTable();
+}
+function maintACNav(e){
+  const dd=document.getElementById('maintACDropdown');if(!dd)return;
+  const items=dd.querySelectorAll('.ac-item');
+  if(!items.length||!dd.classList.contains('show'))return;
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    _maintACIdx=Math.min(_maintACIdx+1,items.length-1);
+    _maintACHL(items);
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    _maintACIdx=Math.max(_maintACIdx-1,0);
+    _maintACHL(items);
+  } else if(e.key==='Enter'){
+    if(_maintACIdx>=0&&items[_maintACIdx]){
+      e.preventDefault();
+      const txt=items[_maintACIdx].getAttribute('data-text');
+      maintPickAC(txt);
+    }
+  } else if(e.key==='Escape'){
+    dd.classList.remove('show');_maintACIdx=-1;
+  }
+}
+function _maintACHL(items){
+  items.forEach((el,i)=>{el.classList.toggle('ac-active',i===_maintACIdx)});
+  if(items[_maintACIdx])items[_maintACIdx].scrollIntoView({block:'nearest'});
+}
+// Click outside to close
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#maintSearch')&&!e.target.closest('#maintACDropdown')){
+    const dd=document.getElementById('maintACDropdown');
+    if(dd){dd.classList.remove('show');_maintACIdx=-1}
+  }
+});
+
 function renderMaintTable(){
   const theadEl=document.getElementById('maintThead');if(!theadEl)return;
   theadEl.innerHTML=MAINT_TCOLS.map(c=>`<th onclick="maintSort('${c.key}')" style="min-width:${c.w}px">${c.label}<span class="sort-arrow">${MAINT_STATE.sortCol===c.key?(MAINT_STATE.sortAsc?'&uarr;':'&darr;'):'&udarr;'}</span></th>`).join('');
