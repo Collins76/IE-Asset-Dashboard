@@ -11,6 +11,11 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Auth (must load before any page scripts that talk to Supabase) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/_config.js"></script>
+<script src="/_auth_guard.js"></script>
+<script src="/_audit.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}button,a,label,input,select,[onclick]{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0b1015;--bg2:#101820;--bg3:#161e28;--bg4:#1c2632;--accent:#00d4ff;--accent2:#0099cc;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;--orange:#f97316;--pink:#ec4899;--teal:#14b8a6;--text:#e2e8f0;--text2:#7a8a9e;--border:#1a2535;--card:#0f171f}
@@ -434,7 +439,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
     <div class="logo-icon"><img src="https://raw.githubusercontent.com/Collins76/IE-Asset-Dashboard/main/IE%20Logo.png" alt="IE Logo" style="width:100%;height:100%;object-fit:contain;border-radius:6px;"></div>
     <div><div>IE Asset Dashboard</div><div class="logo-sub">Distribution Transformer Network &middot; Ikeja Electric</div></div>
   </div>
-
+  <div class="nav-right" style="margin-left:auto"></div>
 </nav>
 <div style="background:rgba(15,23,42,.98);border-bottom:1px solid var(--border);padding:0 24px;position:sticky;top:56px;z-index:99;display:flex;align-items:center;gap:8px">
   <div class="nav-tabs" style="flex:1">
@@ -543,7 +548,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
 
 <!-- PAGE: DT MAINTENANCE -->
 <div class="page" id="page-maint">
-  <div class="maint-upload-row">
+  <div class="maint-upload-row maint-admin-only">
     <div class="maint-drop private" id="maintDropPrivate">
       <div class="maint-drop-head">
         <div class="maint-drop-icon">&#128228;</div>
@@ -588,7 +593,7 @@ tbody td{padding:8px 12px;white-space:nowrap;max-width:200px;overflow:hidden;tex
       <div class="ac-dropdown" id="maintACDropdown"></div>
     </div>
     <button class="maint-btn-sm cloud" id="maintCloudBtn" type="button" onclick="maintReloadFromCloud()">&#9729; Load from Cloud</button>
-    <button class="maint-btn-sm danger" type="button" onclick="maintClearAll()">Clear All Data</button>
+    <button class="maint-btn-sm danger maint-admin-only" type="button" onclick="maintClearAll()">Clear All Data</button>
   </div>
 
   <div id="maintEmpty" class="maint-empty">
@@ -3670,11 +3675,17 @@ function renderAll(){
 }
 
 // ============ DT MAINTENANCE MODULE ============
-// Supabase REST config for cross-device sync
-const MAINT_SB_URL='https://blxuwvxitbbjhzgucvhp.supabase.co';
-const MAINT_SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJseHV3dnhpdGJiamh6Z3VjdmhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNDg1MDcsImV4cCI6MjA5MDYyNDUwN30.lRozI7QMh_qL6sR5BWSrgT-vZQummU8Zo-O1RTwcppY';
+// Supabase REST config for cross-device sync. URL + anon key come from the
+// shared /_config.js file; the signed-in user's JWT (from the auth guard)
+// is used for the Authorization header so RLS sees the real user identity.
+const MAINT_SB_URL=(window.IE_CONFIG&&window.IE_CONFIG.SUPABASE_URL)||'https://blxuwvxitbbjhzgucvhp.supabase.co';
+const MAINT_SB_KEY=(window.IE_CONFIG&&window.IE_CONFIG.SUPABASE_ANON_KEY)||'';
 function _maintSbHeaders(extra){
-  return Object.assign({'apikey':MAINT_SB_KEY,'Authorization':'Bearer '+MAINT_SB_KEY,'Content-Type':'application/json'},extra||{});
+  // apikey stays the anon key (PostgREST uses it to identify the project).
+  // Authorization uses the signed-in user's access token so RLS applies to them.
+  // Falls back to anon key only if the auth guard hasn't populated a session yet.
+  var token=(window.IE_AUTH&&window.IE_AUTH.accessToken)||MAINT_SB_KEY;
+  return Object.assign({'apikey':MAINT_SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},extra||{});
 }
 function _maintSbUrl(path){return MAINT_SB_URL+'/rest/v1/'+path}
 
@@ -4068,6 +4079,16 @@ async function _maintCloudUpload(payload){
     body:JSON.stringify(wbRow)
   });
   if(!wbResp.ok){const t=await wbResp.text();throw new Error('Workbook upsert failed: '+wbResp.status+' '+t)}
+  // Audit: log the successful upload.
+  try{
+    if(window.IE_AUDIT)window.IE_AUDIT.data('upload','dt_maintenance',period+'|'+ownership,{
+      period:period,
+      ownership:ownership,
+      filename:payload.filename||null,
+      total_records:rows.length,
+      sheet_count:wbRow.sheet_count
+    });
+  }catch(e){}
 }
 
 // Fetch ALL records + workbooks from Supabase and hydrate MAINT_STATE.
@@ -4207,6 +4228,9 @@ async function _maintCloudDeleteOne(period,ownership){
   try{
     await fetch(_maintSbUrl('dt_maintenance_records?'+qs),{method:'DELETE',headers:_maintSbHeaders({'Prefer':'return=minimal'})});
     await fetch(_maintSbUrl('dt_maintenance_workbooks?'+qs),{method:'DELETE',headers:_maintSbHeaders({'Prefer':'return=minimal'})});
+    try{
+      if(window.IE_AUDIT)window.IE_AUDIT.data('cloud_delete','dt_maintenance',period+'|'+ownership,{period:period,ownership:ownership});
+    }catch(e){}
   }catch(e){console.warn('maint: cloud delete failed',e)}
 }
 // Delete everything from Supabase
@@ -4214,6 +4238,9 @@ async function _maintCloudDeleteAll(){
   try{
     await fetch(_maintSbUrl('dt_maintenance_records?id=gt.0'),{method:'DELETE',headers:_maintSbHeaders({'Prefer':'return=minimal'})});
     await fetch(_maintSbUrl('dt_maintenance_workbooks?id=gt.0'),{method:'DELETE',headers:_maintSbHeaders({'Prefer':'return=minimal'})});
+    try{
+      if(window.IE_AUDIT)window.IE_AUDIT.data('cloud_delete_all','dt_maintenance',null,{scope:'all'});
+    }catch(e){}
   }catch(e){console.warn('maint: cloud delete-all failed',e)}
 }
 
@@ -4236,6 +4263,11 @@ function maintHandleFile(event,expectedOwnership){
   try{event.target.value=''}catch(e){}
 }
 function _maintReadFile(file,expectedOwnership){
+  // Admin-only guard. This catches both file-input and drag-drop entry points.
+  if(!window.IE_AUTH||!window.IE_AUTH.profile||window.IE_AUTH.profile.role!=='admin'){
+    alert('Only administrators can upload DT maintenance workbooks.');
+    return;
+  }
   const status=document.getElementById('maintStatus'+expectedOwnership);
   if(status)status.innerHTML='<span style="color:var(--yellow)">Parsing '+file.name+'...</span>';
   const reader=new FileReader();
@@ -4350,6 +4382,10 @@ function maintOnPeriodChange(){
 }
 
 function maintClearOne(ownership){
+  if(!window.IE_AUTH||!window.IE_AUTH.profile||window.IE_AUTH.profile.role!=='admin'){
+    alert('Only administrators can clear DT maintenance data.');
+    return;
+  }
   const period=MAINT_STATE.period;
   if(ownership==='Private')MAINT_STATE.private=null;
   else MAINT_STATE.public=null;
@@ -4362,6 +4398,10 @@ function maintClearOne(ownership){
   if(period){_maintCloudDeleteOne(period,ownership)}
 }
 function maintClearAll(){
+  if(!window.IE_AUTH||!window.IE_AUTH.profile||window.IE_AUTH.profile.role!=='admin'){
+    alert('Only administrators can clear all DT maintenance data.');
+    return;
+  }
   if(!confirm('Clear ALL loaded maintenance data (all periods, all devices)? This cannot be undone and will also wipe the cloud copy.'))return;
   MAINT_STATE.private=null;
   MAINT_STATE.public=null;
@@ -5072,6 +5112,32 @@ function _maintInitDropZones(){
 }
 
 // ============ INIT ============
+// Defer cloud fetches until the auth guard has populated a real session token.
+// Otherwise the very first REST call would go out as anon and fail (RLS).
+function _maintCloudLoadWhenAuthReady(){
+  function run(){
+    maintCloudLoad().then(function(ok){
+      if(ok){
+        _maintUpdateStatusCard('Private');
+        _maintUpdateStatusCard('Public');
+        _maintUpdatePeriodDropdown();
+        if(currentPage==='maint')renderMaintenancePage();
+      }
+    });
+  }
+  if(window.IE_AUTH&&window.IE_AUTH.ready){run();}
+  else{window.addEventListener('ie-auth-ready',run,{once:true});}
+}
+
+// Hide admin-only controls for viewers as soon as we know the role.
+function _applyRoleVisibility(){
+  var role=(window.IE_AUTH&&window.IE_AUTH.profile&&window.IE_AUTH.profile.role)||null;
+  if(role==='admin')return;
+  document.querySelectorAll('.maint-admin-only').forEach(function(el){el.style.display='none';});
+}
+if(window.IE_AUTH&&window.IE_AUTH.ready){_applyRoleVisibility();}
+else{window.addEventListener('ie-auth-ready',_applyRoleVisibility,{once:true});}
+
 function init(){
   // Normalize feeder names: merge case/hyphen duplicates into one canonical form
   const fnMap={};
@@ -5095,17 +5161,9 @@ function init(){
   _maintUpdateStatusCard('Private');
   _maintUpdateStatusCard('Public');
   _maintUpdatePeriodDropdown();
-  // Then fetch fresh data from Supabase (cross-device sync). Rerender the
-  // maintenance page if the user is already on that tab, or just refresh
-  // its cached state otherwise.
-  maintCloudLoad().then(function(ok){
-    if(ok){
-      _maintUpdateStatusCard('Private');
-      _maintUpdateStatusCard('Public');
-      _maintUpdatePeriodDropdown();
-      if(currentPage==='maint')renderMaintenancePage();
-    }
-  });
+  // Then fetch fresh data from Supabase (cross-device sync). Waits for the
+  // auth guard to finish so the REST call carries the user's JWT, not anon.
+  _maintCloudLoadWhenAuthReady();
 }
 if(typeof ASSET_DATA!=='undefined')init();
 else {
@@ -5113,7 +5171,7 @@ else {
   // Still allow maintenance tab to work even if asset data failed to load
   try{
     maintLoadLS();_maintInitDropZones();_maintUpdateStatusCard('Private');_maintUpdateStatusCard('Public');_maintUpdatePeriodDropdown();
-    maintCloudLoad().then(function(ok){if(ok){_maintUpdateStatusCard('Private');_maintUpdateStatusCard('Public');_maintUpdatePeriodDropdown();if(currentPage==='maint')renderMaintenancePage();}});
+    _maintCloudLoadWhenAuthReady();
   }catch(e){console.warn('maint fallback init failed',e)}
 }
 </script>

@@ -1,14 +1,12 @@
 {
-  "framework": null,
-  "buildCommand": "",
-  "outputDirectory": ".",
   "rewrites": [
     { "source": "/",              "destination": "/IE_Asset_Dashboard.html" },
     { "source": "/login",         "destination": "/login.html" },
     { "source": "/pending",       "destination": "/pending.html" },
     { "source": "/admin",         "destination": "/admin.html" },
-    { "source": "/admin/:p*",     "destination": "/admin.html" },
+    { "source": "/admin/**",      "destination": "/admin.html" },
     { "source": "/dt",            "destination": "/DT_Dashboard.html" },
     { "source": "/auth/callback", "destination": "/login.html" }
-  ]
+  ],
+  "directoryListing": false
 }

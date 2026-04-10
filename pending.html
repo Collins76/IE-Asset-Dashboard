@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Awaiting approval - IE Asset Dashboard</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+:root{--bg:#0b1015;--bg2:#0f171f;--bg3:#161e28;--accent:#00d4ff;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--text:#e2e8f0;--text2:#7a8a9e;--border:#1a2535}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 700px at 50% -100px,#0d1a26 0%,var(--bg) 55%);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;line-height:1.5}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:40px 36px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:center}
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:22px;justify-content:center}
+.logo-icon{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#0d2a3a,#0a3040);border:1.5px solid #1a4050;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon svg{width:22px;height:22px;fill:var(--accent)}
+.logo-text{font-size:15px;font-weight:700;color:var(--accent);line-height:1.15;text-align:left}
+.logo-sub{font-size:10px;color:var(--text2);font-weight:400;text-align:left}
+.state-icon{width:72px;height:72px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin:4px auto 18px}
+.state-icon.pending{background:rgba(245,158,11,.1);border:2px solid rgba(245,158,11,.4)}
+.state-icon.pending svg{width:34px;height:34px;stroke:var(--yellow);fill:none;stroke-width:2.4}
+.state-icon.rejected{background:rgba(239,68,68,.1);border:2px solid rgba(239,68,68,.4)}
+.state-icon.rejected svg{width:34px;height:34px;stroke:var(--red);fill:none;stroke-width:2.4}
+h1{font-size:22px;font-weight:700;margin:0 0 8px}
+.lead{color:var(--text2);font-size:13px;margin-bottom:18px;line-height:1.6}
+.email-pill{display:inline-block;padding:6px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:16px;font-size:11.5px;color:var(--text);margin-bottom:20px;font-family:'Consolas','Courier New',monospace}
+.status-row{display:flex;justify-content:center;gap:6px;font-size:11px;color:var(--text2);margin-bottom:22px;align-items:center}
+.status-row .dot{width:8px;height:8px;border-radius:50%;background:var(--yellow);animation:pulse 1.8s ease-in-out infinite}
+.status-row .dot.rejected{background:var(--red);animation:none}
+@keyframes pulse{0%,100%{opacity:.5;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
+.btn{width:100%;padding:11px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);font-family:inherit;transition:border-color .15s,color .15s,background .15s;background:var(--bg3);color:var(--text);margin-top:6px}
+.btn:hover{border-color:var(--red);color:var(--red)}
+.footer{margin-top:24px;padding-top:18px;border-top:1px solid var(--border);font-size:11px;color:var(--text2);line-height:1.7}
+.footer a{color:var(--accent);text-decoration:none}
+.footer a:hover{text-decoration:underline}
+.poll-note{font-size:10.5px;color:var(--text2);margin-top:10px;font-style:italic}
+@media (max-width:480px){.card{padding:32px 24px}}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="logo">
+    <div class="logo-icon">
+      <img src="/IE%20Logo.png" alt="IE Logo" style="width:100%;height:100%;object-fit:contain;border-radius:6px">
+    </div>
+    <div>
+      <div class="logo-text">IE Asset Dashboard</div>
+      <div class="logo-sub">Ikeja Electric Plc</div>
+    </div>
+  </div>
+
+  <div class="state-icon pending" id="icon">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-linecap="round"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <h1 id="title">Awaiting approval</h1>
+  <div class="lead" id="lead">Your account has been created and is waiting for an administrator to grant access. You'll be able to sign in as soon as approval is granted.</div>
+
+  <div class="email-pill" id="email-pill"></div>
+
+  <div class="status-row" id="status-row">
+    <span class="dot"></span>
+    <span id="status-label">Pending review</span>
+  </div>
+
+  <button type="button" class="btn" id="signout-btn">Sign out</button>
+  <div class="poll-note" id="poll-note">Auto-checking every 30s — no need to refresh.</div>
+
+  <div class="footer">
+    Need help? Contact your administrator.<br>
+    Or <a href="/login">use a different account</a>.
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/_config.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  if (!window.supabase || !window.supabase.createClient) {
+    document.getElementById('lead').textContent = 'Failed to load Supabase SDK. Check your connection and reload.';
+    return;
+  }
+
+  var sb = window.supabase.createClient(
+    window.IE_CONFIG.SUPABASE_URL,
+    window.IE_CONFIG.SUPABASE_ANON_KEY,
+    { auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: false } }
+  );
+
+  var pollTimer = null;
+  var pollAttempts = 0;
+
+  function renderRejected(profile) {
+    document.getElementById('icon').className = 'state-icon rejected';
+    document.getElementById('icon').innerHTML =
+      '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-linecap="round"/><path d="M9 9l6 6M15 9l-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    document.getElementById('title').textContent = 'Access declined';
+    document.getElementById('lead').textContent =
+      'An administrator has declined your request for access. If you think this is a mistake, please contact your admin.';
+    document.getElementById('status-row').querySelector('.dot').classList.add('rejected');
+    document.getElementById('status-label').textContent = 'Declined';
+    document.getElementById('poll-note').style.display = 'none';
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  async function checkStatus() {
+    var s = await sb.auth.getSession();
+    if (!s || !s.data || !s.data.session) {
+      window.location.replace('/login');
+      return;
+    }
+
+    var user = s.data.session.user;
+    document.getElementById('email-pill').textContent = user.email || '';
+
+    var profResp = await sb
+      .from('profiles')
+      .select('id, email, status, role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profResp.error) {
+      console.error('profile fetch failed', profResp.error);
+      return;
+    }
+    if (!profResp.data) {
+      // Shouldn't happen — trigger creates a row on signup. Bail.
+      return;
+    }
+
+    var profile = profResp.data;
+    if (profile.status === 'approved') {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      window.location.replace('/');
+      return;
+    }
+    if (profile.status === 'rejected') {
+      renderRejected(profile);
+      return;
+    }
+    // still pending — keep polling
+    pollAttempts += 1;
+    if (pollAttempts > 120) { // 1 hour of polling
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      document.getElementById('poll-note').textContent = 'Auto-check stopped after 1 hour. Refresh to resume.';
+    }
+  }
+
+  document.getElementById('signout-btn').addEventListener('click', async function () {
+    try { await sb.auth.signOut(); } catch (e) {}
+    window.location.replace('/login');
+  });
+
+  checkStatus();
+  pollTimer = setInterval(checkStatus, 30000);
+})();
+</script>
+</body>
+</html>

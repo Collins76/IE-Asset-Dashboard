@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in - IE Asset Dashboard</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+:root{--bg:#0b1015;--bg2:#0f171f;--bg3:#161e28;--bg4:#1c2632;--accent:#00d4ff;--accent2:#0099cc;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--text:#e2e8f0;--text2:#7a8a9e;--border:#1a2535;--card:#0f171f}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 700px at 50% -100px,#0d1a26 0%,var(--bg) 55%);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;line-height:1.5}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:40px 36px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.logo-icon{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#0d2a3a,#0a3040);border:1.5px solid #1a4050;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon svg{width:22px;height:22px;fill:var(--accent)}
+.logo-text{font-size:16px;font-weight:700;color:var(--accent);line-height:1.15}
+.logo-sub{font-size:10px;color:var(--text2);font-weight:400;margin-top:1px}
+h1{font-size:22px;font-weight:700;margin:20px 0 4px}
+.lead{color:var(--text2);font-size:12.5px;margin-bottom:24px}
+label{display:block;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-weight:600}
+input[type="email"]{width:100%;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+input[type="email"]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,.12)}
+input[type="email"]::placeholder{color:#4a5568}
+.btn{width:100%;padding:12px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:transform .1s,box-shadow .15s,background .15s,opacity .15s;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0b1015}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,212,255,.32)}
+.btn-google{background:#ffffff;color:#1f1f1f;border:1px solid rgba(255,255,255,.08)}
+.btn-google:hover:not(:disabled):not(.disabled-provider){transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,255,255,.18)}
+.btn-google svg{width:18px;height:18px}
+.btn-google.disabled-provider{background:#1c2632 !important;background-color:#1c2632 !important;color:#5b6a7e !important;border:1px dashed #2a3548 !important;cursor:not-allowed}
+.btn-google.disabled-provider svg{opacity:.45;filter:grayscale(1)}
+.divider{display:flex;align-items:center;gap:10px;margin:20px 0;color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:1.2px;font-weight:600}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.msg{margin-top:16px;padding:11px 14px;border-radius:6px;font-size:12px;line-height:1.55;display:none;word-wrap:break-word}
+.msg.show{display:block}
+.msg.success{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);color:#10b981}
+.msg.error{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#ef4444}
+.msg.info{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.28);color:var(--accent)}
+.footer{margin-top:28px;padding-top:18px;border-top:1px solid var(--border);font-size:11px;color:var(--text2);text-align:center;line-height:1.7}
+.footer a{color:var(--accent);text-decoration:none}
+.footer a:hover{text-decoration:underline}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(11,16,21,.3);border-top-color:#0b1015;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+.spinner.light{border-color:rgba(255,255,255,.3);border-top-color:#ffffff}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width:480px){.card{padding:32px 24px}h1{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">
+      <img src="/IE%20Logo.png" alt="IE Logo" style="width:100%;height:100%;object-fit:contain;border-radius:6px">
+    </div>
+    <div>
+      <div class="logo-text">IE Asset Dashboard</div>
+      <div class="logo-sub">Ikeja Electric Plc</div>
+    </div>
+  </div>
+  <h1>Sign in</h1>
+  <div class="lead">Access is restricted to authorized Ikeja Electric staff. New accounts require admin approval.</div>
+
+  <form id="magic-form" autocomplete="on">
+    <label for="email">Work email</label>
+    <input id="email" type="email" placeholder="you@example.com" required autocomplete="email" spellcheck="false">
+    <button type="submit" class="btn btn-primary" id="magic-btn">Send magic link</button>
+  </form>
+
+  <div class="divider">or</div>
+
+  <button type="button" class="btn btn-google" id="google-btn">
+    <svg viewBox="0 0 24 24"><path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    Sign in with Google
+  </button>
+
+  <div class="msg" id="msg" role="status" aria-live="polite"></div>
+
+  <div class="footer">
+    Having trouble? Contact your administrator.<br>
+    Powered by Supabase Auth
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/_config.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  if (!window.supabase || !window.supabase.createClient) {
+    document.getElementById('msg').className = 'msg show error';
+    document.getElementById('msg').textContent = 'Failed to load Supabase SDK. Check your connection and reload.';
+    return;
+  }
+
+  // NOTE: we deliberately use the 'implicit' flow here, NOT 'pkce'.
+  // PKCE stores a code_verifier in the initiating browser's localStorage,
+  // which breaks magic links when the user opens the email link on a
+  // different device or in a different browser (the verifier isn't there).
+  // Implicit flow ships the session tokens back in the URL fragment
+  // (#access_token=...), so the callback works in any browser.
+  var sb = window.supabase.createClient(
+    window.IE_CONFIG.SUPABASE_URL,
+    window.IE_CONFIG.SUPABASE_ANON_KEY,
+    {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        flowType: 'implicit'
+      }
+    }
+  );
+
+  var msgEl = document.getElementById('msg');
+  var magicBtn = document.getElementById('magic-btn');
+  var googleBtn = document.getElementById('google-btn');
+  var emailInput = document.getElementById('email');
+
+  function showMsg(text, cls) {
+    msgEl.className = 'msg show ' + cls;
+    msgEl.textContent = text;
+  }
+  function hideMsg() { msgEl.className = 'msg'; msgEl.textContent = ''; }
+
+  function setBusy(busy) {
+    magicBtn.disabled = busy;
+    googleBtn.disabled = busy;
+    if (busy) {
+      magicBtn.innerHTML = '<span class="spinner"></span> Sending...';
+    } else {
+      magicBtn.innerHTML = 'Send magic link';
+    }
+  }
+
+  function callbackRedirect() {
+    // Same-origin so magic links / OAuth work in both prod and local dev.
+    return window.location.origin + '/auth/callback';
+  }
+
+  // ---- callback handling ----
+  // With flowType:'implicit' the email / OAuth redirect lands here with
+  // a URL fragment like #access_token=...&refresh_token=...&type=magiclink.
+  // The SDK auto-parses this during createClient() (detectSessionInUrl:true)
+  // and stores the session. Our job is just to wait, verify, and redirect.
+  async function handleCallback() {
+    var hasFragmentToken = window.location.hash.indexOf('access_token=') !== -1;
+    var hasLegacyCode = /[?&]code=/.test(window.location.search);
+    var hasError = /[?&#]error=/.test(window.location.search) || /[?&#]error=/.test(window.location.hash);
+
+    if (hasError) {
+      var msg = 'Sign-in failed.';
+      try {
+        var params = new URLSearchParams(
+          window.location.search.replace(/^\?/, '') + '&' +
+          window.location.hash.replace(/^#/, '')
+        );
+        if (params.get('error_description')) msg = params.get('error_description');
+        else if (params.get('error')) msg = params.get('error');
+      } catch (e) {}
+      showMsg(msg, 'error');
+      window.history.replaceState({}, '', '/login');
+      return true;
+    }
+
+    // Legacy PKCE code from an email sent before the flow switch.
+    // We can't exchange it (no code_verifier stored), so nudge the user
+    // to request a fresh magic link.
+    if (hasLegacyCode && !hasFragmentToken) {
+      showMsg('That sign-in link has expired or was sent from a different browser. Please request a new magic link.', 'error');
+      window.history.replaceState({}, '', '/login');
+      return true;
+    }
+
+    if (!hasFragmentToken) return false;
+
+    showMsg('Finishing sign-in...', 'info');
+    try {
+      // The SDK has already parsed the fragment. Wait for the session.
+      var s = await sb.auth.getSession();
+      if (!s || !s.data || !s.data.session) throw new Error('No session was created');
+      var provider = sessionStorage.getItem('ie_oauth_provider') || 'magic_link';
+      sessionStorage.setItem('ie_fresh_login', provider === 'google' ? 'google' : 'magic_link');
+      sessionStorage.removeItem('ie_oauth_provider');
+      window.history.replaceState({}, '', '/login');
+      // The auth guard on / will route to /pending if not approved.
+      window.location.replace('/');
+      return true;
+    } catch (err) {
+      console.error('callback exchange failed', err);
+      showMsg('Sign-in failed: ' + ((err && err.message) || 'unknown error'), 'error');
+      return true;
+    }
+  }
+
+  // ---- already signed in? bounce to home ----
+  async function checkExisting() {
+    try {
+      var s = await sb.auth.getSession();
+      if (s && s.data && s.data.session) {
+        window.location.replace('/');
+        return true;
+      }
+    } catch (e) { /* ignore */ }
+    return false;
+  }
+
+  // ---- error interpretation ----
+  // Map Supabase auth error strings to user-friendly guidance + cooldown hints.
+  function interpretAuthError(err) {
+    var raw = (err && (err.message || err.error_description || String(err))) || 'unknown error';
+    var low = raw.toLowerCase();
+
+    if (low.indexOf('email rate limit') !== -1 || low.indexOf('over_email_send_rate_limit') !== -1) {
+      return {
+        level: 'error',
+        cooldownSeconds: 60 * 60, // 1 hour
+        html:
+          '<b>Email rate limit exceeded.</b><br>' +
+          'Supabase\'s built-in email only allows <b>2 messages per hour</b> on the free tier. ' +
+          'Options: (1) wait ~60 minutes and try again, (2) use <b>Sign in with Google</b> below if it\'s enabled, ' +
+          'or (3) ask an admin to configure a custom SMTP provider in Supabase (removes the limit).'
+      };
+    }
+    if (low.indexOf('for security purposes') !== -1 || low.indexOf('after 2 seconds') !== -1) {
+      return {
+        level: 'error',
+        cooldownSeconds: 8,
+        html: 'Please wait a few seconds before requesting another link.'
+      };
+    }
+    if (low.indexOf('provider is not enabled') !== -1 || low.indexOf('unsupported provider') !== -1) {
+      return {
+        level: 'error',
+        html:
+          '<b>Google sign-in is not enabled</b> on this Supabase project yet. ' +
+          'Please use a magic link above, or ask an admin to enable Google in ' +
+          'Supabase &rarr; Authentication &rarr; Providers.'
+      };
+    }
+    if (low.indexOf('invalid email') !== -1) {
+      return { level: 'error', html: 'That doesn\'t look like a valid email address.' };
+    }
+    // Fallback: raw message
+    return { level: 'error', html: 'Sign-in failed: ' + escapeHtmlLocal(raw) };
+  }
+
+  function escapeHtmlLocal(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Show HTML messages (for rich error guidance with <b>, <br>, etc.)
+  function showMsgHtml(html, cls) {
+    msgEl.className = 'msg show ' + cls;
+    msgEl.innerHTML = html;
+  }
+
+  // Button cooldown — blocks the Send button for N seconds and shows a countdown.
+  var _magicCooldownTimer = null;
+  function startMagicCooldown(seconds) {
+    if (_magicCooldownTimer) clearInterval(_magicCooldownTimer);
+    var remaining = Math.max(1, Math.floor(seconds));
+    magicBtn.disabled = true;
+    var base = 'Retry in ';
+    function tick() {
+      if (remaining <= 0) {
+        clearInterval(_magicCooldownTimer);
+        _magicCooldownTimer = null;
+        magicBtn.disabled = false;
+        magicBtn.textContent = 'Send magic link';
+        return;
+      }
+      var m = Math.floor(remaining / 60);
+      var s = remaining % 60;
+      magicBtn.textContent = base + (m > 0 ? (m + 'm ' + (s < 10 ? '0' + s : s) + 's') : (s + 's'));
+      remaining -= 1;
+    }
+    tick();
+    _magicCooldownTimer = setInterval(tick, 1000);
+  }
+
+  // ---- magic link ----
+  document.getElementById('magic-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var email = emailInput.value.trim();
+    if (!email) return;
+    hideMsg();
+    setBusy(true);
+    try {
+      var resp = await sb.auth.signInWithOtp({
+        email: email,
+        options: { emailRedirectTo: callbackRedirect() }
+      });
+      if (resp.error) throw resp.error;
+      sessionStorage.setItem('ie_oauth_provider', 'magic_link');
+      showMsg('Check your inbox — we sent a sign-in link to ' + email + '.', 'success');
+    } catch (err) {
+      console.error('magic link failed', err);
+      var info = interpretAuthError(err);
+      showMsgHtml(info.html, info.level);
+      if (info.cooldownSeconds) {
+        setBusy(false);
+        startMagicCooldown(info.cooldownSeconds);
+        return; // cooldown sets button state; skip the finally reset
+      }
+    } finally {
+      if (!_magicCooldownTimer) setBusy(false);
+    }
+  });
+
+  // ---- Provider discovery ----
+  // Supabase exposes /auth/v1/settings which returns which external providers
+  // are actually enabled on the project. We use this on page load to
+  // proactively dim the Google button when it isn't configured, so users
+  // don't get navigated to a raw JSON error page when they click it.
+  var PROVIDERS = null; // null = unknown / fetch failed (fail-open)
+
+  async function loadProviderState() {
+    try {
+      var r = await fetch(window.IE_CONFIG.SUPABASE_URL + '/auth/v1/settings', {
+        headers: { apikey: window.IE_CONFIG.SUPABASE_ANON_KEY }
+      });
+      if (!r.ok) return;
+      var body = await r.json();
+      PROVIDERS = (body && body.external) || {};
+      applyProviderState();
+    } catch (e) {
+      console.warn('loadProviderState failed', e);
+    }
+  }
+
+  function applyProviderState() {
+    if (!PROVIDERS) return;
+    if (PROVIDERS.google === false) {
+      googleBtn.classList.add('disabled-provider');
+      googleBtn.setAttribute(
+        'title',
+        'Google sign-in is not enabled on this Supabase project yet'
+      );
+    } else {
+      googleBtn.classList.remove('disabled-provider');
+      googleBtn.removeAttribute('title');
+    }
+    // If every external provider except email is off, nudge the user toward
+    // the magic link form by showing a subtle hint under the Google button.
+    var anyExternal = false;
+    Object.keys(PROVIDERS).forEach(function (k) {
+      if (k === 'email' || k === 'phone' || k === 'anonymous_users') return;
+      if (PROVIDERS[k] === true) anyExternal = true;
+    });
+    if (!anyExternal) {
+      var existing = document.getElementById('provider-hint');
+      if (!existing) {
+        var hint = document.createElement('div');
+        hint.id = 'provider-hint';
+        hint.style.cssText =
+          'margin-top:10px;font-size:10.5px;color:#7a8a9e;text-align:center;line-height:1.5';
+        hint.innerHTML =
+          'Google sign-in isn\'t configured yet. Use a magic link above, ' +
+          'or ask an admin to enable Google in ' +
+          '<span style="color:#00d4ff">Supabase &rarr; Authentication &rarr; Providers</span>.';
+        googleBtn.parentNode.insertBefore(hint, googleBtn.nextSibling);
+      }
+    }
+  }
+
+  // ---- Google OAuth ----
+  googleBtn.addEventListener('click', async function () {
+    hideMsg();
+    // Blocked path: we know Google isn't enabled server-side.
+    if (PROVIDERS && PROVIDERS.google === false) {
+      showMsgHtml(
+        '<b>Google sign-in is not enabled yet.</b><br>' +
+        'Use the magic link form above, or ask an admin to enable Google in ' +
+        'Supabase &rarr; Authentication &rarr; Providers. Setup also requires a ' +
+        'Google Cloud OAuth client ID.',
+        'error'
+      );
+      return;
+    }
+    googleBtn.disabled = true;
+    try {
+      sessionStorage.setItem('ie_oauth_provider', 'google');
+      var resp = await sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: callbackRedirect() }
+      });
+      if (resp.error) throw resp.error;
+      // Browser will navigate away to Google's consent screen.
+    } catch (err) {
+      console.error('google oauth failed', err);
+      var info = interpretAuthError(err);
+      showMsgHtml(info.html, info.level);
+      googleBtn.disabled = false;
+    }
+  });
+
+  // Kick off provider discovery in the background — non-blocking.
+  loadProviderState();
+
+  (async function () {
+    var handled = await handleCallback();
+    if (!handled) await checkExisting();
+  })();
+})();
+</script>
+</body>
+</html>

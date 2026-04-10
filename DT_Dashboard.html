@@ -162,9 +162,21 @@ img{max-width:100%;height:auto}
   .btn{min-height:40px;padding:9px 14px}
   input,select,textarea{min-height:40px;font-size:16px} /* 16px prevents iOS zoom on focus */
 }
+/* Auth guard floating header (outside the React tree) */
+.ie-dt-navbar{position:fixed;top:10px;right:14px;z-index:2147483645;display:flex;gap:8px;align-items:center;pointer-events:none}
+.ie-dt-navbar > *{pointer-events:auto}
 </style>
+<!-- Auth (must load before React mounts) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/_config.js"></script>
+<script src="/_auth_guard.js"></script>
+<script src="/_audit.js"></script>
 </head>
 <body>
+<!-- Floating container that _auth_guard.js finds via .nav-right and populates
+     with the user chip + sign-out button. This file is a compiled React SPA,
+     so we place the header OUTSIDE the React tree to avoid re-renders. -->
+<div class="ie-dt-navbar nav-right"></div>
 <div id="root">
   <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
     <div class="spinner"></div>

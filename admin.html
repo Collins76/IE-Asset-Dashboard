@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - IE Asset Dashboard</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+:root{--bg:#0b1015;--bg2:#101820;--bg3:#161e28;--bg4:#1c2632;--accent:#00d4ff;--accent2:#0099cc;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--text2:#7a8a9e;--border:#1a2535;--card:#0f171f}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.4}
+.navbar{background:linear-gradient(90deg,#0a1018,#0e161f,#0a1018);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;height:56px;position:fixed;top:0;left:0;right:0;z-index:1000;box-shadow:0 2px 16px rgba(0,0,0,.6)}
+.logo{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:var(--accent);white-space:nowrap}
+.logo-icon{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0d2a3a,#0a3040);border:1.5px solid #1a4050;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:20px;height:20px;fill:var(--accent)}
+.logo-sub{font-size:10px;color:var(--text2);font-weight:400;margin-top:-2px}
+.nav-tabs{display:flex;gap:2px;margin-left:30px;flex:1;overflow-x:auto}
+.nav-tab{padding:8px 16px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12.5px;font-weight:500;border-radius:6px;transition:background .12s,color .12s;white-space:nowrap;font-family:inherit}
+.nav-tab:hover{background:var(--bg3);color:var(--text)}
+.nav-tab.active{background:var(--accent);color:#0b1015;font-weight:600}
+.nav-right{display:flex;gap:8px;align-items:center}
+.back-link{color:var(--text2);text-decoration:none;font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg3);transition:border-color .15s,color .15s}
+.back-link:hover{border-color:var(--accent);color:var(--accent)}
+
+.main{padding:80px 24px 40px;max-width:1400px;margin:0 auto}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:20px;font-weight:700;color:var(--text)}
+.page-sub{font-size:12px;color:var(--text2);margin-top:2px}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent)}
+.kpi.green::before{background:var(--green)}
+.kpi.yellow::before{background:var(--yellow)}
+.kpi.red::before{background:var(--red)}
+.kpi.blue::before{background:var(--blue)}
+.kpi.purple::before{background:var(--purple)}
+.kpi .label{font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:6px}
+.kpi .value{font-size:28px;font-weight:700;color:var(--text);line-height:1.1}
+.kpi .sub{font-size:11px;color:var(--text2);margin-top:4px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:20px;overflow:hidden}
+.panel-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.panel-title{font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.6px}
+.panel-body{padding:0}
+.panel-body.padded{padding:16px 18px}
+
+.tbl-wrap{overflow-x:auto;max-width:100%}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--bg3);padding:10px 12px;text-align:left;color:var(--text2);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0}
+thead th.sortable{cursor:pointer;user-select:none}
+thead th.sortable:hover{color:var(--accent)}
+thead th.sortable.active{color:var(--accent)}
+thead th.sortable.active::after{content:' \25BC';font-size:8px}
+thead th.sortable.active.asc::after{content:' \25B2'}
+tbody td{padding:10px 12px;border-bottom:1px solid rgba(26,37,53,.6);color:var(--text);vertical-align:middle}
+tbody tr:hover{background:rgba(0,212,255,.04)}
+tbody tr.expanded{background:rgba(0,212,255,.06)}
+td.mono{font-family:'Consolas','Courier New',monospace;font-size:11px;color:var(--text2)}
+td.actions{white-space:nowrap;text-align:right}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.badge.pending{background:rgba(245,158,11,.12);color:var(--yellow);border:1px solid rgba(245,158,11,.3)}
+.badge.approved{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.3)}
+.badge.rejected{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.badge.admin{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+.badge.viewer{background:rgba(122,138,158,.12);color:var(--text2);border:1px solid rgba(122,138,158,.3)}
+.badge.auth{background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.3)}
+.badge.data{background:rgba(139,92,246,.12);color:var(--purple);border:1px solid rgba(139,92,246,.3)}
+.badge.admin-cat{background:rgba(249,115,22,.12);color:var(--orange);border:1px solid rgba(249,115,22,.3)}
+
+.btn-sm{padding:5px 10px;border-radius:4px;font-size:10.5px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:inherit;transition:border-color .15s,color .15s,background .15s;margin-left:4px}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm.approve:hover{border-color:var(--green);color:var(--green)}
+.btn-sm.reject:hover{border-color:var(--yellow);color:var(--yellow)}
+.btn-sm.delete:hover{border-color:var(--red);color:var(--red)}
+.btn-sm:disabled{opacity:.4;cursor:not-allowed}
+select.role-sel{padding:4px 8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:11px;font-family:inherit;cursor:pointer}
+select.role-sel:hover,select.role-sel:focus{border-color:var(--accent);outline:none}
+
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;padding:14px 18px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.filter-item{display:flex;flex-direction:column;gap:4px}
+.filter-item label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.filter-item input,.filter-item select{padding:6px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:11.5px;font-family:inherit}
+.filter-item input:focus,.filter-item select:focus{border-color:var(--accent);outline:none}
+.filter-actions{display:flex;gap:6px;align-items:flex-end}
+.filter-btn{padding:7px 12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit;transition:border-color .15s,color .15s}
+.filter-btn:hover{border-color:var(--accent);color:var(--accent)}
+.filter-btn.primary{background:var(--accent);color:#0b1015;border-color:var(--accent);font-weight:600}
+.filter-btn.primary:hover{background:var(--accent2);border-color:var(--accent2)}
+
+.pagination{padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text2);flex-wrap:wrap}
+.page-btns{display:flex;gap:4px}
+.page-btn{padding:5px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit}
+.page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.page-btn:disabled{opacity:.3;cursor:not-allowed}
+
+.empty{padding:40px;text-align:center;color:var(--text2);font-size:12px}
+.loading{padding:40px;text-align:center;color:var(--text2);font-size:12px}
+.loading::before{content:'';display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:-3px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.meta-expand{background:var(--bg);padding:12px 16px;font-family:'Consolas','Courier New',monospace;font-size:10.5px;color:var(--text2);white-space:pre-wrap;word-break:break-all;border-bottom:1px solid rgba(26,37,53,.6);max-height:300px;overflow:auto}
+
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+.activity-list{list-style:none}
+.activity-item{padding:10px 18px;border-bottom:1px solid rgba(26,37,53,.5);display:flex;gap:12px;align-items:flex-start;font-size:12px}
+.activity-item:last-child{border-bottom:none}
+.activity-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:5px;flex-shrink:0}
+.activity-dot.admin{background:var(--orange)}
+.activity-dot.data{background:var(--purple)}
+.activity-main{flex:1;min-width:0}
+.activity-when{color:var(--text2);font-size:10.5px;margin-left:auto;flex-shrink:0;white-space:nowrap}
+
+@media (max-width:768px){
+  .main{padding:70px 14px 30px}
+  .page-title{font-size:17px}
+  .kpi .value{font-size:22px}
+  .filters{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="logo">
+    <div class="logo-icon">
+      <img src="/IE%20Logo.png" alt="IE Logo" style="width:100%;height:100%;object-fit:contain;border-radius:6px">
+    </div>
+    <div>
+      <div>IE Admin</div>
+      <div class="logo-sub">Ikeja Electric Plc</div>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-tab="overview">Overview</button>
+    <button class="nav-tab" data-tab="users">User Management</button>
+    <button class="nav-tab" data-tab="audit">Audit Log</button>
+  </div>
+  <div class="nav-right">
+    <a href="/" class="back-link">&larr; Dashboard</a>
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- ============== OVERVIEW ============== -->
+  <section class="tab-content active" id="tab-overview">
+    <div class="page-hdr">
+      <div>
+        <div class="page-title">Admin Overview</div>
+        <div class="page-sub">Summary of users, access activity, and recent admin actions</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi blue"><div class="label">Total Users</div><div class="value" id="k-total">--</div><div class="sub" id="k-total-sub">profiles</div></div>
+      <div class="kpi yellow"><div class="label">Pending Approvals</div><div class="value" id="k-pending">--</div><div class="sub" id="k-pending-sub">awaiting review</div></div>
+      <div class="kpi green"><div class="label">Logins (24h)</div><div class="value" id="k-logins">--</div><div class="sub">successful sign-ins</div></div>
+      <div class="kpi red"><div class="label">Failed Logins (24h)</div><div class="value" id="k-failed">--</div><div class="sub">including rejected MFA</div></div>
+      <div class="kpi purple"><div class="label">Admin Actions (24h)</div><div class="value" id="k-adminact">--</div><div class="sub">approvals, role changes, deletes</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr">
+        <div class="panel-title">Recent Admin Activity</div>
+        <a href="#audit" class="back-link" onclick="showTab('audit')">View all &rarr;</a>
+      </div>
+      <ul class="activity-list" id="recent-activity"><li class="loading">Loading recent activity...</li></ul>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr">
+        <div class="panel-title">Supabase Built-in Auth Logs</div>
+      </div>
+      <div class="panel-body padded" style="color:var(--text2);font-size:12px;line-height:1.6">
+        Supabase maintains its own authoritative auth event log at
+        <a href="https://supabase.com/dashboard/project/blxuwvxitbbjhzgucvhp/auth/logs" target="_blank" rel="noopener" style="color:var(--accent)">Dashboard &rarr; Authentication &rarr; Logs</a>.
+        Use it as the source of truth for every sign-in attempt, token refresh, and session event. Our in-app audit log mirrors the most important events for easy filtering inside this dashboard.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== USERS ============== -->
+  <section class="tab-content" id="tab-users">
+    <div class="page-hdr">
+      <div>
+        <div class="page-title">User Management</div>
+        <div class="page-sub">Approve pending sign-ups, change roles, and remove access</div>
+      </div>
+      <button class="filter-btn primary" onclick="loadUsers()">Refresh</button>
+    </div>
+
+    <div class="panel">
+      <div class="filters">
+        <div class="filter-item">
+          <label>Status</label>
+          <select id="u-status"><option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+        </div>
+        <div class="filter-item">
+          <label>Role</label>
+          <select id="u-role"><option value="">All</option><option value="admin">Admin</option><option value="viewer">Viewer</option></select>
+        </div>
+        <div class="filter-item" style="grid-column:span 2">
+          <label>Search</label>
+          <input type="text" id="u-search" placeholder="email or name...">
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table id="users-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Last sign-in</th>
+              <th>Last IP</th>
+              <th>Joined</th>
+              <th style="text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody"><tr><td colspan="8" class="loading">Loading users...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== AUDIT LOG ============== -->
+  <section class="tab-content" id="tab-audit">
+    <div class="page-hdr">
+      <div>
+        <div class="page-title">Audit Log</div>
+        <div class="page-sub">Immutable record of every auth, admin, and data event in the dashboard</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="filter-btn primary" onclick="loadAudit(true)">Refresh</button>
+        <button class="filter-btn" onclick="exportAuditCsv()">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="filters">
+        <div class="filter-item">
+          <label>From</label>
+          <input type="date" id="a-from">
+        </div>
+        <div class="filter-item">
+          <label>To</label>
+          <input type="date" id="a-to">
+        </div>
+        <div class="filter-item">
+          <label>User</label>
+          <select id="a-user"><option value="">All users</option></select>
+        </div>
+        <div class="filter-item">
+          <label>Category</label>
+          <select id="a-cat"><option value="">All</option><option value="auth">Auth</option><option value="data">Data</option><option value="admin">Admin</option></select>
+        </div>
+        <div class="filter-item">
+          <label>Action</label>
+          <select id="a-action"><option value="">All</option></select>
+        </div>
+        <div class="filter-item" style="grid-column:span 2">
+          <label>Search (resource ID or metadata)</label>
+          <input type="text" id="a-search" placeholder="e.g. 2026-03, DT-12345, ...">
+        </div>
+        <div class="filter-actions">
+          <button class="filter-btn primary" onclick="loadAudit(true)">Apply</button>
+          <button class="filter-btn" onclick="clearAuditFilters()">Clear</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table id="audit-table">
+          <thead>
+            <tr>
+              <th class="sortable active" data-sort="created_at">Timestamp</th>
+              <th>User</th>
+              <th>Category</th>
+              <th>Action</th>
+              <th>Resource</th>
+              <th>IP</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody"><tr><td colspan="7" class="loading">Loading audit log...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <div>Showing <b id="a-range">0</b> of <b id="a-total">0</b> events</div>
+        <div class="page-btns">
+          <button class="page-btn" id="a-prev" onclick="auditPrev()" disabled>&larr; Prev</button>
+          <span id="a-page" style="padding:5px 8px">Page 1</span>
+          <button class="page-btn" id="a-next" onclick="auditNext()" disabled>Next &rarr;</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/_config.js"></script>
+<script src="/_auth_guard.js"></script>
+<script src="/_audit.js"></script>
+
+<script>
+// ==============================================================
+// Admin Dashboard
+// ==============================================================
+
+var sb = null;
+var currentTab = 'overview';
+
+// State for users tab
+var USERS = [];
+
+// State for audit tab
+var AUDIT = {
+  pageSize: 50,
+  page: 0,
+  total: 0,
+  rows: [],
+  filters: {},
+  userOptionsBuilt: false
+};
+
+// Wait for auth guard to finish and confirm admin role.
+window.addEventListener('ie-auth-ready', function (e) {
+  var profile = e.detail && e.detail.profile;
+  if (!profile || profile.role !== 'admin') {
+    alert('Admin access required.');
+    window.location.replace('/');
+    return;
+  }
+  sb = window.IE_AUTH.supabase;
+
+  // Tab switching
+  document.querySelectorAll('.nav-tab').forEach(function (b) {
+    b.addEventListener('click', function () { showTab(b.dataset.tab); });
+  });
+
+  // Filter listeners
+  ['u-status','u-role','u-search'].forEach(function (id) {
+    var el = document.getElementById(id);
+    el.addEventListener('input', debounce(renderUsers, 200));
+    el.addEventListener('change', renderUsers);
+  });
+  document.getElementById('a-search').addEventListener('input', debounce(function(){ loadAudit(true); }, 350));
+  document.getElementById('a-cat').addEventListener('change', function(){ rebuildActionOptions(); loadAudit(true); });
+  ['a-from','a-to','a-user','a-action'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', function(){ loadAudit(true); });
+  });
+
+  // Default audit range: last 30 days
+  var now = new Date();
+  var from = new Date(Date.now() - 30*24*60*60*1000);
+  document.getElementById('a-to').value   = now.toISOString().slice(0,10);
+  document.getElementById('a-from').value = from.toISOString().slice(0,10);
+
+  // Deep link via hash
+  var h = (window.location.hash || '').replace('#','');
+  if (h === 'users' || h === 'audit' || h === 'overview') showTab(h); else showTab('overview');
+
+  loadOverview();
+});
+
+function showTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.nav-tab').forEach(function (b) {
+    b.classList.toggle('active', b.dataset.tab === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(function (s) {
+    s.classList.toggle('active', s.id === 'tab-' + name);
+  });
+  if (window.location.hash !== '#' + name) {
+    try { history.replaceState({}, '', '#' + name); } catch(e){}
+  }
+  if (name === 'users' && USERS.length === 0) loadUsers();
+  if (name === 'audit' && AUDIT.rows.length === 0) loadAudit(true);
+}
+
+function debounce(fn, ms) {
+  var t = null;
+  return function () {
+    var ctx = this, args = arguments;
+    clearTimeout(t);
+    t = setTimeout(function(){ fn.apply(ctx, args); }, ms);
+  };
+}
+
+function fmtDt(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, { year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+function fmtDtShort(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
+}
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ==============================================================
+// OVERVIEW
+// ==============================================================
+async function loadOverview() {
+  var now = new Date();
+  var since = new Date(now.getTime() - 24*60*60*1000).toISOString();
+
+  // Count pending + total
+  var total = await sb.from('profiles').select('id', { count: 'exact', head: true });
+  var pending = await sb.from('profiles').select('id', { count: 'exact', head: true }).eq('status','pending');
+
+  document.getElementById('k-total').textContent   = total.count != null ? total.count : '—';
+  document.getElementById('k-pending').textContent = pending.count != null ? pending.count : '—';
+
+  // Count logins in last 24h
+  var logins = await sb.from('audit_log').select('id', { count: 'exact', head: true })
+    .eq('event_category','auth')
+    .in('action',['login','magic_link_login','google_login'])
+    .gte('created_at', since);
+  document.getElementById('k-logins').textContent = logins.count != null ? logins.count : '—';
+
+  var failed = await sb.from('audit_log').select('id', { count: 'exact', head: true })
+    .eq('event_category','auth')
+    .eq('action','login_failed')
+    .gte('created_at', since);
+  document.getElementById('k-failed').textContent = failed.count != null ? failed.count : '—';
+
+  var admAct = await sb.from('audit_log').select('id', { count: 'exact', head: true })
+    .eq('event_category','admin')
+    .gte('created_at', since);
+  document.getElementById('k-adminact').textContent = admAct.count != null ? admAct.count : '—';
+
+  // Recent admin activity feed
+  var feed = await sb.from('audit_log')
+    .select('id, user_email, event_category, action, resource_type, resource_id, metadata, created_at')
+    .in('event_category', ['admin','auth'])
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  var ul = document.getElementById('recent-activity');
+  if (feed.error) {
+    ul.innerHTML = '<li class="empty" style="padding:20px">Failed to load: ' + esc(feed.error.message) + '</li>';
+    return;
+  }
+  if (!feed.data || feed.data.length === 0) {
+    ul.innerHTML = '<li class="empty" style="padding:20px">No recent activity.</li>';
+    return;
+  }
+  ul.innerHTML = feed.data.map(function (r) {
+    var dotCls = r.event_category === 'admin' ? 'admin' : (r.event_category === 'data' ? 'data' : '');
+    var who = r.user_email || 'unknown';
+    var what = r.action + (r.resource_type ? ' · ' + r.resource_type : '') + (r.resource_id ? ' (' + r.resource_id + ')' : '');
+    return '<li class="activity-item">' +
+      '<div class="activity-dot ' + dotCls + '"></div>' +
+      '<div class="activity-main"><b>' + esc(who) + '</b> — ' + esc(what) + '</div>' +
+      '<div class="activity-when">' + esc(fmtDt(r.created_at)) + '</div>' +
+      '</li>';
+  }).join('');
+}
+
+// ==============================================================
+// USERS
+// ==============================================================
+async function loadUsers() {
+  var tbody = document.getElementById('users-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" class="loading">Loading users...</td></tr>';
+  var resp = await sb.from('profiles')
+    .select('id, email, full_name, role, status, created_at, approved_at, last_sign_in_at, last_sign_in_ip')
+    .order('created_at', { ascending: false });
+  if (resp.error) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">Failed to load: ' + esc(resp.error.message) + '</td></tr>';
+    return;
+  }
+  USERS = resp.data || [];
+  renderUsers();
+
+  // Also populate audit user filter
+  if (!AUDIT.userOptionsBuilt) {
+    var sel = document.getElementById('a-user');
+    USERS.slice().sort(function(a,b){ return (a.email||'').localeCompare(b.email||''); }).forEach(function (u) {
+      var opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = u.email || u.id;
+      sel.appendChild(opt);
+    });
+    AUDIT.userOptionsBuilt = true;
+  }
+}
+
+function renderUsers() {
+  var status = document.getElementById('u-status').value;
+  var role   = document.getElementById('u-role').value;
+  var q      = document.getElementById('u-search').value.toLowerCase().trim();
+
+  var rows = USERS.filter(function (u) {
+    if (status && u.status !== status) return false;
+    if (role && u.role !== role) return false;
+    if (q) {
+      var hay = (u.email || '').toLowerCase() + ' ' + (u.full_name || '').toLowerCase();
+      if (hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+
+  var tbody = document.getElementById('users-tbody');
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">No users match.</td></tr>';
+    return;
+  }
+  var meId = window.IE_AUTH.user && window.IE_AUTH.user.id;
+  tbody.innerHTML = rows.map(function (u) {
+    var isSelf = u.id === meId;
+    var statusBadge = '<span class="badge ' + u.status + '">' + u.status + '</span>';
+    var roleBadge   = '<span class="badge ' + u.role + '">' + u.role + '</span>';
+
+    var actions = '';
+    if (u.status === 'pending') {
+      actions += '<button class="btn-sm approve" onclick="doApprove(\'' + u.id + '\')">Approve</button>';
+      actions += '<button class="btn-sm reject" onclick="doReject(\'' + u.id + '\')">Reject</button>';
+    } else if (u.status === 'rejected') {
+      actions += '<button class="btn-sm approve" onclick="doApprove(\'' + u.id + '\')">Approve</button>';
+    } else if (u.status === 'approved') {
+      actions += '<select class="role-sel" ' + (isSelf ? 'disabled title="Cannot change your own role"' : '') +
+        ' onchange="doRoleChange(\'' + u.id + '\', this.value, this)">' +
+        '<option value="viewer"' + (u.role === 'viewer' ? ' selected' : '') + '>viewer</option>' +
+        '<option value="admin"'  + (u.role === 'admin'  ? ' selected' : '') + '>admin</option>' +
+        '</select>';
+      actions += '<button class="btn-sm reject" onclick="doReject(\'' + u.id + '\')">Revoke</button>';
+    }
+    if (!isSelf) {
+      actions += '<button class="btn-sm delete" onclick="doDelete(\'' + u.id + '\', \'' + esc(u.email || '') + '\')">Delete</button>';
+    }
+
+    return '<tr>' +
+      '<td>' + esc(u.email || '') + (isSelf ? ' <span style="color:var(--accent);font-size:10px">(you)</span>' : '') + '</td>' +
+      '<td>' + esc(u.full_name || '—') + '</td>' +
+      '<td>' + roleBadge + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td class="mono">' + esc(fmtDt(u.last_sign_in_at)) + '</td>' +
+      '<td class="mono">' + esc(u.last_sign_in_ip || '—') + '</td>' +
+      '<td class="mono">' + esc(fmtDtShort(u.created_at)) + '</td>' +
+      '<td class="actions">' + actions + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+async function doApprove(userId) {
+  if (!confirm('Approve this user? They will gain read access to the dashboard.')) return;
+  var r = await sb.rpc('admin_approve_user', { p_user_id: userId });
+  if (r.error) { alert('Failed: ' + r.error.message); return; }
+  await loadUsers();
+  if (currentTab === 'overview') loadOverview();
+}
+async function doReject(userId) {
+  if (!confirm('Reject / revoke access for this user? They will be kicked out of any active session.')) return;
+  var r = await sb.rpc('admin_reject_user', { p_user_id: userId });
+  if (r.error) { alert('Failed: ' + r.error.message); return; }
+  await loadUsers();
+}
+async function doRoleChange(userId, newRole, selEl) {
+  var orig = null;
+  var u = USERS.find(function (x) { return x.id === userId; });
+  if (u) orig = u.role;
+  if (!confirm('Change this user\'s role to "' + newRole + '"?')) {
+    if (selEl && orig) selEl.value = orig;
+    return;
+  }
+  var r = await sb.rpc('admin_change_role', { p_user_id: userId, p_new_role: newRole });
+  if (r.error) {
+    alert('Failed: ' + r.error.message);
+    if (selEl && orig) selEl.value = orig;
+    return;
+  }
+  await loadUsers();
+}
+async function doDelete(userId, email) {
+  if (!confirm('PERMANENTLY DELETE ' + (email || 'this user') + '?\n\nThis removes their auth record and profile. Audit history is retained but detached.')) return;
+  var r = await sb.rpc('admin_delete_user', { p_user_id: userId });
+  if (r.error) { alert('Failed: ' + r.error.message); return; }
+  await loadUsers();
+  if (currentTab === 'overview') loadOverview();
+}
+
+// ==============================================================
+// AUDIT LOG
+// ==============================================================
+var AUDIT_ACTION_SETS = {
+  '': [],
+  'auth':  ['login','magic_link_login','google_login','logout','login_failed','signup'],
+  'data':  ['create','update','delete','upload','load','cloud_delete','cloud_delete_all'],
+  'admin': ['approve_user','reject_user','change_role','delete_user']
+};
+
+function rebuildActionOptions() {
+  var cat = document.getElementById('a-cat').value;
+  var sel = document.getElementById('a-action');
+  var current = sel.value;
+  var opts = ['<option value="">All</option>'];
+  var set = cat ? AUDIT_ACTION_SETS[cat] : [].concat(AUDIT_ACTION_SETS.auth, AUDIT_ACTION_SETS.data, AUDIT_ACTION_SETS.admin);
+  set.forEach(function (a) { opts.push('<option value="' + a + '">' + a + '</option>'); });
+  sel.innerHTML = opts.join('');
+  if (set.indexOf(current) !== -1) sel.value = current;
+}
+
+function clearAuditFilters() {
+  document.getElementById('a-from').value = '';
+  document.getElementById('a-to').value = '';
+  document.getElementById('a-user').value = '';
+  document.getElementById('a-cat').value = '';
+  document.getElementById('a-search').value = '';
+  rebuildActionOptions();
+  loadAudit(true);
+}
+
+async function loadAudit(reset) {
+  if (reset) AUDIT.page = 0;
+  var tbody = document.getElementById('audit-tbody');
+  tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading audit log...</td></tr>';
+
+  var from = AUDIT.page * AUDIT.pageSize;
+  var to   = from + AUDIT.pageSize - 1;
+
+  var q = sb.from('audit_log')
+    .select('id, user_id, user_email, event_type, event_category, resource_type, resource_id, action, metadata, ip_address, user_agent, created_at',
+            { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  var fromDate = document.getElementById('a-from').value;
+  var toDate   = document.getElementById('a-to').value;
+  if (fromDate) q = q.gte('created_at', fromDate + 'T00:00:00');
+  if (toDate)   q = q.lte('created_at', toDate   + 'T23:59:59.999');
+  var user = document.getElementById('a-user').value;
+  if (user) q = q.eq('user_id', user);
+  var cat = document.getElementById('a-cat').value;
+  if (cat) q = q.eq('event_category', cat);
+  var act = document.getElementById('a-action').value;
+  if (act) q = q.eq('action', act);
+  var searchRaw = document.getElementById('a-search').value.trim();
+  if (searchRaw) {
+    // match resource_id OR cast metadata to text and ilike
+    var pattern = '%' + searchRaw.replace(/[,%]/g,'') + '%';
+    q = q.or('resource_id.ilike.' + pattern + ',user_email.ilike.' + pattern + ',event_type.ilike.' + pattern);
+  }
+
+  var resp = await q;
+  if (resp.error) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">Failed to load: ' + esc(resp.error.message) + '</td></tr>';
+    return;
+  }
+  AUDIT.rows = resp.data || [];
+  AUDIT.total = resp.count || 0;
+  renderAudit();
+}
+
+function renderAudit() {
+  var tbody = document.getElementById('audit-tbody');
+  if (AUDIT.rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">No events match the filters.</td></tr>';
+  } else {
+    tbody.innerHTML = AUDIT.rows.map(function (r) {
+      var catCls = r.event_category === 'admin' ? 'admin-cat' : r.event_category;
+      var resource = (r.resource_type || '') + (r.resource_id ? ' · ' + r.resource_id : '');
+      return '' +
+        '<tr data-id="' + r.id + '">' +
+          '<td class="mono">' + esc(fmtDt(r.created_at)) + '</td>' +
+          '<td>' + esc(r.user_email || '—') + '</td>' +
+          '<td><span class="badge ' + catCls + '">' + esc(r.event_category || '—') + '</span></td>' +
+          '<td>' + esc(r.action || '—') + '</td>' +
+          '<td class="mono">' + esc(resource || '—') + '</td>' +
+          '<td class="mono">' + esc(r.ip_address || '—') + '</td>' +
+          '<td><button class="btn-sm" onclick="toggleMeta(' + r.id + ')">Details</button></td>' +
+        '</tr>' +
+        '<tr class="meta-row" data-meta-for="' + r.id + '" style="display:none">' +
+          '<td colspan="7" class="meta-expand">' + esc(formatMeta(r)) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  var from = AUDIT.page * AUDIT.pageSize + 1;
+  var to = Math.min((AUDIT.page + 1) * AUDIT.pageSize, AUDIT.total);
+  if (AUDIT.total === 0) { from = 0; to = 0; }
+  document.getElementById('a-range').textContent = from + '–' + to;
+  document.getElementById('a-total').textContent = AUDIT.total.toLocaleString();
+  document.getElementById('a-page').textContent = 'Page ' + (AUDIT.page + 1) + ' of ' + Math.max(1, Math.ceil(AUDIT.total / AUDIT.pageSize));
+  document.getElementById('a-prev').disabled = AUDIT.page === 0;
+  document.getElementById('a-next').disabled = (AUDIT.page + 1) * AUDIT.pageSize >= AUDIT.total;
+}
+
+function formatMeta(r) {
+  var obj = {
+    event_type: r.event_type,
+    user_agent: r.user_agent,
+    metadata: r.metadata
+  };
+  try { return JSON.stringify(obj, null, 2); } catch (e) { return String(r.metadata); }
+}
+
+function toggleMeta(id) {
+  var row = document.querySelector('tr[data-meta-for="' + id + '"]');
+  if (!row) return;
+  row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+  var mainRow = document.querySelector('tr[data-id="' + id + '"]');
+  if (mainRow) mainRow.classList.toggle('expanded');
+}
+
+function auditPrev() { if (AUDIT.page > 0) { AUDIT.page--; loadAudit(false); } }
+function auditNext() { if ((AUDIT.page + 1) * AUDIT.pageSize < AUDIT.total) { AUDIT.page++; loadAudit(false); } }
+
+async function exportAuditCsv() {
+  // Re-run the current filter query WITHOUT pagination so we export everything matching.
+  var q = sb.from('audit_log')
+    .select('created_at, user_email, event_category, action, resource_type, resource_id, ip_address, user_agent, event_type, metadata')
+    .order('created_at', { ascending: false })
+    .limit(10000);
+
+  var fromDate = document.getElementById('a-from').value;
+  var toDate   = document.getElementById('a-to').value;
+  if (fromDate) q = q.gte('created_at', fromDate + 'T00:00:00');
+  if (toDate)   q = q.lte('created_at', toDate + 'T23:59:59.999');
+  var user = document.getElementById('a-user').value;
+  if (user) q = q.eq('user_id', user);
+  var cat = document.getElementById('a-cat').value;
+  if (cat) q = q.eq('event_category', cat);
+  var act = document.getElementById('a-action').value;
+  if (act) q = q.eq('action', act);
+  var searchRaw = document.getElementById('a-search').value.trim();
+  if (searchRaw) {
+    var pattern = '%' + searchRaw.replace(/[,%]/g,'') + '%';
+    q = q.or('resource_id.ilike.' + pattern + ',user_email.ilike.' + pattern + ',event_type.ilike.' + pattern);
+  }
+
+  var resp = await q;
+  if (resp.error) { alert('Export failed: ' + resp.error.message); return; }
+
+  var cols = ['created_at','user_email','event_category','action','resource_type','resource_id','ip_address','user_agent','event_type','metadata'];
+  var rows = [cols.join(',')];
+  (resp.data || []).forEach(function (r) {
+    rows.push(cols.map(function (c) {
+      var v = r[c];
+      if (v == null) return '';
+      if (typeof v === 'object') v = JSON.stringify(v);
+      v = String(v);
+      if (v.indexOf(',') !== -1 || v.indexOf('"') !== -1 || v.indexOf('\n') !== -1) {
+        v = '"' + v.replace(/"/g, '""') + '"';
+      }
+      return v;
+    }).join(','));
+  });
+  var csv = rows.join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'ie_audit_log_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+}
+
+rebuildActionOptions();
+</script>
+</body>
+</html>
