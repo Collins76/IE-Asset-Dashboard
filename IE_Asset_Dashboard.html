@@ -4517,25 +4517,53 @@ function _maintRenderCharts(){
 
 function _maintRenderFilterPanels(){
   const recs=_maintViewRecords();
+  const buSel=MAINT_STATE.buSel;
+  const catSel=MAINT_STATE.catSel;
+  // Full set of BUs and categories across the current view (for the option list)
+  const allBUs=new Set();
+  const allCats=new Set();
+  // Cascading: BUs available given the selected categories; categories available given the selected BUs.
+  const availBUs=new Set();
+  const availCats=new Set();
+  for(let i=0,n=recs.length;i<n;i++){
+    const r=recs[i];
+    if(r.bu)allBUs.add(r.bu);
+    if(r.changeCategory)allCats.add(r.changeCategory);
+    const passBU=buSel.size===0||(r.bu&&buSel.has(r.bu));
+    const passCat=catSel.size===0||(r.changeCategory&&catSel.has(r.changeCategory));
+    if(r.bu&&passCat)availBUs.add(r.bu);
+    if(r.changeCategory&&passBU)availCats.add(r.changeCategory);
+  }
   // BU panel
   const buPanel=document.querySelector('#fMaintBU .ms-panel');
   if(buPanel){
-    const buSet=new Set();
-    recs.forEach(r=>{if(r.bu)buSet.add(r.bu)});
-    const bus=[...buSet].sort();
-    buPanel.innerHTML='<label class="all-opt"><input type="checkbox" value="" '+(MAINT_STATE.buSel.size===0?'checked':'')+' onchange="maintFilterCheck(this,\'bu\')"> All</label>'
-      +bus.map(b=>'<label><input type="checkbox" value="'+b+'" '+(MAINT_STATE.buSel.has(b)?'checked':'')+' onchange="maintFilterCheck(this,\'bu\')"> '+b+'</label>').join('');
-    _maintUpdateFilterBtn('fMaintBU',MAINT_STATE.buSel,'BUs');
+    const bus=[...allBUs].sort();
+    const parts=['<label class="all-opt"><input type="checkbox" value="" '+(buSel.size===0?'checked':'')+' onchange="maintFilterCheck(this,\'bu\')"> All</label>'];
+    bus.forEach(b=>{
+      const checked=buSel.has(b);
+      const inAvail=availBUs.has(b);
+      // Hide rows that are neither available nor currently selected
+      if(!inAvail&&!checked)return;
+      const dim=checked&&!inAvail?' style="opacity:0.5"':'';
+      parts.push('<label'+dim+'><input type="checkbox" value="'+b+'" '+(checked?'checked':'')+' onchange="maintFilterCheck(this,\'bu\')"> '+b+'</label>');
+    });
+    buPanel.innerHTML=parts.join('');
+    _maintUpdateFilterBtn('fMaintBU',buSel,'BUs');
   }
   // Category panel
   const catPanel=document.querySelector('#fMaintCat .ms-panel');
   if(catPanel){
-    const catSet=new Set();
-    recs.forEach(r=>{if(r.changeCategory)catSet.add(r.changeCategory)});
-    const cats=[...catSet].sort();
-    catPanel.innerHTML='<label class="all-opt"><input type="checkbox" value="" '+(MAINT_STATE.catSel.size===0?'checked':'')+' onchange="maintFilterCheck(this,\'cat\')"> All</label>'
-      +cats.map(c=>'<label><input type="checkbox" value="'+c.replace(/"/g,'&quot;')+'" '+(MAINT_STATE.catSel.has(c)?'checked':'')+' onchange="maintFilterCheck(this,\'cat\')"> '+c+'</label>').join('');
-    _maintUpdateFilterBtn('fMaintCat',MAINT_STATE.catSel,'Categories');
+    const cats=[...allCats].sort();
+    const parts=['<label class="all-opt"><input type="checkbox" value="" '+(catSel.size===0?'checked':'')+' onchange="maintFilterCheck(this,\'cat\')"> All</label>'];
+    cats.forEach(c=>{
+      const checked=catSel.has(c);
+      const inAvail=availCats.has(c);
+      if(!inAvail&&!checked)return;
+      const dim=checked&&!inAvail?' style="opacity:0.5"':'';
+      parts.push('<label'+dim+'><input type="checkbox" value="'+c.replace(/"/g,'&quot;')+'" '+(checked?'checked':'')+' onchange="maintFilterCheck(this,\'cat\')"> '+c+'</label>');
+    });
+    catPanel.innerHTML=parts.join('');
+    _maintUpdateFilterBtn('fMaintCat',catSel,'Categories');
   }
 }
 function _maintUpdateFilterBtn(wrapId,selSet,labelAll){
@@ -4642,13 +4670,31 @@ function maintExportCSV(){
   rows.forEach(r=>{
     lines.push([r.period,r.ownership,r.changeCategory,r.bu,r.ut,r.dtNumber,r.dtName,r.oldValue,r.newValue,r.feeder,r.capacity,r.meteringStatus,r.meterNumber,r.connectionStatus,r.commissioningStatus,r.latitude,r.longitude,r.address,r.remark,r.state].map(esc).join(','));
   });
-  const csv=lines.join('\n');
-  const blob=new Blob([csv],{type:'text/csv'});
+  // Prepend UTF-8 BOM so Excel opens it with the right encoding
+  const csv='\ufeff'+lines.join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const per=(MAINT_STATE.period||'current').replace(/-/g,'_');
+  const filename='IE_DT_Maintenance_'+per+'_'+MAINT_STATE.view+'.csv';
+  // IE/Edge legacy path (keeps the code defensive even though modern browsers don't need it)
+  if(window.navigator&&window.navigator.msSaveOrOpenBlob){
+    window.navigator.msSaveOrOpenBlob(blob,filename);
+    return;
+  }
+  // Modern browsers: anchor MUST be attached to the DOM for the download
+  // to fire reliably, and URL.revokeObjectURL must be deferred so it doesn't
+  // race with the browser starting the download.
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  const per=(MAINT_STATE.period||'current').replace(/-/g,'_');
-  a.href=url;a.download='IE_DT_Maintenance_'+per+'_'+MAINT_STATE.view+'.csv';
-  a.click();URL.revokeObjectURL(url);
+  a.href=url;
+  a.download=filename;
+  a.rel='noopener';
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){
+    try{document.body.removeChild(a)}catch(e){}
+    URL.revokeObjectURL(url);
+  },250);
 }
 
 function maintExportPDF(){
