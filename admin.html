@@ -532,6 +532,90 @@ async function loadUsers() {
     });
     AUDIT.userOptionsBuilt = true;
   }
+
+  // Fire off the location backfill in the background. This looks up
+  // each user's last_sign_in_ip via ipapi.co and writes the resolved
+  // city/country back to profiles via the admin_set_user_location RPC.
+  // Users whose login_city is already populated are skipped so this
+  // doesn't hammer the API on every page load.
+  backfillLocations().catch(function (e) {
+    console.warn('location backfill threw', e);
+  });
+}
+
+// ---- location backfill ----
+// Looks up missing locations from stored IPs, one user at a time to
+// respect ipapi.co's 1000/day free quota. Rate-limited with a small
+// 250ms spacing between calls. Silently no-ops for private IPs,
+// reserved ranges, and any IP that returns an error.
+async function backfillLocations() {
+  if (!Array.isArray(USERS) || USERS.length === 0) return;
+  var pending = USERS.filter(function (u) {
+    return u.last_sign_in_ip && !u.login_city && !u._location_tried;
+  });
+  if (pending.length === 0) return;
+
+  console.info('location backfill starting for ' + pending.length + ' user(s)');
+  var updated = 0;
+
+  for (var i = 0; i < pending.length; i++) {
+    var user = pending[i];
+    user._location_tried = true; // mark so we don't retry within this page load
+    var ip = user.last_sign_in_ip;
+
+    // Skip obvious private/loopback ranges — ipapi.co returns an error
+    // for them anyway, no point in burning quota.
+    if (!ip || /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1|fe80:)/.test(ip)) {
+      continue;
+    }
+
+    try {
+      var r = await fetch('https://ipapi.co/' + encodeURIComponent(ip) + '/json/', {
+        cache: 'no-store',
+        credentials: 'omit'
+      });
+      if (!r.ok) {
+        console.warn('ipapi lookup HTTP', r.status, 'for', ip);
+        continue;
+      }
+      var body = await r.json();
+      if (!body || typeof body !== 'object') continue;
+      if (body.error) {
+        console.warn('ipapi error for', ip, body.reason || body.error);
+        continue;
+      }
+      var city    = body.city || null;
+      var region  = body.region || body.region_code || null;
+      var country = body.country_name || body.country || null;
+      if (!city && !country) continue;
+
+      var rpcResp = await sb.rpc('admin_set_user_location', {
+        p_user_id: user.id,
+        p_city: city,
+        p_region: region,
+        p_country: country
+      });
+      if (rpcResp.error) {
+        console.warn('admin_set_user_location failed for', user.email, rpcResp.error);
+        continue;
+      }
+      // Update in-memory USERS row so the next renderUsers() shows it.
+      user.login_city = city;
+      user.login_region = region;
+      user.login_country = country;
+      updated++;
+    } catch (e) {
+      console.warn('backfill failed for', user.email || user.id, e);
+    }
+
+    // Small delay so we don't hammer the API in tight loops.
+    await new Promise(function (resolve) { setTimeout(resolve, 250); });
+  }
+
+  if (updated > 0) {
+    console.info('location backfill resolved ' + updated + ' user(s)');
+    renderUsers();
+  }
 }
 
 function renderUsers() {
