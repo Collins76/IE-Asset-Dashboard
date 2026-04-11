@@ -36,7 +36,12 @@
       '#ie-auth-loading .ie-err-body{color:#7a8a9e;font-size:12px;line-height:1.5;margin-bottom:18px}',
       '#ie-auth-loading .ie-err-btn{padding:8px 18px;background:#0f171f;border:1px solid #1a2535;color:#e2e8f0;border-radius:5px;cursor:pointer;font-size:12px;font-family:inherit}',
       '#ie-auth-loading .ie-err-btn:hover{border-color:#00d4ff;color:#00d4ff}',
-      '#ie-user-chip{display:flex;align-items:center;gap:8px;padding:5px 10px;background:#0f171f;border:1px solid #1a2535;border-radius:6px;font-size:11px;color:#e2e8f0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '#ie-user-chip{display:flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;background:#0f171f;border:1px solid #1a2535;border-radius:20px;font-size:11px;color:#e2e8f0;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '#ie-user-chip .ie-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#0d2a3a,#0a3040);border:1px solid #1a4050;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#00d4ff;flex-shrink:0;overflow:hidden}',
+      '#ie-user-chip .ie-avatar img{width:100%;height:100%;object-fit:cover;display:block}',
+      '#ie-user-chip .ie-name{display:flex;flex-direction:column;gap:1px;line-height:1.1;overflow:hidden}',
+      '#ie-user-chip .ie-name-top{font-size:12px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}',
+      '#ie-user-chip .ie-name-sub{font-size:9.5px;color:#7a8a9e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}',
       '#ie-user-chip .ie-role{padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}',
       '#ie-user-chip .ie-role.admin{background:rgba(0,212,255,.15);color:#00d4ff;border:1px solid rgba(0,212,255,.3)}',
       '#ie-user-chip .ie-role.viewer{background:rgba(122,138,158,.15);color:#7a8a9e;border:1px solid rgba(122,138,158,.3)}',
@@ -186,7 +191,7 @@
     try {
       profResp = await client
         .from('profiles')
-        .select('id, email, full_name, role, status, created_at, approved_at, last_sign_in_at')
+        .select('id, email, full_name, first_name, last_name, avatar_url, role, status, created_at, approved_at, last_sign_in_at, login_city, login_region, login_country')
         .eq('id', session.user.id)
         .maybeSingle();
     } catch (e) {
@@ -215,13 +220,28 @@
     var profile = profResp.data;
     window.IE_AUTH.profile = profile;
 
-    // 3. Status gate.
-    if (profile.status !== 'approved') {
+    // 3. Profile completeness gate.
+    // New users who signed up via magic link without typing their name
+    // are redirected to /complete-profile before anything else. Google
+    // OAuth users usually have their name pre-filled by the trigger,
+    // so they'll skip this step automatically.
+    var currentPath = window.location.pathname.replace(/\/$/, '');
+    var isOnCompletePage = currentPath === '/complete-profile' || currentPath === '/complete-profile.html';
+    if (!profile.first_name && !isOnCompletePage) {
+      redirect('/complete-profile');
+      return;
+    }
+
+    // 4. Status gate.
+    // Users still in pending or rejected status go to /pending,
+    // EXCEPT when they're currently on the complete-profile page
+    // (where we let them finish their profile before routing).
+    if (profile.status !== 'approved' && !isOnCompletePage) {
       redirect('/pending');
       return;
     }
 
-    // 4. Wire up the real logEvent.
+    // 5. Wire up the real logEvent.
     window.IE_AUTH.logEvent = function (opts) {
       opts = opts || {};
       var params = {
@@ -259,13 +279,121 @@
     // 6. Install header UI.
     installHeaderUI();
 
-    // 7. Ready.
+    // 7. Session duration tracking.
+    // Fire a heartbeat now and every 120 seconds while the tab is
+    // visible. Pauses on visibilitychange so AFK time doesn't count.
+    startSessionTracking(client);
+
+    // 8. IP geolocation (once per session, non-blocking).
+    // Only runs if we haven't already captured location for this tab.
+    try {
+      var ipKey = 'ie_ip_logged_' + session.user.id;
+      if (!sessionStorage.getItem(ipKey)) {
+        captureLoginLocation(client).then(function () {
+          try { sessionStorage.setItem(ipKey, '1'); } catch (e) {}
+        });
+      }
+    } catch (e) { /* sessionStorage unavailable */ }
+
+    // 9. Ready.
     window.IE_AUTH.ready = true;
     try {
       window.dispatchEvent(new CustomEvent('ie-auth-ready', { detail: { profile: profile } }));
     } catch (e) { /* old browser */ }
 
     hideOverlay();
+  }
+
+  // ---------- session tracking ----------
+  // Heartbeat cadence: 120 seconds. Each active tab gets its own
+  // session_id (UUID-ish) so user_sessions correctly attributes
+  // concurrent tabs to separate rows instead of collapsing them.
+  var HEARTBEAT_MS = 120000;
+  var _heartbeatTimer = null;
+  var _sessionId = null;
+  var _tabVisible = true;
+
+  function makeSessionId() {
+    // Small random id; not cryptographically secure but unique enough
+    // to key one row per tab-lifetime in user_sessions.
+    return (
+      Date.now().toString(36) + '-' +
+      Math.random().toString(36).slice(2, 10) + '-' +
+      Math.random().toString(36).slice(2, 10)
+    );
+  }
+
+  async function sendHeartbeat(client) {
+    if (!_tabVisible) return;
+    if (!_sessionId) return;
+    try {
+      var resp = await client.rpc('log_session_heartbeat', {
+        p_session_id: _sessionId,
+        p_user_agent: (typeof navigator !== 'undefined' && navigator.userAgent) || null
+      });
+      if (resp && resp.error) console.warn('heartbeat failed', resp.error);
+    } catch (e) {
+      console.warn('heartbeat threw', e);
+    }
+  }
+
+  function startSessionTracking(client) {
+    if (_sessionId) return; // already started in this tab
+    _sessionId = makeSessionId();
+    // First heartbeat immediately so we capture session-start.
+    sendHeartbeat(client);
+    // Then every 120s.
+    _heartbeatTimer = setInterval(function () { sendHeartbeat(client); }, HEARTBEAT_MS);
+
+    // Pause heartbeat when the tab is hidden; resume when visible.
+    if (typeof document !== 'undefined' && 'visibilityState' in document) {
+      document.addEventListener('visibilitychange', function () {
+        _tabVisible = document.visibilityState === 'visible';
+        if (_tabVisible) sendHeartbeat(client);
+      });
+    }
+
+    // Final heartbeat on tab close so we record the full duration.
+    window.addEventListener('pagehide', function () { sendHeartbeat(client); });
+    window.addEventListener('beforeunload', function () { sendHeartbeat(client); });
+  }
+
+  // ---------- IP geolocation ----------
+  // Uses ipapi.co which is free and key-less (1000/day). Only fields
+  // we care about are city/region/country; we don't store lat/lon.
+  // Runs fire-and-forget; any network error is logged and ignored.
+  async function captureLoginLocation(client) {
+    try {
+      var r = await fetch('https://ipapi.co/json/', {
+        cache: 'no-store',
+        credentials: 'omit'
+      });
+      if (!r.ok) return;
+      var body = await r.json();
+      if (!body || typeof body !== 'object') return;
+      if (body.error) {
+        console.warn('ipapi error', body.reason || body.error);
+        return;
+      }
+      var city    = body.city || null;
+      var region  = body.region || body.region_code || null;
+      var country = body.country_name || body.country || null;
+      if (!city && !region && !country) return;
+      var rpc = await client.rpc('log_login_location', {
+        p_city: city,
+        p_region: region,
+        p_country: country
+      });
+      if (rpc && rpc.error) console.warn('log_login_location failed', rpc.error);
+      // Reflect on the current in-memory profile so the UI can show it.
+      if (window.IE_AUTH && window.IE_AUTH.profile) {
+        window.IE_AUTH.profile.login_city = city;
+        window.IE_AUTH.profile.login_region = region;
+        window.IE_AUTH.profile.login_country = country;
+      }
+    } catch (e) {
+      console.warn('geolocation failed', e);
+    }
   }
 
   // ---------- header UI ----------
@@ -294,12 +422,30 @@
 
     var chip = document.createElement('div');
     chip.id = 'ie-user-chip';
+    // Compute a display name from the profile data.
+    var first = (profile.first_name || '').trim();
+    var last  = (profile.last_name  || '').trim();
+    var displayTop = first
+      ? (first + (last ? ' ' + last : ''))
+      : (profile.full_name || profile.email || '');
+    var initials = (
+      (first ? first.charAt(0) : '') +
+      (last  ? last.charAt(0)  : '')
+    ).toUpperCase() || (profile.email ? profile.email.charAt(0).toUpperCase() : '?');
+    var avatarHtml;
+    if (profile.avatar_url) {
+      avatarHtml = '<img src="' + escapeHtml(profile.avatar_url) + '" alt="" onerror="this.outerHTML=\'' + escapeHtml(initials) + '\'">';
+    } else {
+      avatarHtml = escapeHtml(initials);
+    }
     chip.innerHTML =
+      '<div class="ie-avatar">' + avatarHtml + '</div>' +
+      '<div class="ie-name">' +
+        '<div class="ie-name-top" title="' + escapeHtml(displayTop) + '">' + escapeHtml(displayTop) + '</div>' +
+        '<div class="ie-name-sub" title="' + escapeHtml(profile.email || '') + '">' + escapeHtml(profile.email || '') + '</div>' +
+      '</div>' +
       '<span class="ie-role ' + (isAdmin ? 'admin' : 'viewer') + '">' +
       (isAdmin ? 'ADMIN' : 'VIEWER') +
-      '</span>' +
-      '<span class="ie-email" title="' + escapeHtml(profile.email || '') + '">' +
-      escapeHtml(profile.email || '') +
       '</span>';
     navRight.appendChild(chip);
 

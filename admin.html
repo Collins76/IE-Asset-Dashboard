@@ -105,6 +105,13 @@ select.role-sel:hover,select.role-sel:focus{border-color:var(--accent);outline:n
 .tab-content{display:none}
 .tab-content.active{display:block}
 
+.user-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#0d2a3a,#0a3040);border:1px solid #1a4050;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent);overflow:hidden;flex-shrink:0}
+.user-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.name-cell{display:flex;flex-direction:column;gap:2px;line-height:1.25}
+.name-cell .n-full{font-size:12.5px;font-weight:600;color:var(--text)}
+.name-cell .n-sub{font-size:10px;color:var(--text2)}
+td.center{text-align:center}
+
 .activity-list{list-style:none}
 .activity-item{padding:10px 18px;border-bottom:1px solid rgba(26,37,53,.5);display:flex;gap:12px;align-items:flex-start;font-size:12px}
 .activity-item:last-child{border-bottom:none}
@@ -212,17 +219,20 @@ select.role-sel:hover,select.role-sel:focus{border-color:var(--accent);outline:n
         <table id="users-table">
           <thead>
             <tr>
-              <th>Email</th>
+              <th style="width:50px"></th>
               <th>Name</th>
+              <th>Email</th>
               <th>Role</th>
               <th>Status</th>
+              <th>Location</th>
               <th>Last sign-in</th>
               <th>Last IP</th>
+              <th>Active time</th>
               <th>Joined</th>
               <th style="text-align:right">Actions</th>
             </tr>
           </thead>
-          <tbody id="users-tbody"><tr><td colspan="8" class="loading">Loading users...</td></tr></tbody>
+          <tbody id="users-tbody"><tr><td colspan="11" class="loading">Loading users...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -474,15 +484,41 @@ async function loadOverview() {
 // ==============================================================
 async function loadUsers() {
   var tbody = document.getElementById('users-tbody');
-  tbody.innerHTML = '<tr><td colspan="8" class="loading">Loading users...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="11" class="loading">Loading users...</td></tr>';
   var resp = await sb.from('profiles')
-    .select('id, email, full_name, role, status, created_at, approved_at, last_sign_in_at, last_sign_in_ip')
+    .select('id, email, full_name, first_name, last_name, avatar_url, role, status, created_at, approved_at, last_sign_in_at, last_sign_in_ip, login_city, login_region, login_country')
     .order('created_at', { ascending: false });
   if (resp.error) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty">Failed to load: ' + esc(resp.error.message) + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="empty">Failed to load: ' + esc(resp.error.message) + '</td></tr>';
     return;
   }
   USERS = resp.data || [];
+
+  // Also fetch session durations aggregated per user. One row per session,
+  // we sum (last_heartbeat_at - started_at) client-side after pulling all
+  // rows for the current set of users. This keeps the query simple and
+  // avoids a view.
+  try {
+    var sResp = await sb.from('user_sessions')
+      .select('user_id, started_at, last_heartbeat_at')
+      .order('started_at', { ascending: false })
+      .limit(5000);
+    if (!sResp.error && Array.isArray(sResp.data)) {
+      var totals = {};
+      sResp.data.forEach(function (row) {
+        var start = new Date(row.started_at).getTime();
+        var end   = new Date(row.last_heartbeat_at).getTime();
+        if (isNaN(start) || isNaN(end) || end < start) return;
+        totals[row.user_id] = (totals[row.user_id] || 0) + (end - start);
+      });
+      USERS.forEach(function (u) {
+        u._active_ms = totals[u.id] || 0;
+      });
+    }
+  } catch (e) {
+    console.warn('session aggregation failed', e);
+  }
+
   renderUsers();
 
   // Also populate audit user filter
@@ -515,7 +551,7 @@ function renderUsers() {
 
   var tbody = document.getElementById('users-tbody');
   if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty">No users match.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="empty">No users match.</td></tr>';
     return;
   }
   var meId = window.IE_AUTH.user && window.IE_AUTH.user.id;
@@ -523,6 +559,33 @@ function renderUsers() {
     var isSelf = u.id === meId;
     var statusBadge = '<span class="badge ' + u.status + '">' + u.status + '</span>';
     var roleBadge   = '<span class="badge ' + u.role + '">' + u.role + '</span>';
+
+    // Avatar cell: image if avatar_url is set, otherwise initials fallback.
+    var first = (u.first_name || '').trim();
+    var last  = (u.last_name  || '').trim();
+    var initials = ((first ? first.charAt(0) : '') + (last ? last.charAt(0) : '')).toUpperCase()
+                   || (u.email ? u.email.charAt(0).toUpperCase() : '?');
+    var avatarHtml;
+    if (u.avatar_url) {
+      avatarHtml = '<img src="' + esc(u.avatar_url) + '" alt="" onerror="this.outerHTML=\'' + esc(initials) + '\'">';
+    } else {
+      avatarHtml = esc(initials);
+    }
+
+    // Name cell: "First Last" top, email sub. Falls back to full_name or email.
+    var displayName = (first || last)
+      ? (first + (last ? ' ' + last : ''))
+      : (u.full_name || '—');
+
+    // Location cell: "City, Country" or em-dash.
+    var locParts = [];
+    if (u.login_city)    locParts.push(u.login_city);
+    if (u.login_country) locParts.push(u.login_country);
+    var locStr = locParts.length ? locParts.join(', ') : '—';
+
+    // Active time: format u._active_ms as "Xh Ym" or "Xm" or "—".
+    var activeMs = u._active_ms || 0;
+    var activeStr = fmtDuration(activeMs);
 
     var actions = '';
     if (u.status === 'pending') {
@@ -543,22 +606,56 @@ function renderUsers() {
     }
 
     return '<tr>' +
-      '<td>' + esc(u.email || '') + (isSelf ? ' <span style="color:var(--accent);font-size:10px">(you)</span>' : '') + '</td>' +
-      '<td>' + esc(u.full_name || '—') + '</td>' +
+      '<td><div class="user-avatar">' + avatarHtml + '</div></td>' +
+      '<td><div class="name-cell"><span class="n-full">' + esc(displayName) +
+        (isSelf ? ' <span style="color:var(--accent);font-size:10px">(you)</span>' : '') +
+        '</span></div></td>' +
+      '<td class="mono">' + esc(u.email || '—') + '</td>' +
       '<td>' + roleBadge + '</td>' +
       '<td>' + statusBadge + '</td>' +
+      '<td>' + esc(locStr) + '</td>' +
       '<td class="mono">' + esc(fmtDt(u.last_sign_in_at)) + '</td>' +
       '<td class="mono">' + esc(u.last_sign_in_ip || '—') + '</td>' +
+      '<td class="mono">' + esc(activeStr) + '</td>' +
       '<td class="mono">' + esc(fmtDtShort(u.created_at)) + '</td>' +
       '<td class="actions">' + actions + '</td>' +
       '</tr>';
   }).join('');
 }
 
+// Format a duration in milliseconds as "Xh Ym" / "Xm" / "—".
+function fmtDuration(ms) {
+  if (!ms || ms < 1000) return '—';
+  var totalMinutes = Math.floor(ms / 60000);
+  if (totalMinutes < 1) return '<1m';
+  var h = Math.floor(totalMinutes / 60);
+  var m = totalMinutes % 60;
+  if (h === 0) return m + 'm';
+  return h + 'h ' + (m < 10 ? '0' : '') + m + 'm';
+}
+
 async function doApprove(userId) {
-  if (!confirm('Approve this user? They will gain read access to the dashboard.')) return;
+  if (!confirm('Approve this user? They will gain read access to the dashboard and receive a welcome email (if Resend is configured).')) return;
   var r = await sb.rpc('admin_approve_user', { p_user_id: userId });
   if (r.error) { alert('Failed: ' + r.error.message); return; }
+
+  // Fire-and-forget welcome email. Edge function gracefully degrades
+  // when RESEND_API_KEY isn't configured (returns sent:false instead
+  // of erroring), so this never blocks the approval UI.
+  try {
+    var emailResp = await sb.functions.invoke('send-welcome-email', {
+      body: { user_id: userId }
+    });
+    if (emailResp && emailResp.error) {
+      console.warn('send-welcome-email returned error', emailResp.error);
+    } else if (emailResp && emailResp.data && emailResp.data.sent === false) {
+      console.info('welcome email skipped:', emailResp.data.reason || 'unknown');
+    }
+  } catch (e) {
+    // Don't fail the approval UI if the edge function is unreachable.
+    console.warn('send-welcome-email invoke failed', e);
+  }
+
   await loadUsers();
   if (currentTab === 'overview') loadOverview();
 }

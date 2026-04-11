@@ -18,9 +18,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:radial
 h1{font-size:22px;font-weight:700;margin:20px 0 4px}
 .lead{color:var(--text2);font-size:12.5px;margin-bottom:24px}
 label{display:block;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-weight:600}
-input[type="email"]{width:100%;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
-input[type="email"]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,.12)}
-input[type="email"]::placeholder{color:#4a5568}
+input[type="email"],input[type="text"]{width:100%;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+input[type="email"]:focus,input[type="text"]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,.12)}
+input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
+.name-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.name-hint{font-size:10.5px;color:#7a8a9e;margin:-8px 0 14px 0;line-height:1.5;font-style:italic}
 .btn{width:100%;padding:12px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:transform .1s,box-shadow .15s,background .15s,opacity .15s;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px}
 .btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
 .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0b1015}
@@ -61,6 +63,18 @@ input[type="email"]::placeholder{color:#4a5568}
   <div class="lead">Access is restricted to authorized Ikeja Electric staff. New accounts require admin approval.</div>
 
   <form id="magic-form" autocomplete="on">
+    <div class="name-row">
+      <div>
+        <label for="first-name">First name</label>
+        <input id="first-name" type="text" placeholder="Jane" autocomplete="given-name" spellcheck="false" maxlength="60">
+      </div>
+      <div>
+        <label for="last-name">Last name</label>
+        <input id="last-name" type="text" placeholder="Doe" autocomplete="family-name" spellcheck="false" maxlength="60">
+      </div>
+    </div>
+    <div class="name-hint">New here? Enter your name so the admin can identify you. Existing users can leave these blank.</div>
+
     <label for="email">Work email</label>
     <input id="email" type="email" placeholder="you@example.com" required autocomplete="email" spellcheck="false">
     <button type="submit" class="btn btn-primary" id="magic-btn">Send magic link</button>
@@ -116,6 +130,8 @@ input[type="email"]::placeholder{color:#4a5568}
   var magicBtn = document.getElementById('magic-btn');
   var googleBtn = document.getElementById('google-btn');
   var emailInput = document.getElementById('email');
+  var firstNameInput = document.getElementById('first-name');
+  var lastNameInput = document.getElementById('last-name');
 
   function showMsg(text, cls) {
     msgEl.className = 'msg show ' + cls;
@@ -288,10 +304,22 @@ input[type="email"]::placeholder{color:#4a5568}
     if (!email) return;
     hideMsg();
     setBusy(true);
+    // Collect optional name fields. Only passed as raw_user_meta_data
+    // on first sign-up; Supabase ignores them for existing users.
+    var firstName = firstNameInput.value.trim();
+    var lastName  = lastNameInput.value.trim();
+    var otpOptions = { emailRedirectTo: callbackRedirect() };
+    if (firstName || lastName) {
+      otpOptions.data = {
+        first_name: firstName || null,
+        last_name: lastName || null,
+        full_name: (firstName + ' ' + lastName).trim() || null
+      };
+    }
     try {
       var resp = await sb.auth.signInWithOtp({
         email: email,
-        options: { emailRedirectTo: callbackRedirect() }
+        options: otpOptions
       });
       if (resp.error) throw resp.error;
       sessionStorage.setItem('ie_oauth_provider', 'magic_link');

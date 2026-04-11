@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complete your profile - IE Asset Dashboard</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+:root{--bg:#0b1015;--bg2:#0f171f;--bg3:#161e28;--bg4:#1c2632;--accent:#00d4ff;--accent2:#0099cc;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--text:#e2e8f0;--text2:#7a8a9e;--border:#1a2535;--card:#0f171f}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 700px at 50% -100px,#0d1a26 0%,var(--bg) 55%);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;line-height:1.5}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:36px 36px 28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.logo-icon{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#0d2a3a,#0a3040);border:1.5px solid #1a4050;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.logo-icon img{width:100%;height:100%;object-fit:contain;border-radius:6px}
+.logo-text{font-size:16px;font-weight:700;color:var(--accent);line-height:1.15}
+.logo-sub{font-size:10px;color:var(--text2);font-weight:400;margin-top:1px}
+h1{font-size:22px;font-weight:700;margin:4px 0 4px}
+.lead{color:var(--text2);font-size:12.5px;margin-bottom:22px;line-height:1.6}
+
+.avatar-row{display:flex;align-items:center;gap:18px;padding:14px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;margin-bottom:22px}
+.avatar-preview{width:86px;height:86px;border-radius:50%;background:linear-gradient(135deg,#0d2a3a,#0a3040);border:1.5px solid #1a4050;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--accent);flex-shrink:0;overflow:hidden;position:relative}
+.avatar-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.avatar-preview .camera-ico{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);opacity:0;transition:opacity .15s;color:#fff;font-size:11px;font-weight:600;letter-spacing:.5px;cursor:pointer}
+.avatar-preview:hover .camera-ico{opacity:1}
+.avatar-info{flex:1;min-width:0}
+.avatar-info .t{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px}
+.avatar-info .d{font-size:10.5px;color:var(--text2);line-height:1.5}
+.avatar-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.avatar-btn{padding:5px 10px;background:var(--bg4);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;font-size:10.5px;font-family:inherit;transition:border-color .15s,color .15s}
+.avatar-btn:hover{border-color:var(--accent);color:var(--accent)}
+.avatar-btn.remove:hover{border-color:var(--red);color:var(--red)}
+input[type="file"]{display:none}
+
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1/-1}
+label{font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
+input[type="text"]{padding:11px 13px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;width:100%}
+input[type="text"]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,.12)}
+input[type="text"]::placeholder{color:#4a5568}
+
+.btn-row{display:flex;gap:10px;margin-top:8px}
+.btn{flex:1;padding:12px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:transform .1s,box-shadow .15s,background .15s,opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0b1015}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,212,255,.32)}
+.btn-skip{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-skip:hover:not(:disabled){border-color:var(--text2);color:var(--text)}
+
+.msg{margin-top:14px;padding:10px 12px;border-radius:6px;font-size:12px;line-height:1.55;display:none;word-wrap:break-word}
+.msg.show{display:block}
+.msg.error{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#ef4444}
+.msg.success{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);color:#10b981}
+.msg.info{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.28);color:var(--accent)}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(11,16,21,.3);border-top-color:#0b1015;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.footer{margin-top:22px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--text2);text-align:center;line-height:1.6}
+@media (max-width:480px){.card{padding:28px 20px}.row{grid-template-columns:1fr}.avatar-row{flex-direction:column;text-align:center}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">
+      <img src="/IE%20Logo.png" alt="IE Logo">
+    </div>
+    <div>
+      <div class="logo-text">IE Asset Dashboard</div>
+      <div class="logo-sub">Ikeja Electric Plc</div>
+    </div>
+  </div>
+  <h1>Complete your profile</h1>
+  <div class="lead">Before you continue, please tell us your name and optionally upload a profile picture. This is how other admins and the audit log will recognize you.</div>
+
+  <div class="avatar-row">
+    <div class="avatar-preview" id="avatar-preview">
+      <span id="avatar-fallback">?</span>
+      <div class="camera-ico" id="avatar-camera">Change</div>
+    </div>
+    <div class="avatar-info">
+      <div class="t">Profile picture</div>
+      <div class="d">Optional. PNG or JPG, up to 2 MB. We'll resize it to 256&times;256 before upload.</div>
+      <div class="avatar-actions">
+        <button type="button" class="avatar-btn" id="btn-upload">Choose image</button>
+        <button type="button" class="avatar-btn remove" id="btn-remove" style="display:none">Remove</button>
+      </div>
+      <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp">
+    </div>
+  </div>
+
+  <form id="profile-form" autocomplete="on">
+    <div class="row">
+      <div class="field">
+        <label for="first">First name</label>
+        <input type="text" id="first" required autocomplete="given-name" placeholder="Jane" maxlength="60">
+      </div>
+      <div class="field">
+        <label for="last">Last name</label>
+        <input type="text" id="last" required autocomplete="family-name" placeholder="Doe" maxlength="60">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-skip" id="btn-skip">Skip for now</button>
+      <button type="submit" class="btn btn-primary" id="btn-save">Save &amp; continue</button>
+    </div>
+  </form>
+
+  <div class="msg" id="msg" role="status" aria-live="polite"></div>
+
+  <div class="footer">
+    You can change this later from the dashboard. &middot; Ikeja Electric Plc
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/_config.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  if (!window.supabase || !window.supabase.createClient) {
+    document.getElementById('msg').className = 'msg show error';
+    document.getElementById('msg').textContent = 'Failed to load Supabase SDK. Check your connection and reload.';
+    return;
+  }
+
+  var sb = window.supabase.createClient(
+    window.IE_CONFIG.SUPABASE_URL,
+    window.IE_CONFIG.SUPABASE_ANON_KEY,
+    { auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: false, flowType: 'implicit' } }
+  );
+
+  var msgEl = document.getElementById('msg');
+  var firstInput = document.getElementById('first');
+  var lastInput = document.getElementById('last');
+  var fileInput = document.getElementById('file-input');
+  var uploadBtn = document.getElementById('btn-upload');
+  var removeBtn = document.getElementById('btn-remove');
+  var saveBtn = document.getElementById('btn-save');
+  var skipBtn = document.getElementById('btn-skip');
+  var cameraOverlay = document.getElementById('avatar-camera');
+  var preview = document.getElementById('avatar-preview');
+  var fallback = document.getElementById('avatar-fallback');
+
+  var currentUser = null;
+  var currentProfile = null;
+  var avatarBlob = null;    // Blob after resize — what gets uploaded
+  var avatarDataUrl = null; // For preview
+  var existingAvatarUrl = null;
+
+  function showMsg(text, cls) {
+    msgEl.className = 'msg show ' + cls;
+    msgEl.textContent = text;
+  }
+  function hideMsg() { msgEl.className = 'msg'; msgEl.textContent = ''; }
+
+  function updateFallback() {
+    var f = (firstInput.value || '').trim().charAt(0);
+    var l = (lastInput.value || '').trim().charAt(0);
+    fallback.textContent = ((f || '') + (l || '')).toUpperCase() || '?';
+  }
+  firstInput.addEventListener('input', updateFallback);
+  lastInput.addEventListener('input', updateFallback);
+
+  function setAvatarPreview(src) {
+    // Clear previous
+    var imgs = preview.querySelectorAll('img');
+    imgs.forEach(function (i) { i.remove(); });
+    if (src) {
+      var img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      preview.insertBefore(img, preview.firstChild);
+      fallback.style.display = 'none';
+      removeBtn.style.display = '';
+    } else {
+      fallback.style.display = '';
+      removeBtn.style.display = 'none';
+    }
+  }
+
+  // ---- client-side image resize ----
+  // Reads the selected file, draws it onto a 256x256 canvas preserving
+  // aspect ratio, outputs a JPEG blob. Keeps avatars small and uniform.
+  function resizeImage(file) {
+    return new Promise(function (resolve, reject) {
+      var maxBytes = 2 * 1024 * 1024;
+      if (file.size > maxBytes * 4) {
+        // Hard reject anything above 8 MB to avoid reading huge files.
+        reject(new Error('Image is too large. Please pick something smaller than 8 MB.'));
+        return;
+      }
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('Could not read the image file.')); };
+      reader.onload = function (ev) {
+        var img = new Image();
+        img.onerror = function () { reject(new Error('That file is not a valid image.')); };
+        img.onload = function () {
+          var TARGET = 256;
+          var canvas = document.createElement('canvas');
+          canvas.width = TARGET;
+          canvas.height = TARGET;
+          var ctx = canvas.getContext('2d');
+          // Fill background so transparent PNGs get a sensible color.
+          ctx.fillStyle = '#0f171f';
+          ctx.fillRect(0, 0, TARGET, TARGET);
+          // Contain the image within the square, centered.
+          var scale = Math.min(TARGET / img.width, TARGET / img.height);
+          var w = Math.round(img.width * scale);
+          var h = Math.round(img.height * scale);
+          var x = Math.round((TARGET - w) / 2);
+          var y = Math.round((TARGET - h) / 2);
+          ctx.drawImage(img, x, y, w, h);
+          canvas.toBlob(function (blob) {
+            if (!blob) { reject(new Error('Resize failed.')); return; }
+            resolve({ blob: blob, dataUrl: canvas.toDataURL('image/jpeg', 0.88) });
+          }, 'image/jpeg', 0.88);
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ---- file picking ----
+  uploadBtn.addEventListener('click', function () { fileInput.click(); });
+  cameraOverlay.addEventListener('click', function () { fileInput.click(); });
+  preview.addEventListener('click', function (e) {
+    if (e.target === cameraOverlay) return; // already handled
+    if (avatarDataUrl || existingAvatarUrl) return; // only trigger pick on empty state
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async function () {
+    hideMsg();
+    var file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024 * 4) {
+      showMsg('Please pick an image smaller than 8 MB (we resize it down to ~256 KB before upload).', 'error');
+      fileInput.value = '';
+      return;
+    }
+    try {
+      var result = await resizeImage(file);
+      avatarBlob = result.blob;
+      avatarDataUrl = result.dataUrl;
+      setAvatarPreview(avatarDataUrl);
+    } catch (err) {
+      console.error('resize failed', err);
+      showMsg((err && err.message) || 'Could not process that image.', 'error');
+      avatarBlob = null;
+      avatarDataUrl = null;
+    }
+    fileInput.value = '';
+  });
+
+  removeBtn.addEventListener('click', function () {
+    avatarBlob = null;
+    avatarDataUrl = null;
+    existingAvatarUrl = null;
+    setAvatarPreview(null);
+  });
+
+  // ---- init: load session + profile ----
+  (async function () {
+    var s = await sb.auth.getSession();
+    if (!s || !s.data || !s.data.session) {
+      window.location.replace('/login');
+      return;
+    }
+    currentUser = s.data.session.user;
+    var profResp = await sb
+      .from('profiles')
+      .select('id, email, full_name, first_name, last_name, avatar_url, status')
+      .eq('id', currentUser.id)
+      .maybeSingle();
+    if (profResp.error || !profResp.data) {
+      showMsg('Could not load your profile. Try signing out and back in.', 'error');
+      return;
+    }
+    currentProfile = profResp.data;
+    // Prefill from profile (maybe populated by Google OAuth via handle_new_user).
+    if (currentProfile.first_name) firstInput.value = currentProfile.first_name;
+    if (currentProfile.last_name)  lastInput.value  = currentProfile.last_name;
+    updateFallback();
+    if (currentProfile.avatar_url) {
+      existingAvatarUrl = currentProfile.avatar_url;
+      setAvatarPreview(currentProfile.avatar_url);
+    }
+  })();
+
+  // ---- save ----
+  document.getElementById('profile-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    hideMsg();
+    if (!currentUser) return;
+
+    var first = firstInput.value.trim();
+    var last  = lastInput.value.trim();
+    if (!first || !last) {
+      showMsg('Please enter both your first and last name.', 'error');
+      return;
+    }
+
+    saveBtn.disabled = true;
+    skipBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
+
+    try {
+      var avatarUrl = existingAvatarUrl || null;
+
+      // Upload new avatar if one was picked.
+      if (avatarBlob) {
+        var path = currentUser.id + '/avatar-' + Date.now() + '.jpg';
+        var upResp = await sb.storage.from('avatars').upload(path, avatarBlob, {
+          contentType: 'image/jpeg',
+          upsert: true,
+          cacheControl: '3600'
+        });
+        if (upResp.error) throw upResp.error;
+        var pub = sb.storage.from('avatars').getPublicUrl(path);
+        avatarUrl = pub && pub.data && pub.data.publicUrl;
+      }
+
+      // Update profiles via RPC.
+      var rpcResp = await sb.rpc('update_user_profile', {
+        p_first_name: first,
+        p_last_name: last,
+        p_avatar_url: avatarUrl
+      });
+      if (rpcResp.error) throw rpcResp.error;
+
+      showMsg('Saved! Redirecting...', 'success');
+      setTimeout(function () {
+        // Route based on approval status.
+        var status = currentProfile && currentProfile.status;
+        window.location.replace(status === 'approved' ? '/' : '/pending');
+      }, 700);
+    } catch (err) {
+      console.error('profile save failed', err);
+      showMsg('Save failed: ' + ((err && err.message) || 'unknown error'), 'error');
+      saveBtn.disabled = false;
+      skipBtn.disabled = false;
+      saveBtn.innerHTML = 'Save &amp; continue';
+    }
+  });
+
+  // ---- skip ----
+  skipBtn.addEventListener('click', async function () {
+    if (!currentUser) return;
+    hideMsg();
+    skipBtn.disabled = true;
+    saveBtn.disabled = true;
+    // Minimum: require SOMETHING in first_name so the guard stops
+    // redirecting back here. Default to the email local-part.
+    var fallbackFirst = currentUser.email ? currentUser.email.split('@')[0] : 'User';
+    try {
+      var rpcResp = await sb.rpc('update_user_profile', {
+        p_first_name: firstInput.value.trim() || fallbackFirst,
+        p_last_name: lastInput.value.trim() || '',
+        p_avatar_url: existingAvatarUrl || null
+      });
+      if (rpcResp.error) throw rpcResp.error;
+      var status = currentProfile && currentProfile.status;
+      window.location.replace(status === 'approved' ? '/' : '/pending');
+    } catch (err) {
+      console.error('skip failed', err);
+      showMsg('Could not skip: ' + ((err && err.message) || 'unknown error'), 'error');
+      skipBtn.disabled = false;
+      saveBtn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
