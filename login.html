@@ -221,18 +221,14 @@ input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
     if (low.indexOf('email rate limit') !== -1 || low.indexOf('over_email_send_rate_limit') !== -1) {
       return {
         level: 'error',
-        cooldownSeconds: 60 * 60, // 1 hour
-        html:
-          '<b>Email rate limit exceeded.</b><br>' +
-          'Supabase\'s built-in email only allows <b>2 messages per hour</b> on the free tier. ' +
-          'Options: (1) wait ~60 minutes and try again, (2) use <b>Sign in with Google</b> below if it\'s enabled, ' +
-          'or (3) ask an admin to configure a custom SMTP provider in Supabase (removes the limit).'
+        cooldownSeconds: 15,
+        html: 'Too many sign-in emails sent. Please wait a moment and try again, or use <b>Sign in with Google</b> below.'
       };
     }
     if (low.indexOf('for security purposes') !== -1 || low.indexOf('after 2 seconds') !== -1) {
       return {
         level: 'error',
-        cooldownSeconds: 8,
+        cooldownSeconds: 5,
         html: 'Please wait a few seconds before requesting another link.'
       };
     }
