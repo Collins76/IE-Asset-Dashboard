@@ -218,8 +218,22 @@ input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
     var low = raw.toLowerCase();
 
     if (low.indexOf('email rate limit') !== -1 || low.indexOf('over_email_send_rate_limit') !== -1 ||
-        low.indexOf('for security purposes') !== -1 || low.indexOf('after 2 seconds') !== -1) {
-      return { level: 'info', text: 'Sign-in link already sent. Check your inbox, or try again shortly.' };
+        low.indexOf('for security purposes') !== -1 || /after \d+ second/.test(low)) {
+      // Pull the retry-after seconds out of Supabase's message so we can
+      // show a live countdown instead of a vague "try again shortly".
+      var secs = 0;
+      var m = raw.match(/after\s+(\d+)\s*second/i);
+      if (m) secs = parseInt(m[1], 10);
+      // Supabase also surfaces a retry-after on the error object itself.
+      if (!secs && err && typeof err.status === 'number' && err.retryAfter) {
+        secs = parseInt(err.retryAfter, 10);
+      }
+      return {
+        level: 'info',
+        retryAfter: secs || 30,
+        text: 'A sign-in link was just sent to this email and is still valid — ' +
+              'check your inbox (and spam). You can request a new one in '
+      };
     }
     if (low.indexOf('provider is not enabled') !== -1 || low.indexOf('unsupported provider') !== -1) {
       return { level: 'error', text: 'Google sign-in is not enabled yet. Use the magic link above.' };
@@ -228,6 +242,33 @@ input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
       return { level: 'error', text: 'That doesn\'t look like a valid email address.' };
     }
     return { level: 'error', text: 'Sign-in failed. Please try again.' };
+  }
+
+  // Countdown helper used when we hit Supabase's per-email rate limit.
+  // Keeps the button disabled and live-updates the message until the
+  // cooldown expires, then re-enables everything automatically.
+  var cooldownTimer = null;
+  function startCooldown(seconds, baseText) {
+    if (cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null; }
+    var remaining = Math.max(1, seconds | 0);
+    magicBtn.disabled = true;
+    magicBtn.innerHTML = 'Resend in ' + remaining + 's';
+    msgEl.className = 'msg show info';
+    msgEl.textContent = baseText + remaining + 's.';
+    cooldownTimer = setInterval(function () {
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(cooldownTimer);
+        cooldownTimer = null;
+        magicBtn.disabled = false;
+        magicBtn.innerHTML = 'Send magic link';
+        msgEl.className = 'msg show info';
+        msgEl.textContent = 'You can request a fresh sign-in link now.';
+        return;
+      }
+      magicBtn.innerHTML = 'Resend in ' + remaining + 's';
+      msgEl.textContent = baseText + remaining + 's.';
+    }, 1000);
   }
 
   // ---- magic link ----
@@ -250,9 +291,17 @@ input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
     } catch (err) {
       console.error('magic link failed', err);
       var info = interpretAuthError(err);
+      if (info.retryAfter) {
+        // Remember the email so the previous (still-valid) link is discoverable
+        // to the user and a retry after cooldown uses the same address.
+        try { localStorage.setItem('ie_remembered_email', email); } catch (e) {}
+        setBusy(false);
+        startCooldown(info.retryAfter, info.text);
+        return;
+      }
       showMsg(info.text, info.level);
     } finally {
-      setBusy(false);
+      if (!cooldownTimer) setBusy(false);
     }
   });
 
