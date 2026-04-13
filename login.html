@@ -217,14 +217,24 @@ input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
     var raw = (err && (err.message || err.error_description || String(err))) || 'unknown error';
     var low = raw.toLowerCase();
 
-    if (low.indexOf('email rate limit') !== -1 || low.indexOf('over_email_send_rate_limit') !== -1 ||
-        low.indexOf('for security purposes') !== -1 || /after \d+ second/.test(low)) {
-      // Pull the retry-after seconds out of Supabase's message so we can
-      // show a live countdown instead of a vague "try again shortly".
+    // Project-wide hourly email cap on Supabase's default SMTP (HTTP 429).
+    // This is NOT the per-email 60-second cooldown — it's a global hourly
+    // quota and no frontend retry will help. Tell the user explicitly.
+    if (low.indexOf('email rate limit exceeded') !== -1 ||
+        low.indexOf('over_email_send_rate_limit') !== -1) {
+      return {
+        level: 'error',
+        hardBlock: true,
+        text: 'Sign-in email could not be sent right now — the project hourly email quota has been reached. ' +
+              'If a previous sign-in link is still in your inbox (or Spam), open it — it is likely still valid. ' +
+              'Otherwise wait ~1 hour and try again, or ask an admin to configure custom SMTP in Supabase.'
+      };
+    }
+    // Per-email short cooldown ("For security purposes, you can only request this after X seconds").
+    if (low.indexOf('for security purposes') !== -1 || /after \d+ second/.test(low)) {
       var secs = 0;
       var m = raw.match(/after\s+(\d+)\s*second/i);
       if (m) secs = parseInt(m[1], 10);
-      // Supabase also surfaces a retry-after on the error object itself.
       if (!secs && err && typeof err.status === 'number' && err.retryAfter) {
         secs = parseInt(err.retryAfter, 10);
       }
