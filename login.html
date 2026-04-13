@@ -278,16 +278,32 @@ input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
     if (!email) return;
     hideMsg();
     setBusy(true);
-    var otpOptions = { emailRedirectTo: callbackRedirect() };
+    var otpOptions = {
+      emailRedirectTo: callbackRedirect(),
+      // Explicit: create the auth.users row on first sign-in so new
+      // authorized staff can request a link without being pre-provisioned.
+      shouldCreateUser: true
+    };
     try {
       var resp = await sb.auth.signInWithOtp({
         email: email,
         options: otpOptions
       });
+      // Log the full response to help diagnose silent deliverability issues
+      // (e.g. Supabase default SMTP rate limit, which returns "success" with
+      // no email actually sent).
+      console.log('[auth] signInWithOtp response', resp);
       if (resp.error) throw resp.error;
       sessionStorage.setItem('ie_oauth_provider', 'magic_link');
       try { localStorage.setItem('ie_remembered_email', email); } catch (e) {}
-      showMsg('Check your inbox — we sent a sign-in link to ' + email + '.', 'success');
+      msgEl.className = 'msg show success';
+      msgEl.innerHTML =
+        '<div style="font-weight:600;margin-bottom:4px">Sign-in link sent to ' + email + '</div>' +
+        '<div style="font-size:11.5px;color:#9fb4cc;font-weight:400">' +
+        'Check your inbox and <b>Spam / Junk</b> folder (look for sender <code>noreply@mail.app.supabase.io</code>). ' +
+        'The link can take up to 2 minutes to arrive.<br>' +
+        'Still nothing after 2 minutes? Ask an admin to verify the Supabase SMTP and redirect-URL settings.' +
+        '</div>';
     } catch (err) {
       console.error('magic link failed', err);
       var info = interpretAuthError(err);
