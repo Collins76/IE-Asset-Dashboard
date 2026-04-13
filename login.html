@@ -213,75 +213,21 @@ input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
   }
 
   // ---- error interpretation ----
-  // Map Supabase auth error strings to user-friendly guidance + cooldown hints.
   function interpretAuthError(err) {
     var raw = (err && (err.message || err.error_description || String(err))) || 'unknown error';
     var low = raw.toLowerCase();
 
-    if (low.indexOf('email rate limit') !== -1 || low.indexOf('over_email_send_rate_limit') !== -1) {
-      return {
-        level: 'error',
-        cooldownSeconds: 15,
-        html: 'Too many sign-in emails sent. Please wait a moment and try again, or use <b>Sign in with Google</b> below.'
-      };
-    }
-    if (low.indexOf('for security purposes') !== -1 || low.indexOf('after 2 seconds') !== -1) {
-      return {
-        level: 'error',
-        cooldownSeconds: 5,
-        html: 'Please wait a few seconds before requesting another link.'
-      };
+    if (low.indexOf('email rate limit') !== -1 || low.indexOf('over_email_send_rate_limit') !== -1 ||
+        low.indexOf('for security purposes') !== -1 || low.indexOf('after 2 seconds') !== -1) {
+      return { level: 'info', text: 'Sign-in link already sent. Check your inbox, or try again shortly.' };
     }
     if (low.indexOf('provider is not enabled') !== -1 || low.indexOf('unsupported provider') !== -1) {
-      return {
-        level: 'error',
-        html:
-          '<b>Google sign-in is not enabled</b> on this Supabase project yet. ' +
-          'Please use a magic link above, or ask an admin to enable Google in ' +
-          'Supabase &rarr; Authentication &rarr; Providers.'
-      };
+      return { level: 'error', text: 'Google sign-in is not enabled yet. Use the magic link above.' };
     }
     if (low.indexOf('invalid email') !== -1) {
-      return { level: 'error', html: 'That doesn\'t look like a valid email address.' };
+      return { level: 'error', text: 'That doesn\'t look like a valid email address.' };
     }
-    // Fallback: raw message
-    return { level: 'error', html: 'Sign-in failed: ' + escapeHtmlLocal(raw) };
-  }
-
-  function escapeHtmlLocal(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-
-  // Show HTML messages (for rich error guidance with <b>, <br>, etc.)
-  function showMsgHtml(html, cls) {
-    msgEl.className = 'msg show ' + cls;
-    msgEl.innerHTML = html;
-  }
-
-  // Button cooldown — blocks the Send button for N seconds and shows a countdown.
-  var _magicCooldownTimer = null;
-  function startMagicCooldown(seconds) {
-    if (_magicCooldownTimer) clearInterval(_magicCooldownTimer);
-    var remaining = Math.max(1, Math.floor(seconds));
-    magicBtn.disabled = true;
-    var base = 'Retry in ';
-    function tick() {
-      if (remaining <= 0) {
-        clearInterval(_magicCooldownTimer);
-        _magicCooldownTimer = null;
-        magicBtn.disabled = false;
-        magicBtn.textContent = 'Send magic link';
-        return;
-      }
-      var m = Math.floor(remaining / 60);
-      var s = remaining % 60;
-      magicBtn.textContent = base + (m > 0 ? (m + 'm ' + (s < 10 ? '0' + s : s) + 's') : (s + 's'));
-      remaining -= 1;
-    }
-    tick();
-    _magicCooldownTimer = setInterval(tick, 1000);
+    return { level: 'error', text: 'Sign-in failed. Please try again.' };
   }
 
   // ---- magic link ----
@@ -304,14 +250,9 @@ input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
     } catch (err) {
       console.error('magic link failed', err);
       var info = interpretAuthError(err);
-      showMsgHtml(info.html, info.level);
-      if (info.cooldownSeconds) {
-        setBusy(false);
-        startMagicCooldown(info.cooldownSeconds);
-        return; // cooldown sets button state; skip the finally reset
-      }
+      showMsg(info.text, info.level);
     } finally {
-      if (!_magicCooldownTimer) setBusy(false);
+      setBusy(false);
     }
   });
 
@@ -376,13 +317,7 @@ input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
     hideMsg();
     // Blocked path: we know Google isn't enabled server-side.
     if (PROVIDERS && PROVIDERS.google === false) {
-      showMsgHtml(
-        '<b>Google sign-in is not enabled yet.</b><br>' +
-        'Use the magic link form above, or ask an admin to enable Google in ' +
-        'Supabase &rarr; Authentication &rarr; Providers. Setup also requires a ' +
-        'Google Cloud OAuth client ID.',
-        'error'
-      );
+      showMsg('Google sign-in is not enabled yet. Use the magic link above.', 'error');
       return;
     }
     googleBtn.disabled = true;
@@ -393,11 +328,10 @@ input[type="email"]::placeholder,input[type="text"]::placeholder{color:#4a5568}
         options: { redirectTo: callbackRedirect() }
       });
       if (resp.error) throw resp.error;
-      // Browser will navigate away to Google's consent screen.
     } catch (err) {
       console.error('google oauth failed', err);
       var info = interpretAuthError(err);
-      showMsgHtml(info.html, info.level);
+      showMsg(info.text, info.level);
       googleBtn.disabled = false;
     }
   });
