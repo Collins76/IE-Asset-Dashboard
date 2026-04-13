@@ -5139,6 +5139,11 @@ if(window.IE_AUTH&&window.IE_AUTH.ready){_applyRoleVisibility();}
 else{window.addEventListener('ie-auth-ready',_applyRoleVisibility,{once:true});}
 
 function init(){
+  // Remap OKE ELETU feeder DTs to OKELETU SUBSTATION (wrongly tagged as EGBIN TCN / IJEDE in source)
+  ASSET_DATA.forEach(r=>{
+    if(r.sub==='EGBIN TCN'&&r.nom&&r.nom.toUpperCase().includes('OKE ELETU'))r.sub='OKELETU SUBSTATION';
+    if(r.sub==='IJEDE SUBSTATION'&&r.nom&&r.nom.toUpperCase().includes('OKELETU'))r.sub='OKELETU SUBSTATION';
+  });
   // Remove non-IE substations (TCN injection points & out-of-scope substations)
   {
     const _approvedSubs=new Set([
@@ -5157,7 +5162,7 @@ function init(){
       'LAMBE SUBSTATION','MAFOLUKU SUBSTATION','MAGODO SUBSTATION',
       'MARYLAND SUBSTATION','MONGORO SUBSTATION','MUSHIN SUBSTATION',
       'NEW ALAUSA SUBSTATION','NEW GOWON SUBSTATION','NEW OWORO SUBSTATION',
-      'OBAWOLE SUBSTATION','ODOGUNYAN SUBSTATION','OGBA SUBSTATION',
+      'OBAWOLE SUBSTATION','ODOGUNYAN SUBSTATION','OGBA SUBSTATION','OKELETU SUBSTATION',
       'OGUDU SUBSTATION','OJODU SUBSTATION','OKE AFA SUBSTATION',
       'OKE IRA SUBSTATION','OLOWORA SUBSTATION','OPE ILU SUBSTATION',
       'OPEBI SUBSTATION','OWORO SUBSTATION','OWUTU SUBSTATION',
