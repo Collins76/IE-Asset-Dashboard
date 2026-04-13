@@ -5140,11 +5140,82 @@ if(window.IE_AUTH&&window.IE_AUTH.ready){_applyRoleVisibility();}
 else{window.addEventListener('ie-auth-ready',_applyRoleVisibility,{once:true});}
 
 function init(){
-  // Remap OKE ELETU feeder DTs to OKELETU SUBSTATION (wrongly tagged as EGBIN TCN / IJEDE in source)
-  ASSET_DATA.forEach(r=>{
-    if(r.sub==='EGBIN TCN'&&r.nom&&r.nom.toUpperCase().includes('OKE ELETU'))r.sub='OKELETU SUBSTATION';
-    if(r.sub==='IJEDE SUBSTATION'&&r.nom&&r.nom.toUpperCase().includes('OKELETU'))r.sub='OKELETU SUBSTATION';
-  });
+  // Remap TCN substations into their matching IE injection substations
+  {
+    // 1. Direct name-based TCN → Substation (10 clear matches)
+    const _tcnDirect={
+      'ALAUSA TCN':'NEW ALAUSA SUBSTATION',
+      'ALIMOSHO TCN':'ALIMOSHO SUBSTATION',
+      'AMUWO TCN':'AMUWO SUBSTATION',
+      'AYOBO TCN':'AYOBO SUBSTATION',
+      'ILUPEJU TCN':'ILUPEJU SUBSTATION',
+      'ITIRE TCN':'ITIRE SUBSTATION',
+      'MARYLAND TCN':'MARYLAND SUBSTATION',
+      'ODOGUNYAN TCN':'ODOGUNYAN SUBSTATION',
+      'OGBA TCN':'OGBA SUBSTATION',
+      'OWORONSHOKI TCN':'OWORO SUBSTATION'
+    };
+    // 2. Feeder-based mapping for complex TCNs (6 remaining)
+    const _tcnFeeder={
+      'EGBIN TCN':[
+        ['OKE ELETU','OKELETU SUBSTATION'],['AMBER','OKELETU SUBSTATION']
+      ],
+      'IKORODU TCN':[
+        ['IGBOGBO','IGBOGBO SUBSTATION'],['IJEDE','OKELETU SUBSTATION'],
+        ['IPAKODO','IPAKODO  SUBSTATION'],['OWUTU','OWUTU SUBSTATION'],
+        ['IBESHE','OWUTU SUBSTATION'],['AGBOWA','IGBOGBO SUBSTATION'],
+        ['FAKALE','SABO SUBSTATION'],['PULKIT','SABO SUBSTATION'],
+        ['SPINTEX','SABO SUBSTATION'],['INDUSTRIAL','SABO SUBSTATION'],
+        ['UNTL','SABO SUBSTATION'],['DANGOTE','SABO SUBSTATION']
+      ],
+      'ISOLO TCN':[
+        ['PTC','PTC SUBSTATION'],['AJAO','AJAO SUBSTATION'],
+        ['AFPRINT','AJAO SUBSTATION'],['ASWANI','ILUPEJU SUBSTATION'],
+        ['PURE HYGIENE','AJAO SUBSTATION']
+      ],
+      'AJIGBO TCN':[
+        ['OKE AFA','OKE AFA SUBSTATION'],['OKEAFA','OKE AFA SUBSTATION'],
+        ['IGANDO','IGANDO SUBSTATION'],['AGODO','AGODO EGBE SUBSTATION'],
+        ['EGBE','AGODO EGBE SUBSTATION'],['IJEGUN','IJEGUN SUBSTATION'],
+        ['SHASHA','SHASHA SUBSTATION'],['AIRPORT','AJAO SUBSTATION']
+      ],
+      'OKE-ARO TCN':[
+        ['AKUTE','AKUTE SUBSTATION'],['LAMBE','LAMBE SUBSTATION'],
+        ['YIDI','YIDI SUBSTATION']
+      ],
+      'OTA TCN':[
+        ['AMJE','AKUTE SUBSTATION']
+      ]
+    };
+    // 3. Out-of-scope substations → remap by feeder/area
+    const _oosDirect={
+      'IJEDE SUBSTATION':'OKELETU SUBSTATION',
+      'AGBOWA SUBSTATION':'IGBOGBO SUBSTATION',
+      'EGBIN SUBSTATION':'OKELETU SUBSTATION',
+      'CELE SUBSTATION':'AGO OKOTA SUBSTATION',
+      'HILLTOP SUBSTATION':'IGBOGBO SUBSTATION',
+      'ILAPO SUBSTATION':'IGBOGBO SUBSTATION',
+      'LAGOS HOMES SUBSTATION':'IGBOGBO SUBSTATION',
+      'NEW YABA SUBSTATION':'MUSHIN SUBSTATION'
+    };
+    ASSET_DATA.forEach(r=>{
+      if(!r.sub)return;
+      // Direct TCN name match
+      if(_tcnDirect[r.sub]){r.sub=_tcnDirect[r.sub];return}
+      // Feeder-based TCN match
+      const fmap=_tcnFeeder[r.sub];
+      if(fmap){
+        const fn=(r.fn||'').toUpperCase();
+        const nom=(r.nom||'').toUpperCase();
+        for(const[kw,target]of fmap){
+          if(fn.includes(kw.toUpperCase())||nom.includes(kw.toUpperCase())){r.sub=target;return}
+        }
+        return;
+      }
+      // Out-of-scope substation remap
+      if(_oosDirect[r.sub]){r.sub=_oosDirect[r.sub];return}
+    });
+  }
   // Remove non-IE substations (TCN injection points & out-of-scope substations)
   {
     const _approvedSubs=new Set([
