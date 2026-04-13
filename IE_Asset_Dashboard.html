@@ -158,7 +158,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 /* Radar-ping marker for Geospatial DT Map — solid dot + expanding stroke ring on a single SVG path */
 @keyframes dt-ping{0%{stroke-width:1;stroke-opacity:.95}85%{stroke-width:14;stroke-opacity:0}100%{stroke-width:14;stroke-opacity:0}}
 .leaflet-overlay-pane svg path.dt-ping-svg{animation:dt-ping 1.8s ease-out infinite!important;-webkit-animation:dt-ping 1.8s ease-out infinite!important}
-.ut-label{background:none!important;border:none!important;box-shadow:none!important;font-size:12px!important;font-weight:800!important;color:#06b6d4!important;text-shadow:0 0 5px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.8),1px 1px 3px rgba(0,0,0,.9)!important;letter-spacing:.6px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:0!important}
+.ut-label{background:rgba(8,13,20,.92)!important;border:1.5px solid #06b6d4!important;border-radius:4px!important;box-shadow:0 2px 6px rgba(0,0,0,.55)!important;font-size:12.5px!important;font-weight:800!important;color:#ffffff!important;text-shadow:none!important;letter-spacing:.8px!important;text-transform:uppercase!important;pointer-events:none!important;white-space:nowrap!important;padding:3px 8px!important;-webkit-font-smoothing:antialiased!important;-moz-osx-font-smoothing:grayscale!important;text-rendering:geometricPrecision!important}
+.ut-label::before,.ut-label::after{display:none!important}
 #ovTopBar{position:absolute;top:12px;left:55px;right:12px;z-index:1001;display:flex;align-items:flex-start;gap:8px;flex-wrap:nowrap}
 #ovSearchWrap{position:relative;top:auto;left:auto;z-index:1000;display:flex;flex-direction:column;flex-shrink:0}
 #ovFilterBar{position:relative;top:auto;left:auto;z-index:1001;display:flex;gap:6px;flex-wrap:nowrap;align-items:center}
@@ -1280,7 +1281,7 @@ function initMap(){
         onEachFeature:function(feature,layer){
           const name=feature.properties.name||'';
           if(name){
-            layer.bindTooltip(name,{permanent:true,direction:'center',className:'ut-label',opacity:0.85});
+            layer.bindTooltip(name,{permanent:true,direction:'center',className:'ut-label',opacity:1});
             const c=typeof getUtColor==='function'?getUtColor(name):'#64748b';
             layer.bindPopup('<b style="color:'+c+'">'+name+'</b><br>UT Boundary');
           }
@@ -1528,7 +1529,7 @@ function initUfMap(){
         onEachFeature:function(feature,layer){
           const name=feature.properties.name||'';
           if(name){
-            layer.bindTooltip(name,{permanent:true,direction:'center',className:'ut-label',opacity:0.85});
+            layer.bindTooltip(name,{permanent:true,direction:'center',className:'ut-label',opacity:1});
             const c=typeof getUtColor==='function'?getUtColor(name):'#64748b';
             layer.bindPopup('<b style="color:'+c+'">'+name+'</b><br>UT Boundary');
           }
@@ -2015,7 +2016,7 @@ function initOverviewMap(){
           ovSearchableFeatures.push({layer:layer,name:p.name||'',detail:def.name,bu:p._bu||p.BU||'',color:c,search:searchStr});
           // Add permanent label for UT boundaries
           if(def.id==='ut_boundary'&&p.name){
-            layer.bindTooltip(p.name,{permanent:true,direction:'center',className:'ut-label',opacity:0.85});
+            layer.bindTooltip(p.name,{permanent:true,direction:'center',className:'ut-label',opacity:1});
           }
           const isDSS=def.id.includes('_dss_');
           const isHT=def.id.startsWith('ht_lines');
